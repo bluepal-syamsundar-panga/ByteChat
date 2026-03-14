@@ -1,109 +1,119 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import useAuthStore from '../store/authStore';
+import { ArrowRight, LockKeyhole, Mail } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import useAuthStore from '../store/authStore';
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
+  const login = useAuthStore((state) => state.login);
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSubmitting(true);
     setError('');
-    setIsLoading(true);
 
     try {
-      const response = await authService.login(email, password);
-      if (response.success) {
-        login(
-          {
-            id: response.data.userId,
-            email: response.data.email,
-            displayName: response.data.displayName,
-            avatarUrl: response.data.avatarUrl
-          }, 
-          response.data.token
-        );
-        navigate('/');
-      } else {
-        setError(response.message || 'Login failed');
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Network error occurred');
+      const response = await authService.login(form);
+      const payload = response.data;
+      login(
+        {
+          id: payload.userId,
+          email: payload.email,
+          displayName: payload.displayName,
+          avatarUrl: payload.avatarUrl,
+          role: payload.role,
+        },
+        payload.accessToken,
+        payload.refreshToken,
+      );
+      navigate('/');
+    } catch (requestError) {
+      setError(requestError.response?.data?.message ?? 'Unable to sign in');
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-slack-appBg flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-slack-textPrimary">
-          Sign in to ByteChat
-        </h2>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-slack-messageBg py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email address</label>
-              <div className="mt-1">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-slack-activeChannel focus:border-slack-activeChannel sm:text-sm text-slack-textPrimary"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
-              <div className="mt-1">
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-slack-activeChannel focus:border-slack-activeChannel sm:text-sm text-slack-textPrimary"
-                />
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-slack-activeChannel hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slack-activeChannel disabled:opacity-50"
-              >
-                {isLoading ? 'Signing in...' : 'Sign in'}
-              </button>
-            </div>
-            
-            <div className="mt-4 text-center text-sm">
-              <span className="text-gray-600">Don't have an account? </span>
-              <Link to="/register" className="font-medium text-slack-activeChannel hover:underline">
-                Register here
-              </Link>
-            </div>
-          </form>
+    <div className="flex min-h-screen bg-[#f8f8f8]">
+      <section className="hidden flex-1 bg-[#3f0e40] px-16 py-14 text-white lg:flex lg:flex-col">
+        <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">ByteChat</div>
+        <div className="mt-12 max-w-xl">
+          <h1 className="text-5xl font-bold leading-tight">
+            Real-time collaboration with a Slack-style workspace.
+          </h1>
+          <p className="mt-6 text-lg leading-8 text-white/72">
+            Rooms, DMs, presence, notifications, editing, deleting, pinning, reactions, attachments,
+            typing indicators, and JWT-secured messaging built for OWNER and MEMBER roles.
+          </p>
         </div>
-      </div>
+      </section>
+
+      <section className="flex flex-1 items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md rounded-[32px] bg-white p-8 shadow-[0_18px_60px_rgba(63,14,64,0.12)]">
+          <div className="mb-8">
+            <div className="text-sm font-semibold uppercase tracking-[0.25em] text-[#611f69]">Welcome back</div>
+            <h2 className="mt-2 text-3xl font-bold text-[#1d1c1d]">Sign in to ByteChat</h2>
+          </div>
+
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <Field
+              icon={<Mail size={16} />}
+              type="email"
+              label="Email"
+              value={form.email}
+              onChange={(value) => setForm((current) => ({ ...current, email: value }))}
+            />
+            <Field
+              icon={<LockKeyhole size={16} />}
+              type="password"
+              label="Password"
+              value={form.password}
+              onChange={(value) => setForm((current) => ({ ...current, password: value }))}
+            />
+
+            {error && <div className="rounded-2xl bg-[#fdecef] px-4 py-3 text-sm text-[#b42318]">{error}</div>}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1164a3] px-4 py-3 font-semibold text-white transition hover:bg-[#0c548a] disabled:opacity-60"
+            >
+              {submitting ? 'Signing in...' : 'Sign in'}
+              <ArrowRight size={16} />
+            </button>
+          </form>
+
+          <div className="mt-6 text-center text-sm text-[#6b6a6b]">
+            New here?{' '}
+            <Link className="font-semibold text-[#611f69] hover:underline" to="/register">
+              Create an account
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
+
+const Field = ({ icon, label, value, onChange, type }) => (
+  <label className="block">
+    <div className="mb-2 text-sm font-medium text-[#1d1c1d]">{label}</div>
+    <div className="flex items-center gap-3 rounded-2xl border border-black/10 bg-[#fbfbfb] px-4 py-3">
+      <span className="text-[#6b6a6b]">{icon}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full border-0 bg-transparent outline-none"
+        required
+      />
+    </div>
+  </label>
+);
 
 export default LoginPage;

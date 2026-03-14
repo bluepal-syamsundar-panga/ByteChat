@@ -4,11 +4,13 @@ import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.entity.Message;
 import com.bytechat.entity.Room;
+import com.bytechat.entity.RoomMember;
 import com.bytechat.entity.User;
 import com.bytechat.repository.MessageRepository;
 import com.bytechat.repository.RoomMemberRepository;
 import com.bytechat.repository.RoomRepository;
 import com.bytechat.services.MessageService;
+import com.bytechat.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,6 +18,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +30,9 @@ public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepository;
     private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
+    private final NotificationService notificationService;
+
+    private static final Pattern MENTION_PATTERN = Pattern.compile("@([A-Za-z0-9._-]+)");
 
     @Override
     @Transactional
@@ -44,6 +53,7 @@ public class MessageServiceImpl implements MessageService {
                 .build();
                 
         message = messageRepository.save(message);
+        notifyMentionedUsers(message, sender);
         return mapToResponse(message);
     }
 
@@ -69,8 +79,10 @@ public class MessageServiceImpl implements MessageService {
         
         message.setContent(request.getContent());
         message.setEditedAt(LocalDateTime.now());
-        
-        return mapToResponse(messageRepository.save(message));
+
+        Message savedMessage = messageRepository.save(message);
+        notifyMentionedUsers(savedMessage, currentUser);
+        return mapToResponse(savedMessage);
     }
 
     @Override
@@ -119,5 +131,30 @@ public class MessageServiceImpl implements MessageService {
                 .editedAt(message.getEditedAt())
                 .sentAt(message.getSentAt())
                 .build();
+    }
+
+    private void notifyMentionedUsers(Message message, User sender) {
+        List<RoomMember> members = roomMemberRepository.findByRoomId(message.getRoom().getId());
+        Matcher matcher = MENTION_PATTERN.matcher(message.getContent());
+
+        while (matcher.find()) {
+            String mentionToken = normalize(matcher.group(1));
+
+            members.stream()
+                    .map(RoomMember::getUser)
+                    .filter(user -> !user.getId().equals(sender.getId()))
+                    .filter(user -> normalize(user.getDisplayName()).equals(mentionToken))
+                    .findFirst()
+                    .ifPresent(user -> notificationService.sendNotification(
+                            user.getId(),
+                            "MENTION",
+                            sender.getDisplayName() + " mentioned you in #" + message.getRoom().getName(),
+                            message.getId()
+                    ));
+        }
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
     }
 }

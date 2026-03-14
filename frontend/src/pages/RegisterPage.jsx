@@ -1,123 +1,112 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import useAuthStore from '../store/authStore';
+import { ArrowRight, LockKeyhole, Mail, UserRound } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 
 const RegisterPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
+  const [form, setForm] = useState({
+    displayName: '',
+    email: '',
+    password: '',
+  });
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSubmitting(true);
     setError('');
-    setIsLoading(true);
 
     try {
-      const response = await authService.register(email, password, displayName);
-      if (response.success) {
-        login(
-          {
-            id: response.data.userId,
-            email: response.data.email,
-            displayName: response.data.displayName,
-            avatarUrl: response.data.avatarUrl
-          }, 
-          response.data.token
-        );
-        navigate('/');
-      } else {
-        setError(response.message || 'Registration failed');
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Network error occurred');
+      await authService.register(form);
+      navigate('/login');
+    } catch (requestError) {
+      setError(requestError.response?.data?.message ?? 'Unable to create account');
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-slack-appBg flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-slack-textPrimary">
-          Create your ByteChat account
-        </h2>
-      </div>
+    <div className="flex min-h-screen bg-[#f8f8f8] items-center justify-center px-6 py-12">
+      <div className="grid w-full max-w-6xl overflow-hidden rounded-[36px] bg-white shadow-[0_18px_60px_rgba(63,14,64,0.12)] lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="bg-[linear-gradient(160deg,#3f0e40,#611f69)] px-10 py-12 text-white">
+          <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Build Week</div>
+          <h1 className="mt-4 text-4xl font-bold leading-tight">Create your ByteChat workspace identity.</h1>
+          <div className="mt-8 space-y-4 text-sm leading-7 text-white/76">
+            <p>OWNER and MEMBER roles only.</p>
+            <p>Slack-inspired sidebar, conversation canvas, and live collaboration flows.</p>
+            <p>JWT access + refresh tokens, STOMP room messaging, direct messages, presence, notifications.</p>
+          </div>
+        </section>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-slack-messageBg py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Display Name</label>
-              <div className="mt-1">
-                <input
-                  type="text"
-                  required
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-slack-activeChannel focus:border-slack-activeChannel sm:text-sm text-slack-textPrimary"
-                />
-              </div>
-            </div>
+        <section className="px-8 py-10">
+          <div className="mb-8">
+            <div className="text-sm font-semibold uppercase tracking-[0.25em] text-[#611f69]">Join ByteChat</div>
+            <h2 className="mt-2 text-3xl font-bold text-[#1d1c1d]">Create your account</h2>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email address</label>
-              <div className="mt-1">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-slack-activeChannel focus:border-slack-activeChannel sm:text-sm text-slack-textPrimary"
-                />
-              </div>
-            </div>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <Field
+              icon={<UserRound size={16} />}
+              label="Display name"
+              value={form.displayName}
+              onChange={(value) => setForm((current) => ({ ...current, displayName: value }))}
+            />
+            <Field
+              icon={<Mail size={16} />}
+              label="Email"
+              type="email"
+              value={form.email}
+              onChange={(value) => setForm((current) => ({ ...current, email: value }))}
+            />
+            <Field
+              icon={<LockKeyhole size={16} />}
+              label="Password"
+              type="password"
+              value={form.password}
+              onChange={(value) => setForm((current) => ({ ...current, password: value }))}
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
-              <div className="mt-1">
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-slack-activeChannel focus:border-slack-activeChannel sm:text-sm text-slack-textPrimary"
-                />
-              </div>
-            </div>
+            {error && <div className="rounded-2xl bg-[#fdecef] px-4 py-3 text-sm text-[#b42318]">{error}</div>}
 
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-slack-activeChannel hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slack-activeChannel disabled:opacity-50"
-              >
-                {isLoading ? 'Creating account...' : 'Sign up'}
-              </button>
-            </div>
-            
-            <div className="mt-4 text-center text-sm">
-              <span className="text-gray-600">Already have an account? </span>
-              <Link to="/login" className="font-medium text-slack-activeChannel hover:underline">
-                Sign in here
-              </Link>
-            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1164a3] px-4 py-3 font-semibold text-white transition hover:bg-[#0c548a] disabled:opacity-60"
+            >
+              {submitting ? 'Creating account...' : 'Create account'}
+              <ArrowRight size={16} />
+            </button>
           </form>
-        </div>
+
+          <div className="mt-6 text-center text-sm text-[#6b6a6b]">
+            Already have an account?{' '}
+            <Link className="font-semibold text-[#611f69] hover:underline" to="/login">
+              Sign in
+            </Link>
+          </div>
+        </section>
       </div>
     </div>
   );
 };
+
+const Field = ({ icon, label, value, onChange, type = 'text' }) => (
+  <label className="block">
+    <div className="mb-2 text-sm font-medium text-[#1d1c1d]">{label}</div>
+    <div className="flex items-center gap-3 rounded-2xl border border-black/10 bg-[#fbfbfb] px-4 py-3">
+      <span className="text-[#6b6a6b]">{icon}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full border-0 bg-transparent outline-none"
+        required
+      />
+    </div>
+  </label>
+);
 
 export default RegisterPage;

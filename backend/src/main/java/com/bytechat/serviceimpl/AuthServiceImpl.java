@@ -2,6 +2,7 @@ package com.bytechat.serviceimpl;
 
 import com.bytechat.config.JwtService;
 import com.bytechat.dto.request.AuthRequest;
+import com.bytechat.dto.request.RefreshTokenRequest;
 import com.bytechat.dto.response.AuthResponse;
 import com.bytechat.entity.Role;
 import com.bytechat.entity.User;
@@ -12,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -25,34 +27,39 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
 
     @Override
+    @Transactional
     public AuthResponse register(AuthRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already taken");
         }
 
-        var user = User.builder()
+        User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .displayName(request.getDisplayName())
-                .role(request.getRole() != null ? request.getRole() : Role.MEMBER)
+                .role(Role.MEMBER)
                 .lastSeen(LocalDateTime.now())
                 .online(true)
                 .build();
-                
-        userRepository.save(user);
-        var jwtToken = jwtService.generateToken(user);
 
-        return AuthResponse.builder()
-                .token(jwtToken)
-                .email(user.getEmail())
-                .displayName(user.getDisplayName())
-                .avatarUrl(user.getAvatarUrl())
-                .userId(user.getId())
-                .role(user.getRole().name())
-                .build();
+        userRepository.save(user);
+
+        String accessToken = jwtService.generateToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+        return AuthResponse.of(
+                accessToken,
+                refreshToken,
+                user.getEmail(),
+                user.getDisplayName(),
+                user.getAvatarUrl(),
+                user.getId(),
+                user.getRole().name()
+        );
     }
 
     @Override
+    @Transactional
     public AuthResponse login(AuthRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -60,23 +67,52 @@ public class AuthServiceImpl implements AuthService {
                         request.getPassword()
                 )
         );
-        
-        var user = userRepository.findByEmail(request.getEmail())
+
+        User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-                
+
         user.setOnline(true);
         user.setLastSeen(LocalDateTime.now());
         userRepository.save(user);
 
-        var jwtToken = jwtService.generateToken(user);
+        String accessToken = jwtService.generateToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
 
-        return AuthResponse.builder()
-                .token(jwtToken)
-                .email(user.getEmail())
-                .displayName(user.getDisplayName())
-                .avatarUrl(user.getAvatarUrl())
-                .userId(user.getId())
-                .role(user.getRole().name())
-                .build();
+        return AuthResponse.of(
+                accessToken,
+                refreshToken,
+                user.getEmail(),
+                user.getDisplayName(),
+                user.getAvatarUrl(),
+                user.getId(),
+                user.getRole().name()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AuthResponse refreshToken(RefreshTokenRequest request) {
+        String refreshToken = request.getRefreshToken();
+        String email = jwtService.extractUsername(refreshToken);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!jwtService.isTokenValid(refreshToken, user)) {
+            throw new RuntimeException("Invalid refresh token");
+        }
+
+        String newAccessToken = jwtService.generateToken(user);
+        String newRefreshToken = jwtService.generateRefreshToken(user);
+
+        return AuthResponse.of(
+                newAccessToken,
+                newRefreshToken,
+                user.getEmail(),
+                user.getDisplayName(),
+                user.getAvatarUrl(),
+                user.getId(),
+                user.getRole().name()
+        );
     }
 }

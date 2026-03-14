@@ -1,70 +1,165 @@
-import React, { useEffect, useState } from 'react';
+import { Save, UserRound, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import notificationService from '../services/notificationService';
+import userService from '../services/userService';
 import useAuthStore from '../store/authStore';
-import api from '../services/api';
+import useChatStore from '../store/chatStore';
 
 const ProfilePage = () => {
-  const user = useAuthStore(state => state.user);
-  const [onlineUsers, setOnlineUsers] = useState([]);
+  const { user, updateUser } = useAuthStore();
+  const { onlineUsers, setOnlineUsers, notifications, setNotifications } = useChatStore();
+  const [form, setForm] = useState({
+    displayName: user?.displayName ?? '',
+    avatarUrl: user?.avatarUrl ?? '',
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchOnline = async () => {
-      try {
-        const res = await api.get('/users/online');
-        if (res.data.success) {
-          setOnlineUsers(res.data.data);
-        }
-      } catch (err) {
-        console.error("Failed to load online users", err);
-      }
-    };
-    fetchOnline();
+    loadProfileData();
   }, []);
 
+  async function loadProfileData() {
+    try {
+      const [onlineRes, notificationsRes] = await Promise.all([
+        userService.getOnlineUsers(),
+        notificationService.getNotifications(),
+      ]);
+      setOnlineUsers(onlineRes.data ?? []);
+      setNotifications(notificationsRes.data ?? []);
+    } catch (error) {
+      console.error('Failed to load profile data', error);
+    }
+  }
+
+  async function handleSave() {
+    try {
+      setSaving(true);
+      const response = await userService.updateCurrentUser(form);
+      updateUser(response.data);
+    } catch (error) {
+      window.alert(error.response?.data?.message ?? 'Unable to update profile');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleMarkNotification(notificationId) {
+    await notificationService.markAsRead(notificationId);
+    setNotifications(
+      notifications.map((item) =>
+        item.id === notificationId ? { ...item, isRead: true } : item,
+      ),
+    );
+  }
+
   return (
-    <div className="p-8 h-full bg-white overflow-y-auto">
-      <h2 className="text-3xl font-bold mb-6 text-slack-textPrimary border-b pb-4">Profile & Directory</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm">
-          <h3 className="text-xl font-semibold mb-4 text-slack-sidebar">Your Profile</h3>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-4">
-               <div className="w-16 h-16 rounded bg-indigo-500 flex items-center justify-center text-white text-2xl font-bold">
-                  {user?.displayName?.charAt(0).toUpperCase() || 'U'}
-               </div>
-               <div>
-                  <p className="font-bold text-lg">{user?.displayName}</p>
-                  <p className="text-gray-500">{user?.email}</p>
-                  <p className="text-xs text-indigo-600 font-bold mt-1 tracking-wide">{user?.role || 'MEMBER'}</p>
-                  <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    <span className="w-2 h-2 mr-1.5 bg-green-500 rounded-full"></span>
-                    Active
-                  </span>
-               </div>
+    <div className="grid h-full min-h-0 gap-0 lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="scrollbar-thin overflow-y-auto border-r border-black/5 p-6">
+        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6b6a6b]">Profile</div>
+        <h1 className="mt-2 text-3xl font-bold">Workspace identity</h1>
+
+        <div className="mt-6 rounded-[28px] bg-[#f8f8f8] p-6">
+          <div className="flex items-center gap-4">
+            <div className="flex h-20 w-20 items-center justify-center rounded-[28px] bg-[#611f69] text-3xl font-bold text-white">
+              {form.displayName?.[0]?.toUpperCase() ?? 'U'}
             </div>
+            <div>
+              <div className="text-xl font-semibold">{user?.displayName}</div>
+              <div className="text-sm text-[#6b6a6b]">{user?.email}</div>
+              <div className="mt-2 inline-flex rounded-full bg-[#e8f5ee] px-3 py-1 text-xs font-semibold text-[#1b7f58]">
+                {user?.role}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 space-y-5">
+            <Field
+              label="Display name"
+              value={form.displayName}
+              onChange={(value) => setForm((current) => ({ ...current, displayName: value }))}
+            />
+            <Field
+              label="Avatar URL"
+              value={form.avatarUrl}
+              onChange={(value) => setForm((current) => ({ ...current, avatarUrl: value }))}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-[#1164a3] px-4 py-3 font-semibold text-white transition hover:bg-[#0c548a] disabled:opacity-60"
+          >
+            <Save size={16} />
+            {saving ? 'Saving...' : 'Save profile'}
+          </button>
+        </div>
+      </section>
+
+      <section className="scrollbar-thin overflow-y-auto bg-[#fbfbfb] p-6">
+        <div className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#6b6a6b]">
+          <Users size={14} />
+          Team presence and notifications
+        </div>
+
+        <div className="rounded-[28px] bg-white p-5 shadow-sm">
+          <div className="text-lg font-semibold">Online now</div>
+          <div className="mt-4 space-y-3">
+            {onlineUsers.map((member) => (
+              <div key={member.id} className="flex items-center gap-3 rounded-2xl border border-black/5 px-3 py-3">
+                <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-[#611f69] font-bold text-white">
+                  {member.displayName?.[0]?.toUpperCase() ?? 'U'}
+                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-[#2bac76]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium">{member.displayName}</div>
+                  <div className="truncate text-sm text-[#6b6a6b]">{member.email}</div>
+                </div>
+                <div className="rounded-full bg-[#f1e8f3] px-3 py-1 text-xs font-semibold text-[#611f69]">{member.role}</div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm">
-          <h3 className="text-xl font-semibold mb-4 text-slack-sidebar">Who's Online</h3>
-          <ul className="space-y-3">
-            {onlineUsers.length === 0 && <li className="text-sm text-gray-500">No other users online right now.</li>}
-            {onlineUsers.map(u => (
-              <li key={u.id} className="flex items-center space-x-3 text-sm">
-                 <div className="relative">
-                   <div className="w-8 h-8 rounded bg-blue-500 flex items-center justify-center text-white font-bold">
-                      {u.displayName?.charAt(0).toUpperCase()}
-                   </div>
-                   <div className="absolute right-0 bottom-0 w-2.5 h-2.5 bg-slack-onlineDot rounded-full border-2 border-white"></div>
-                 </div>
-                 <span className="font-medium">{u.displayName} {u.id === user?.id ? '(You)' : ''}</span>
-              </li>
+        <div className="mt-6 rounded-[28px] bg-white p-5 shadow-sm">
+          <div className="text-lg font-semibold">Notifications</div>
+          <div className="mt-4 space-y-3">
+            {notifications.length === 0 && <div className="text-sm text-[#6b6a6b]">No notifications yet.</div>}
+            {notifications.map((notification) => (
+              <button
+                key={notification.id}
+                type="button"
+                onClick={() => handleMarkNotification(notification.id)}
+                className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                  notification.isRead || notification.read
+                    ? 'border-black/5 bg-[#fafafa]'
+                    : 'border-[#f3c5d2] bg-[#fff2f6]'
+                }`}
+              >
+                <div className="text-sm font-semibold">{notification.type}</div>
+                <div className="mt-1 text-sm text-[#6b6a6b]">{notification.content}</div>
+              </button>
             ))}
-          </ul>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };
+
+const Field = ({ label, value, onChange }) => (
+  <label className="block">
+    <div className="mb-2 text-sm font-medium text-[#1d1c1d]">{label}</div>
+    <div className="flex items-center gap-3 rounded-2xl border border-black/10 bg-white px-4 py-3">
+      <UserRound size={16} className="text-[#6b6a6b]" />
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full border-0 bg-transparent outline-none"
+      />
+    </div>
+  </label>
+);
 
 export default ProfilePage;

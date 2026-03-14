@@ -1,25 +1,54 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  body {
-    @apply bg-slack-appBg text-slack-textPrimary font-sans m-0 p-0 overflow-hidden;
-  }
+:root {
+  color-scheme: light;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(99, 33, 105, 0.24), transparent 28%),
+    linear-gradient(180deg, #f8f8f8 0%, #f3f2f5 100%);
+  color: #1d1c1d;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+* {
+  box-sizing: border-box;
 }
-::-webkit-scrollbar-track {
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(99, 33, 105, 0.24), transparent 28%),
+    linear-gradient(180deg, #f8f8f8 0%, #f3f2f5 100%);
+  color: #1d1c1d;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
   background: transparent;
 }
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(29, 28, 29, 0.16);
+  border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+
+.glass-panel {
+  backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.84);
 }

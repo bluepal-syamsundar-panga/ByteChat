@@ -1,68 +1,71 @@
-import React, { useState } from 'react';
-import { MoreHorizontal, Pin, Edit2, Trash2, Smile } from 'lucide-react';
-import { format } from 'date-fns';
+import { CornerUpRight, Pencil, Pin, SmilePlus, Trash2 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
+import { formatMessageTimestamp } from '../../utils/formatDate';
 
-const MessageBubble = ({ message, onEdit, onDelete, onPin }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const user = useAuthStore(state => state.user);
-  const isMine = user?.id === message.senderId;
-  const time = format(new Date(message.sentAt), 'h:mm a');
+const MessageBubble = ({ message, onEdit, onDelete, onPin, onReact }) => {
+  const currentUser = useAuthStore((state) => state.user);
+  const isMine = currentUser?.id === message.senderId;
+  const initial = message.senderName?.[0]?.toUpperCase() ?? 'U';
 
   return (
-    <div 
-      className={`group flex items-start px-4 py-2 hover:bg-gray-50 relative ${message.isPinned ? 'bg-yellow-50 hover:bg-yellow-100' : ''}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Avatar */}
-      <div className="flex-shrink-0 mr-3">
-        <div className="w-10 h-10 rounded bg-indigo-500 flex items-center justify-center text-white font-bold">
-          {message.senderName?.charAt(0).toUpperCase() || 'U'}
-        </div>
+    <div className={`group grid grid-cols-[48px_1fr] gap-3 px-5 py-3 transition hover:bg-black/[0.02] ${message.isPinned ? 'bg-[#fff7d6]' : ''}`}>
+      <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-[#611f69] font-bold text-white">
+        {initial}
+        {message.isPinned && (
+          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#ffb900] text-[#1d1c1d]">
+            <Pin size={10} />
+          </span>
+        )}
       </div>
 
-      {/* Message Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline space-x-2">
-          <span className="font-bold text-slack-textPrimary">{message.senderName}</span>
-          <span className="text-xs text-gray-500">{time}</span>
-        </div>
-        
-        <div className="text-slack-textPrimary mt-0.5 whitespace-pre-wrap">
-          <span className={message.isDeleted ? 'italic text-gray-500' : ''}>
-            {message.content}
-          </span>
+      <div className="min-w-0">
+        <div className="flex items-center gap-3">
+          <div className="truncate font-semibold">{message.senderName}</div>
+          <div className="text-xs text-[#6b6a6b]">{formatMessageTimestamp(message.sentAt)}</div>
           {message.editedAt && !message.isDeleted && (
-             <span className="text-xs text-gray-400 ml-2">(edited)</span>
+            <div className="rounded-full bg-black/5 px-2 py-0.5 text-[11px] text-[#6b6a6b]">(edited)</div>
           )}
         </div>
-      </div>
 
-      {/* Action Menu (Visible on Hover) */}
-      {isHovered && !message.isDeleted && (
-        <div className="absolute top-[-15px] right-4 flex items-center bg-white border border-gray-200 rounded shadow-sm px-1 py-1 space-x-1 z-10">
-          <button className="p-1.5 text-gray-500 hover:bg-gray-100 rounded" title="React" onClick={() => {}}>
-            <Smile size={16} />
-          </button>
-          <button className="p-1.5 text-gray-500 hover:bg-gray-100 rounded" title={message.isPinned ? "Unpin" : "Pin"} onClick={() => onPin(message.id)}>
-            <Pin size={16} className={message.isPinned ? "fill-current text-yellow-500" : ""} />
-          </button>
-          
-          {isMine && (
+        <div className={`mt-1 whitespace-pre-wrap text-sm leading-6 ${message.isDeleted ? 'italic text-[#6b6a6b]' : 'text-[#1d1c1d]'}`}>
+          {message.content}
+        </div>
+
+        <div className="mt-2 flex translate-y-1 items-center gap-1 opacity-0 transition group-hover:translate-y-0 group-hover:opacity-100">
+          <ActionButton title="React" onClick={() => onReact?.(message)}>
+            <SmilePlus size={14} />
+          </ActionButton>
+          <ActionButton title={message.isPinned ? 'Unpin' : 'Pin'} onClick={() => onPin?.(message)}>
+            <Pin size={14} />
+          </ActionButton>
+          {isMine && !message.isDeleted && (
             <>
-              <button className="p-1.5 text-gray-500 hover:bg-gray-100 rounded" title="Edit" onClick={() => onEdit(message)}>
-                <Edit2 size={16} />
-              </button>
-              <button className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded" title="Delete" onClick={() => onDelete(message.id)}>
-                <Trash2 size={16} />
-              </button>
+              <ActionButton title="Edit" onClick={() => onEdit?.(message)}>
+                <Pencil size={14} />
+              </ActionButton>
+              <ActionButton title="Delete" onClick={() => onDelete?.(message)}>
+                <Trash2 size={14} />
+              </ActionButton>
             </>
           )}
+          <div className="rounded-full border border-black/10 bg-white px-2 py-1 text-[11px] text-[#6b6a6b]">
+            <CornerUpRight size={12} className="inline" /> Message actions
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
+
+const ActionButton = ({ children, title, onClick }) => (
+  <button
+    type="button"
+    title={title}
+    onClick={onClick}
+    className="rounded-full border border-black/10 bg-white p-2 text-[#6b6a6b] shadow-sm transition hover:border-black/15 hover:text-[#1d1c1d]"
+  >
+    {children}
+  </button>
+);
 
 export default MessageBubble;

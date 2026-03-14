@@ -1,22 +1,21 @@
-import React from 'react';
+import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import ChatWindow from '../components/Chat/ChatWindow';
 import DMChatWindow from '../components/Chat/DMChatWindow';
+import ChatWindow from '../components/Chat/ChatWindow';
+import useChatStore from '../store/chatStore';
 
 const ChatPage = () => {
   const { type, id } = useParams();
-  
-  const isRoom = type === 'room';
+  const { rooms, users } = useChatStore();
 
-  return (
-    <div className="flex flex-col h-full w-full">
-      {isRoom ? (
-        <ChatWindow roomId={id === 'general' ? 1 : id === 'random' ? 2 : id} roomName={id} />
-      ) : (
-        <DMChatWindow userId={id === '1' ? 2 : id} /> // basic mock
-      )}
-    </div>
-  );
+  const selectedRoom = useMemo(() => rooms.find((room) => String(room.id) === id), [id, rooms]);
+  const selectedUser = useMemo(() => users.find((user) => String(user.id) === id), [id, users]);
+
+  if (type === 'dm') {
+    return <DMChatWindow user={selectedUser} />;
+  }
+
+  return <ChatWindow room={selectedRoom} />;
 };
 
 export default ChatPage;

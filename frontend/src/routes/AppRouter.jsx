@@ -1,26 +1,35 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
-import LoginPage from '../pages/LoginPage';
-import RegisterPage from '../pages/RegisterPage';
 import ChatPage from '../pages/ChatPage';
+import LoginPage from '../pages/LoginPage';
 import ProfilePage from '../pages/ProfilePage';
+import RegisterPage from '../pages/RegisterPage';
+import useAuthStore from '../store/authStore';
 
-const AppRouter = () => {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        
-        {/* Protected Routes inside MainLayout */}
-        <Route element={<MainLayout />}>
-          <Route path="/chat/:type/:id" element={<ChatPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/" element={<Navigate to="/chat/room/general" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  );
-};
+function ProtectedRoute({ children }) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+}
+
+const AppRouter = () => (
+  <BrowserRouter>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <MainLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/profile" replace />} />
+        <Route path="chat/:type/:id" element={<ChatPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+      </Route>
+    </Routes>
+  </BrowserRouter>
+);
 
 export default AppRouter;

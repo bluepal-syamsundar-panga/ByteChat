@@ -7,6 +7,7 @@ import com.bytechat.entity.User;
 import com.bytechat.repository.DirectMessageRepository;
 import com.bytechat.repository.UserRepository;
 import com.bytechat.services.DirectMessageService;
+import com.bytechat.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +22,7 @@ public class DirectMessageServiceImpl implements DirectMessageService {
 
     private final DirectMessageRepository directMessageRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -36,6 +38,12 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                 .build();
                 
         dm = directMessageRepository.save(dm);
+        notificationService.sendNotification(
+                toUser.getId(),
+                "DIRECT_MESSAGE",
+                sender.getDisplayName() + " sent you a direct message",
+                dm.getId()
+        );
         return mapToResponse(dm);
     }
 

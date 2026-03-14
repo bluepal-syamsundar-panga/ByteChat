@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class CreateRoomRequest {
     @NotBlank(message = "Room name is required")
+    @jakarta.validation.constraints.Size(min = 2, max = 50, message = "Room name must be between 2 and 50 characters")
     private String name;
     
     private String description;

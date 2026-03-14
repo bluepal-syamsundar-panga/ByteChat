@@ -1,59 +1,125 @@
 import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import useAuthStore from '../store/authStore';
 
-let stompClient = null;
+let client = null;
+let subscriptions = new Map();
 
-export const connectWebSocket = (onMessageReceived) => {
-  const token = useAuthStore.getState().token;
-  if (!token) return;
+function getWebSocketUrl() {
+  const configuredUrl = import.meta.env.VITE_WS_URL;
+  if (configuredUrl) {
+    return configuredUrl;
+  }
 
-  const socket = new SockJS('http://localhost:8080/ws');
-  stompClient = new Client({
-    webSocketFactory: () => socket,
+  const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api';
+  const origin = apiBase.replace(/\/api\/?$/, '');
+  return origin.replace(/^http/i, 'ws') + '/ws';
+}
+
+function getClient() {
+  if (client) {
+    return client;
+  }
+
+  client = new Client({
+    brokerURL: getWebSocketUrl(),
     connectHeaders: {
-      Authorization: `Bearer ${token}`
-    },
-    debug: function (str) {
-      console.log('STOMP: ' + str);
+      Authorization: `Bearer ${useAuthStore.getState().accessToken ?? ''}`,
     },
     reconnectDelay: 5000,
-    heartbeatIncoming: 4000,
-    heartbeatOutgoing: 4000,
+    heartbeatIncoming: 10000,
+    heartbeatOutgoing: 10000,
   });
 
-  stompClient.onConnect = (frame) => {
-    console.log('Connected: ' + frame);
+  client.onStompError = (frame) => {
+    console.error('STOMP error', frame.headers.message, frame.body);
   };
 
-  stompClient.onStompError = (frame) => {
-    console.error('Broker reported error: ' + frame.headers['message']);
-    console.error('Additional details: ' + frame.body);
+  client.onWebSocketError = (event) => {
+    console.error('WebSocket error', event);
+  };
+
+  return client;
+}
+
+export function connectWebSocket(onConnect) {
+  const stompClient = getClient();
+  if (stompClient.active) {
+    if (stompClient.connected && onConnect) {
+      onConnect(stompClient);
+    }
+    return stompClient;
+  }
+
+  stompClient.onConnect = () => {
+    if (onConnect) {
+      onConnect(stompClient);
+    }
   };
 
   stompClient.activate();
-};
+  return stompClient;
+}
 
-export const subscribeToRoom = (roomId, callback) => {
-  if (stompClient && stompClient.connected) {
-    return stompClient.subscribe(`/topic/room.${roomId}`, (message) => {
-      callback(JSON.parse(message.body));
-    });
-  }
-  return null;
-};
+export function disconnectWebSocket() {
+  subscriptions.forEach((subscription) => subscription.unsubscribe());
+  subscriptions = new Map();
 
-export const sendMessage = (roomId, content) => {
-  if (stompClient && stompClient.connected) {
-    stompClient.publish({
-      destination: `/app/chat.room.${roomId}`,
-      body: JSON.stringify({ content, type: 'TEXT' })
-    });
+  if (client) {
+    client.deactivate();
+    client = null;
   }
-};
+}
 
-export const disconnectWebSocket = () => {
-  if (stompClient) {
-    stompClient.deactivate();
+export function subscribeToRoom(roomId, callback) {
+  const stompClient = getClient();
+  const key = `room:${roomId}`;
+  if (!stompClient.connected || subscriptions.has(key)) {
+    return subscriptions.get(key);
   }
-};
+
+  const subscription = stompClient.subscribe(`/topic/room.${roomId}`, (message) => {
+    callback(JSON.parse(message.body));
+  });
+  subscriptions.set(key, subscription);
+  return subscription;
+}
+
+export function subscribeToTyping(roomId, callback) {
+  const stompClient = getClient();
+  const key = `typing:${roomId}`;
+  if (!stompClient.connected || subscriptions.has(key)) {
+    return subscriptions.get(key);
+  }
+
+  const subscription = stompClient.subscribe(`/topic/room/${roomId}/typing`, (message) => {
+    callback(JSON.parse(message.body));
+  });
+  subscriptions.set(key, subscription);
+  return subscription;
+}
+
+export function publishRoomMessage(roomId, payload) {
+  const stompClient = getClient();
+  if (!stompClient.connected) {
+    return false;
+  }
+
+  stompClient.publish({
+    destination: `/app/chat.room.${roomId}`,
+    body: JSON.stringify(payload),
+  });
+  return true;
+}
+
+export function publishTyping(roomId, payload) {
+  const stompClient = getClient();
+  if (!stompClient.connected) {
+    return false;
+  }
+
+  stompClient.publish({
+    destination: '/app/chat.typing',
+    body: JSON.stringify({ roomId, ...payload }),
+  });
+  return true;
+}

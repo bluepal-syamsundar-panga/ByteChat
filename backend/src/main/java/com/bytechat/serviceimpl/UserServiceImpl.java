@@ -1,5 +1,6 @@
 package com.bytechat.serviceimpl;
 
+import com.bytechat.dto.request.UpdateProfileRequest;
 import com.bytechat.dto.response.UserResponse;
 import com.bytechat.entity.User;
 import com.bytechat.repository.UserRepository;
@@ -17,6 +18,13 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
 
     @Override
+    public List<UserResponse> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public List<UserResponse> getOnlineUsers() {
         return userRepository.findAll().stream()
                 .filter(User::isOnline)
@@ -29,6 +37,15 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         return mapToResponse(user);
+    }
+
+    @Override
+    public UserResponse updateProfile(Long userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setDisplayName(request.getDisplayName());
+        user.setAvatarUrl(request.getAvatarUrl());
+        return mapToResponse(userRepository.save(user));
     }
 
     private UserResponse mapToResponse(User user) {
