@@ -1,0 +1,31 @@
+package com.bytechat.controllers;
+
+import com.bytechat.dto.response.ApiResponse;
+import com.bytechat.dto.response.UserResponse;
+import com.bytechat.services.UserService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @GetMapping("/online")
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getOnlineUsers() {
+        return ResponseEntity.ok(ApiResponse.success(userService.getOnlineUsers(), "Online users fetched"));
+    }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<ApiResponse<UserResponse>> getUserProfile(@PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.success(userService.getUserProfile(userId), "User profile fetched"));
+    }
+}
