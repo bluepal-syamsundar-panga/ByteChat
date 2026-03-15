@@ -1,12 +1,21 @@
-import { Bell, LogOut, MessageSquare, Plus, UserCircle } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { Bell, LogOut, MessageSquare, Plus, UserCircle, Home } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
 import NotificationPanel from '../Common/NotificationPanel';
 
 const AppRail = ({ onCreateRoom }) => {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { notifications } = useChatStore();
+  const { notifications, rooms } = useChatStore();
+
+  const handleHomeClick = () => {
+    if (rooms && rooms.length > 0) {
+      navigate(`/chat/room/${rooms[0].id}`);
+    } else {
+      navigate('/profile');
+    }
+  };
 
   const unreadDMs = notifications.filter(
     (n) => n.type === 'DIRECT_MESSAGE' && !(n.read || n.isRead)
@@ -20,6 +29,15 @@ const AppRail = ({ onCreateRoom }) => {
       </div>
 
       <div className="flex flex-1 flex-col items-center gap-6">
+        {/* Home */}
+        <button
+          onClick={handleHomeClick}
+          className="flex h-10 w-10 items-center justify-center text-white/70 transition hover:bg-white/10 hover:text-white"
+          title="Home - First Room"
+        >
+          <Home size={22} />
+        </button>
+
         {/* Create Room */}
         <button
           onClick={onCreateRoom}
