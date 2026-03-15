@@ -21,8 +21,8 @@ public class FileUploadController {
 
     @PostMapping("/upload")
     public ResponseEntity<ApiResponse<Attachment>> uploadFile(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "messageId", required = false) Long messageId) {
+            @RequestParam(name = "file") MultipartFile file,
+            @RequestParam(name = "messageId", required = false) Long messageId) {
         log.info("Received file upload request for file: {}, messageId: {}", file.getOriginalFilename(), messageId);
         
         User currentUser = SecurityUtils.getCurrentUser();

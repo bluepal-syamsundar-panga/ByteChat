@@ -1,5 +1,6 @@
-import { Hash, Pin, Users } from 'lucide-react';
+import { Hash, Pin, Users, MoreVertical, SmilePlus, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import EmojiPicker from 'emoji-picker-react';
 import chatService from '../../services/chatService';
 import {
   connectWebSocket,
@@ -10,6 +11,7 @@ import {
 } from '../../services/websocket';
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
+import Modal from '../Shared/Modal';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import TypingIndicator from './TypingIndicator';
@@ -27,10 +29,41 @@ const ChatWindow = ({ room }) => {
   } = useChatStore();
   const [loading, setLoading] = useState(true);
   const [roomMembers, setRoomMembers] = useState([]);
+  const [selectedMessageId, setSelectedMessageId] = useState(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  
   const scrollRef = useRef(null);
+  const messageContainerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const menuRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+  
   const roomId = room?.id;
   const messages = roomMessages[roomId] ?? [];
+  const selectedMessage = useMemo(() => 
+    messages.find(m => m.id === selectedMessageId), 
+    [messages, selectedMessageId]
+  );
+
+  const scrollToBottom = (behavior = 'smooth') => {
+    scrollRef.current?.scrollIntoView({ behavior });
+  };
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!roomId) {
@@ -50,10 +83,29 @@ const ChatWindow = ({ room }) => {
           return;
         }
 
-        setRoomMessages(roomId, [...(messagesResponse.data.content ?? [])].reverse());
+        const newMessages = [...(messagesResponse.data?.content ?? [])].reverse();
+        setRoomMessages(roomId, newMessages);
         setRoomMembers(membersResponse.data ?? []);
+
+        // Instant scroll on room switch
+        setTimeout(() => {
+          scrollToBottom('auto');
+        }, 50);
+
         connectWebSocket(() => {
-          subscribeToRoom(roomId, (message) => appendRoomMessage(roomId, message));
+          subscribeToRoom(roomId, (message) => {
+            console.log('[DEBUG] Received message via WebSocket:', message);
+            if (mounted) {
+              const container = messageContainerRef.current;
+              const isAtBottom = container ? (container.scrollHeight - container.scrollTop <= container.clientHeight + 100) : true;
+              
+              appendRoomMessage(roomId, message);
+              
+              if (isAtBottom) {
+                setTimeout(() => scrollToBottom('smooth'), 50);
+              }
+            }
+          });
           subscribeToTyping(roomId, (event) => {
             setTyping(roomId, {
               [event.userId]: event.isTyping ? event.displayName : null,
@@ -76,10 +128,6 @@ const ChatWindow = ({ room }) => {
     };
   }, [roomId, appendRoomMessage, setRoomMessages, setTyping]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
   const typingUsers = useMemo(() => {
     const entries = Object.entries(typingByRoom[roomId] ?? {});
     return entries
@@ -88,11 +136,32 @@ const ChatWindow = ({ room }) => {
   }, [currentUser?.id, roomId, typingByRoom]);
 
   async function handleSend(content) {
-    const payload = { content, type: 'TEXT' };
-    const sentOverWebSocket = publishRoomMessage(roomId, payload);
-    if (!sentOverWebSocket) {
+    try {
+      const payload = { content, type: 'TEXT' };
       const response = await chatService.sendRoomMessage(roomId, payload);
-      appendRoomMessage(roomId, response.data);
+      // We don't append here because we expect the WebSocket broadcast
+      // This helps avoid double-rendering if the broadcast is fast
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      alert('Failed to send message. Please check your connection.');
+    }
+    setTimeout(() => scrollToBottom('smooth'), 50);
+  }
+
+  async function handleUpload(file) {
+    try {
+      const resp = await chatService.uploadFile(file);
+      if (resp && resp.data && resp.data.fileUrl) {
+        const payload = { content: resp.data.fileUrl, type: 'FILE' };
+        const sentOverWebSocket = publishRoomMessage(roomId, payload);
+        if (!sentOverWebSocket) {
+          const response = await chatService.sendRoomMessage(roomId, payload);
+          appendRoomMessage(roomId, response.data);
+        }
+      }
+    } catch (e) {
+      console.error('File upload failed', e);
+      alert('Failed to upload file.');
     }
   }
 
@@ -104,6 +173,19 @@ const ChatWindow = ({ room }) => {
 
     const response = await chatService.editMessage(message.id, nextContent);
     upsertRoomMessage(roomId, response.data);
+  }
+
+  async function handleInviteSubmit(e) {
+    if (e) e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    try {
+      await chatService.inviteUser(roomId, inviteEmail.trim());
+      window.alert('Invite sent');
+      setShowInviteModal(false);
+      setInviteEmail('');
+    } catch (error) {
+      window.alert(error.response?.data?.message ?? 'Unable to send invite');
+    }
   }
 
   async function handleDelete(message) {
@@ -124,13 +206,38 @@ const ChatWindow = ({ room }) => {
     upsertRoomMessage(roomId, response.data);
   }
 
-  async function handleReact(message) {
-    const emoji = window.prompt('React with emoji', ':+1:');
+  async function handleReact(message, emoji) {
     if (!emoji) {
       return;
     }
-    await chatService.reactToMessage(message.id, emoji);
+    
+    // Optimistic update
+    const currentUserReaction = {
+      emoji,
+      userId: currentUser.id,
+      username: currentUser.displayName
+    };
+    
+    const updatedMessage = {
+      ...message,
+      reactions: [...(message.reactions || []), currentUserReaction]
+    };
+    
+    upsertRoomMessage(roomId, updatedMessage);
+    
+    try {
+      await chatService.reactToMessage(message.id, emoji);
+    } catch (e) {
+      console.error('Failed to react', e);
+      // Rollback on failure (optional, but good practice)
+      upsertRoomMessage(roomId, message);
+    }
   }
+
+  const pinnedMessages = useMemo(() => 
+    messages.filter(m => m.isPinned),
+    [messages]
+  );
 
   function handleTyping(isTyping) {
     publishTyping(roomId, {
@@ -161,7 +268,7 @@ const ChatWindow = ({ room }) => {
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-col bg-white">
+    <section className="flex h-full min-h-0 flex-col">
       <header className="flex items-center justify-between border-b border-black/5 px-5 py-4">
         <div>
           <div className="flex items-center gap-2 text-lg font-semibold">
@@ -172,39 +279,133 @@ const ChatWindow = ({ room }) => {
             {room.description || 'Real-time room conversation'}
           </div>
         </div>
+
         <div className="flex items-center gap-3 text-sm text-[#6b6a6b]">
-          {room.createdById === currentUser?.id && (
-            <button
-              type="button"
-              onClick={async () => {
-                const email = window.prompt('Invite user by email');
-                if (!email?.trim()) {
-                  return;
-                }
-                try {
-                  await chatService.inviteUser(roomId, email.trim());
-                  window.alert('Invite sent');
-                } catch (error) {
-                  window.alert(error.response?.data?.message ?? 'Unable to send invite');
-                }
-              }}
-              className="rounded-full bg-[#1164a3] px-3 py-1.5 text-white transition hover:bg-[#0c548a]"
-            >
-              Invite by email
-            </button>
-          )}
-          <div className="rounded-full bg-black/5 px-3 py-1.5">
+          <button
+            type="button"
+            onClick={() => setShowInviteModal(true)}
+            className="bg-[#3f0e40] px-3 py-1.5 text-white transition hover:bg-[#350d36]"
+          >
+            Invite member
+          </button>
+
+          <div className="bg-black/5 px-3 py-1.5 flex items-center">
             <Users size={14} className="mr-1 inline" />
             {roomMembers.length} members
           </div>
-          <div className="rounded-full bg-[#fff4d8] px-3 py-1.5 text-[#8c5b00]">
-            <Pin size={14} className="mr-1 inline" />
-            Pin important updates
+          
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              disabled={!selectedMessage}
+              className={`p-1.5 border border-black/5 transition flex items-center justify-center ${
+                showMenu ? 'bg-black/10 text-black' : 
+                selectedMessage ? 'hover:bg-black/5 text-[#6b6a6b] cursor-pointer' : 
+                'text-[#6b6a6b]/30 cursor-not-allowed'
+              }`}
+            >
+              <MoreVertical size={20} />
+            </button>
+            
+            {showMenu && selectedMessage && (
+              <div className="absolute right-0 top-full mt-2 w-48 border border-black/10 bg-white shadow-xl z-50 py-1 flex flex-col overflow-hidden">
+                <div className="relative" ref={emojiPickerRef}>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowEmojiPicker(!showEmojiPicker);
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
+                  >
+                    <SmilePlus size={16} className="text-[#6b6a6b]" /> React
+                  </button>
+                  {showEmojiPicker && (
+                    <div className="absolute right-full top-0 mr-2 z-50">
+                      <EmojiPicker 
+                        onEmojiClick={(emojiData) => {
+                          handleReact(selectedMessage, emojiData.emoji);
+                          setShowEmojiPicker(false);
+                          setShowMenu(false);
+                          setSelectedMessageId(null);
+                        }}
+                        autoFocusSearch={false}
+                        theme="light"
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                <button 
+                  onClick={() => {
+                    handlePin(selectedMessage);
+                    setShowMenu(false);
+                    setSelectedMessageId(null);
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
+                >
+                  <Pin size={16} className="text-[#6b6a6b]" /> 
+                  {selectedMessage.isPinned ? 'Unpin' : 'Pin'}
+                </button>
+
+                {selectedMessage.senderId === currentUser?.id && !selectedMessage.isDeleted && (
+                  <>
+                    <button 
+                      onClick={() => {
+                        handleEdit(selectedMessage);
+                        setShowMenu(false);
+                        setSelectedMessageId(null);
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
+                    >
+                      <Pencil size={16} className="text-[#6b6a6b]" /> Edit
+                    </button>
+                    <button 
+                      onClick={() => {
+                        handleDelete(selectedMessage);
+                        setShowMenu(false);
+                        setSelectedMessageId(null);
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10"
+                    >
+                      <Trash2 size={16} className="text-[#e01e5a]" /> Delete
+                    </button>
+                  </>
+                )}
+                <button 
+                  onClick={() => {
+                    setShowInviteModal(true);
+                    setShowMenu(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5 lg:hidden"
+                >
+                  <Users size={16} className="text-[#6b6a6b]" /> Invite member
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      <div className="scrollbar-thin flex-1 overflow-y-auto">
+      <div ref={messageContainerRef} className="scrollbar-thin flex-1 overflow-y-auto">
+        {pinnedMessages.length > 0 && (
+          <div className="sticky top-0 z-10 flex items-center justify-between bg-[#fff7d6] px-5 py-2 border-b border-black/5">
+            <div className="flex items-center gap-2 text-sm font-medium text-[#8c5b00]">
+              <Pin size={14} />
+              <span>{pinnedMessages.length} pinned {pinnedMessages.length === 1 ? 'message' : 'messages'}</span>
+            </div>
+            <button 
+              onClick={() => {
+                const lastPinned = pinnedMessages[pinnedMessages.length - 1];
+                setSelectedMessageId(lastPinned.id);
+                // Scroll to it would be nice, but for now we just select it
+              }}
+              className="text-xs font-semibold text-[#1164a3] hover:underline"
+            >
+              View latest
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <EmptyState
             title="Loading room"
@@ -220,10 +421,18 @@ const ChatWindow = ({ room }) => {
             <MessageBubble
               key={message.id}
               message={message}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onPin={handlePin}
-              onReact={handleReact}
+              isSelected={selectedMessageId === message.id}
+              onClick={() => {
+                if (selectedMessageId === message.id) {
+                  setSelectedMessageId(null);
+                  setShowMenu(false);
+                  setShowEmojiPicker(false);
+                } else {
+                  setSelectedMessageId(message.id);
+                  setShowMenu(false);
+                  setShowEmojiPicker(false);
+                }
+              }}
             />
           ))
         )}
@@ -236,13 +445,45 @@ const ChatWindow = ({ room }) => {
         placeholder={`Message #${room.name}`}
         onSendMessage={handleSend}
         onTyping={handleTyping}
-        mentionSuggestions={roomMembers.filter((member) => member.id !== currentUser?.id)}
-        onUploadFile={() =>
-          window.alert(
-            'Attachment upload endpoint exists at /api/files/upload. UI hook can be expanded next.',
-          )
-        }
+        onUploadFile={handleUpload}
+        disabled={false}
+        mentionSuggestions={roomMembers}
       />
+      <Modal 
+        isOpen={showInviteModal} 
+        onClose={() => setShowInviteModal(false)} 
+        title={`Invite to #${room.name}`}
+      >
+        <form onSubmit={handleInviteSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#6b6a6b]">Email Address</label>
+            <input 
+              type="email" 
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="mt-1 w-full border border-black/10 bg-[#f8f8f8] px-4 py-2 text-sm focus:border-[#3f0e40] focus:ring-1 focus:ring-[#3f0e40] outline-none"
+              placeholder="name@example.com"
+              autoFocus
+              required
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button 
+              type="button" 
+              onClick={() => setShowInviteModal(false)}
+              className="px-4 py-2 text-sm font-semibold text-[#6b6a6b] hover:bg-black/5"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit"
+              className="bg-[#3f0e40] px-4 py-2 text-sm font-semibold text-white hover:bg-[#350d36]"
+            >
+              Send Invitation
+            </button>
+          </div>
+        </form>
+      </Modal>
     </section>
   );
 };

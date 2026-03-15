@@ -26,7 +26,7 @@ const chatService = {
     return response.data;
   },
   async getRoomMessages(roomId, page = 0, size = 50) {
-    const response = await api.get(`/rooms/${roomId}/messages?page=${page}&size=${size}`);
+    const response = await api.get(`/messages/room/${roomId}?page=${page}&size=${size}`);
     return response.data;
   },
   async getRoomMembers(roomId) {
@@ -51,6 +51,16 @@ const chatService = {
   },
   async reactToMessage(messageId, emoji) {
     const response = await api.post(`/messages/${messageId}/reactions?emoji=${encodeURIComponent(emoji)}`);
+    return response.data;
+  },
+  async uploadFile(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/files/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
     return response.data;
   },
 };

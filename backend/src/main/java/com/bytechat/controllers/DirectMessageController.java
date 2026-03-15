@@ -23,9 +23,9 @@ public class DirectMessageController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<ApiResponse<Page<MessageResponse>>> getDirectMessages(
-            @PathVariable Long userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size,
+            @PathVariable(name = "userId") Long userId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "50") int size,
             @AuthenticationPrincipal User currentUser) {
         log.info("Fetching direct messages between current user {} and user ID: {}", currentUser.getId(), userId);
         Page<MessageResponse> messages = dmService.getDirectMessages(userId, page, size, currentUser);
@@ -34,7 +34,7 @@ public class DirectMessageController {
 
     @PostMapping("/{userId}")
     public ResponseEntity<ApiResponse<MessageResponse>> sendDirectMessage(
-            @PathVariable Long userId,
+            @PathVariable(name = "userId") Long userId,
             @Valid @RequestBody MessageRequest request,
             @AuthenticationPrincipal User currentUser) {
         log.info("Sending direct message from current user {} to user ID: {}", currentUser.getId(), userId);
@@ -44,7 +44,7 @@ public class DirectMessageController {
 
     @PostMapping("/{userId}/read")
     public ResponseEntity<ApiResponse<Void>> markAsRead(
-            @PathVariable Long userId,
+            @PathVariable(name = "userId") Long userId,
             @AuthenticationPrincipal User currentUser) {
         dmService.markAsRead(userId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Messages marked as read"));

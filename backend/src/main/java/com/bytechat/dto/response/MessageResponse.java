@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -23,4 +24,6 @@ public class MessageResponse {
     private boolean isPinned;
     private LocalDateTime editedAt;
     private LocalDateTime sentAt;
+    private List<Long> mentionedUserIds;
+    private List<ReactionResponse> reactions;
 }

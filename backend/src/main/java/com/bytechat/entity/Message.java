@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "messages")
@@ -41,4 +42,9 @@ public class Message {
     @Column(nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime sentAt = LocalDateTime.now();
+    
+    @ElementCollection
+    @CollectionTable(name = "message_mentions", joinColumns = @JoinColumn(name = "message_id"))
+    @Column(name = "user_id")
+    private List<Long> mentionedUserIds;
 }

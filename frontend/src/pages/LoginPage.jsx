@@ -39,7 +39,7 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f8f8f8]">
+    <div className="flex min-h-screen bg-white">
       <section className="hidden flex-1 bg-[#3f0e40] px-16 py-14 text-white lg:flex lg:flex-col">
         <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">ByteChat</div>
         <div className="mt-12 max-w-xl">
@@ -54,7 +54,7 @@ const LoginPage = () => {
       </section>
 
       <section className="flex flex-1 items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md rounded-[32px] bg-white p-8 shadow-[0_18px_60px_rgba(63,14,64,0.12)]">
+        <div className="w-full max-w-md bg-white p-8 shadow-[0_18px_60px_rgba(63,14,64,0.12)] border border-black/5">
           <div className="mb-8">
             <div className="text-sm font-semibold uppercase tracking-[0.25em] text-[#611f69]">Welcome back</div>
             <h2 className="mt-2 text-3xl font-bold text-[#1d1c1d]">Sign in to ByteChat</h2>
@@ -76,12 +76,12 @@ const LoginPage = () => {
               onChange={(value) => setForm((current) => ({ ...current, password: value }))}
             />
 
-            {error && <div className="rounded-2xl bg-[#fdecef] px-4 py-3 text-sm text-[#b42318]">{error}</div>}
+            {error && <div className="bg-[#fdecef] px-4 py-3 text-sm text-[#b42318]">{error}</div>}
 
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1164a3] px-4 py-3 font-semibold text-white transition hover:bg-[#0c548a] disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 bg-[#3f0e40] px-4 py-3 font-semibold text-white transition hover:bg-[#350d36] disabled:opacity-60"
             >
               {submitting ? 'Signing in...' : 'Sign in'}
               <ArrowRight size={16} />
@@ -103,7 +103,7 @@ const LoginPage = () => {
 const Field = ({ icon, label, value, onChange, type }) => (
   <label className="block">
     <div className="mb-2 text-sm font-medium text-[#1d1c1d]">{label}</div>
-    <div className="flex items-center gap-3 rounded-2xl border border-black/10 bg-[#fbfbfb] px-4 py-3">
+    <div className="flex items-center gap-3 border border-black/10 bg-[#fbfbfb] px-4 py-3">
       <span className="text-[#6b6a6b]">{icon}</span>
       <input
         type={type}

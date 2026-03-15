@@ -1,13 +1,16 @@
-import { Bell, Plus, Search, Settings } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar/Sidebar';
+import AppRail from '../components/Sidebar/AppRail';
+import Modal from '../components/Shared/Modal';
+import NotificationPanel from '../components/Common/NotificationPanel';
 import useAuthStore from '../store/authStore';
 import useChatStore from '../store/chatStore';
 import chatService from '../services/chatService';
 import notificationService from '../services/notificationService';
 import userService from '../services/userService';
-import { connectWebSocket, disconnectWebSocket } from '../services/websocket';
+import { connectWebSocket, disconnectWebSocket, subscribeToNotifications } from '../services/websocket';
 
 const MainLayout = () => {
   const navigate = useNavigate();
@@ -19,47 +22,83 @@ const MainLayout = () => {
     setNotifications,
   } = useChatStore();
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomDescription, setNewRoomDescription] = useState('');
 
   useEffect(() => {
-    connectWebSocket();
+    if (!user?.id) return;
+
+    connectWebSocket((stompClient) => {
+      subscribeToNotifications(user.id, (notification) => {
+        setNotifications((prev) => [notification, ...prev]);
+      });
+    });
     loadWorkspace();
     return () => disconnectWebSocket();
-  }, []);
+  }, [user?.id]);
 
   async function loadWorkspace() {
     try {
-      const [roomsRes, usersRes, onlineRes, meRes, notificationsRes] = await Promise.all([
+      const [roomsRes, usersRes, onlineRes, meRes, notificationsRes] = await Promise.allSettled([
         chatService.getRooms(),
         userService.getUsers(),
         userService.getOnlineUsers(),
         userService.getCurrentUser(),
         notificationService.getNotifications(),
       ]);
-      setRooms(roomsRes.data.content ?? []);
-      setUsers(usersRes.data ?? []);
-      setOnlineUsers(onlineRes.data ?? []);
-      setNotifications(notificationsRes.data ?? []);
-      updateUser(meRes.data);
+
+      if (roomsRes.status === 'fulfilled') {
+        // Updated to match ApiResponse structure: res.data.data.content
+        setRooms(roomsRes.value.data?.content ?? roomsRes.value.data ?? []);
+      } else {
+        console.error('Failed to load rooms:', roomsRes.reason?.response?.data || roomsRes.reason);
+      }
+
+      if (usersRes.status === 'fulfilled') {
+        setUsers(usersRes.value.data ?? []);
+      } else {
+        console.error('Failed to load users:', usersRes.reason?.response?.data || usersRes.reason);
+      }
+
+      if (onlineRes.status === 'fulfilled') {
+        setOnlineUsers(onlineRes.value.data ?? []);
+      } else {
+        console.error('Failed to load online users:', onlineRes.reason?.response?.data || onlineRes.reason);
+      }
+
+      if (meRes.status === 'fulfilled') {
+        updateUser(meRes.value.data);
+      } else {
+        console.error('Failed to load current user profile:', meRes.reason?.response?.data || meRes.reason);
+      }
+
+      if (notificationsRes.status === 'fulfilled') {
+        setNotifications(notificationsRes.value.data ?? []);
+      } else {
+        console.error('Failed to load notifications:', notificationsRes.reason?.response?.data || notificationsRes.reason);
+      }
     } catch (error) {
       console.error('Failed to load workspace', error);
     }
   }
 
-  async function handleCreateRoom() {
-    const name = window.prompt('Room name');
-    if (!name?.trim()) {
-      return;
-    }
+  async function handleCreateRoomSubmit(e) {
+    if (e) e.preventDefault();
+    if (!newRoomName.trim()) return;
 
     try {
       setIsCreatingRoom(true);
       const response = await chatService.createRoom({
-        name: name.trim(),
-        description: `Welcome to ${name.trim()}`,
+        name: newRoomName.trim(),
+        description: newRoomDescription.trim() || `Welcome to ${newRoomName.trim()}`,
         isPrivate: false,
       });
       const room = response.data;
       await loadWorkspace();
+      setShowCreateRoomModal(false);
+      setNewRoomName('');
+      setNewRoomDescription('');
       navigate(`/chat/room/${room.id}`);
     } catch (error) {
       window.alert(error.response?.data?.message ?? 'Unable to create room');
@@ -71,6 +110,7 @@ const MainLayout = () => {
   async function handleAcceptInvite(notificationId) {
     try {
       await notificationService.accept(notificationId);
+      setNotifications((prev) => prev.filter((item) => item.id !== notificationId));
       await loadWorkspace();
     } catch (error) {
       window.alert(error.response?.data?.message ?? 'Unable to accept invite');
@@ -78,30 +118,13 @@ const MainLayout = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-transparent text-[#1d1c1d]">
-      <div className="hidden w-[72px] shrink-0 flex-col items-center bg-[#2b0a2d] py-5 text-white lg:flex">
-        <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/12 text-lg font-bold">
-          B
-        </div>
-        <button
-          onClick={handleCreateRoom}
-          disabled={isCreatingRoom}
-          className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/12 transition hover:bg-white/20 disabled:opacity-60"
-          title="Create room"
-        >
-          <Plus size={18} />
-        </button>
-        <button className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/8 transition hover:bg-white/16">
-          <Bell size={18} />
-        </button>
-        <button className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/8 transition hover:bg-white/16">
-          <Settings size={18} />
-        </button>
-      </div>
+    <div className="flex h-screen overflow-hidden bg-transparent text-[#1d1c1d]">
+      <AppRail onCreateRoom={() => setShowCreateRoomModal(true)} />
 
-      <Sidebar onCreateRoom={handleCreateRoom} onAcceptInvite={handleAcceptInvite} />
+      <Sidebar onAcceptInvite={handleAcceptInvite} />
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {/* ... existing header ... */}
         <div className="glass-panel flex h-16 items-center justify-between border-b border-black/5 px-5">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6b6a6b]">
@@ -110,31 +133,63 @@ const MainLayout = () => {
             <div className="text-lg font-semibold">Real-Time Slack Clone Workspace</div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm md:flex">
+            <div className="hidden items-center gap-2 border border-black/10 bg-white px-4 py-2 shadow-sm md:flex text-navbar-search">
               <Search size={16} className="text-[#6b6a6b]" />
               <span className="text-sm text-[#6b6a6b]">Search messages, rooms, and people</span>
             </div>
-            <button
-              onClick={() => navigate('/profile')}
-              className="flex items-center gap-3 rounded-full bg-white px-3 py-2 shadow-sm transition hover:shadow-md"
-            >
-              <AvatarLabel user={user} />
-            </button>
-            <button
-              onClick={logout}
-              className="rounded-full bg-[#3f0e40] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#350d36]"
-            >
-              Sign out
-            </button>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 p-3 md:p-4">
-          <div className="glass-panel h-full overflow-hidden rounded-[28px] border border-white/70 shadow-[0_18px_60px_rgba(63,14,64,0.12)]">
-            <Outlet />
-          </div>
+        <div className="min-h-0 flex-1">
+          <Outlet />
         </div>
       </div>
+
+      <Modal
+        isOpen={showCreateRoomModal}
+        onClose={() => setShowCreateRoomModal(false)}
+        title="Create a New Room"
+      >
+        <form onSubmit={handleCreateRoomSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#6b6a6b]">Room Name</label>
+            <input
+              type="text"
+              value={newRoomName}
+              onChange={(e) => setNewRoomName(e.target.value)}
+              className="mt-1 w-full border border-black/10 bg-[#f8f8f8] px-4 py-2 text-sm focus:border-[#3f0e40] focus:ring-1 focus:ring-[#3f0e40] outline-none"
+              placeholder="e.g. general"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#6b6a6b]">Description (optional)</label>
+            <input
+              type="text"
+              value={newRoomDescription}
+              onChange={(e) => setNewRoomDescription(e.target.value)}
+              className="mt-1 w-full border border-black/10 bg-[#f8f8f8] px-4 py-2 text-sm focus:border-[#3f0e40] focus:ring-1 focus:ring-[#3f0e40] outline-none"
+              placeholder="What is this room about?"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowCreateRoomModal(false)}
+              className="px-4 py-2 text-sm font-semibold text-[#6b6a6b] hover:bg-black/5"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isCreatingRoom || !newRoomName.trim()}
+              className="bg-[#3f0e40] px-4 py-2 text-sm font-semibold text-white hover:bg-[#350d36] disabled:opacity-50"
+            >
+              {isCreatingRoom ? 'Creating...' : 'Create Room'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
@@ -143,9 +198,13 @@ function AvatarLabel({ user }) {
   const initial = user?.displayName?.[0]?.toUpperCase() ?? 'B';
   return (
     <>
-      <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#611f69] font-bold text-white">
-        {initial}
-        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-[#2bac76]" />
+      <div className="relative flex h-10 w-10 items-center justify-center bg-[#611f69] font-bold text-white border border-white/20 overflow-hidden">
+        {user?.avatarUrl ? (
+          <img src={user.avatarUrl} alt={user.displayName} className="h-full w-full object-cover" />
+        ) : (
+          initial
+        )}
+        <span className="absolute bottom-0 right-0 h-3 w-3 border-2 border-white bg-[#2bac76]" />
       </div>
       <div className="hidden text-left sm:block">
         <div className="text-sm font-semibold">{user?.displayName ?? 'Workspace user'}</div>

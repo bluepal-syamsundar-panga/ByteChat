@@ -29,8 +29,8 @@ const RegisterPage = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f8f8f8] items-center justify-center px-6 py-12">
-      <div className="grid w-full max-w-6xl overflow-hidden rounded-[36px] bg-white shadow-[0_18px_60px_rgba(63,14,64,0.12)] lg:grid-cols-[1.05fr_0.95fr]">
+    <div className="flex min-h-screen bg-white items-center justify-center px-6 py-12">
+      <div className="grid w-full max-w-6xl overflow-hidden bg-white shadow-[0_18px_60px_rgba(63,14,64,0.12)] border border-black/5 lg:grid-cols-[1.05fr_0.95fr]">
         <section className="bg-[linear-gradient(160deg,#3f0e40,#611f69)] px-10 py-12 text-white">
           <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Build Week</div>
           <h1 className="mt-4 text-4xl font-bold leading-tight">Create your ByteChat workspace identity.</h1>
@@ -69,12 +69,12 @@ const RegisterPage = () => {
               onChange={(value) => setForm((current) => ({ ...current, password: value }))}
             />
 
-            {error && <div className="rounded-2xl bg-[#fdecef] px-4 py-3 text-sm text-[#b42318]">{error}</div>}
+            {error && <div className="bg-[#fdecef] px-4 py-3 text-sm text-[#b42318]">{error}</div>}
 
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1164a3] px-4 py-3 font-semibold text-white transition hover:bg-[#0c548a] disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 bg-[#3f0e40] px-4 py-3 font-semibold text-white transition hover:bg-[#350d36] disabled:opacity-60"
             >
               {submitting ? 'Creating account...' : 'Create account'}
               <ArrowRight size={16} />
@@ -96,7 +96,7 @@ const RegisterPage = () => {
 const Field = ({ icon, label, value, onChange, type = 'text' }) => (
   <label className="block">
     <div className="mb-2 text-sm font-medium text-[#1d1c1d]">{label}</div>
-    <div className="flex items-center gap-3 rounded-2xl border border-black/10 bg-[#fbfbfb] px-4 py-3">
+    <div className="flex items-center gap-3 border border-black/10 bg-[#fbfbfb] px-4 py-3">
       <span className="text-[#6b6a6b]">{icon}</span>
       <input
         type={type}

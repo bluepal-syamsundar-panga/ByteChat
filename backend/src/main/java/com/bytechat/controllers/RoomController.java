@@ -36,6 +36,10 @@ public class RoomController {
     public ResponseEntity<ApiResponse<RoomResponse>> createRoom(
             @Valid @RequestBody CreateRoomRequest request,
             @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            log.warn("Unauthorized attempt to create room");
+            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+        }
         log.info("User {} creating room: {}", currentUser.getId(), request.getName());
         RoomResponse response = roomService.createRoom(request, currentUser);
         return ResponseEntity.ok(ApiResponse.success(response, "Room created successfully"));
@@ -44,61 +48,83 @@ public class RoomController {
     @GetMapping
     @Operation(summary = "Get user rooms", description = "Retrieves rooms the current user belongs to.")
     public ResponseEntity<ApiResponse<Page<RoomResponse>>> getUserRooms(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "50") int size,
             @AuthenticationPrincipal User currentUser) {
-        log.info("Fetching rooms for user {}", currentUser.getId());
+        if (currentUser == null) {
+            log.warn("Unauthorized request to fetch rooms");
+            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+        }
+        log.info("Fetching rooms for user {} (page: {}, size: {})", currentUser.getId(), page, size);
         Page<RoomResponse> rooms = roomService.getUserRooms(currentUser, page, size);
         return ResponseEntity.ok(ApiResponse.success(rooms, "Rooms fetched successfully"));
     }
 
     @PostMapping("/{roomId}/join")
     public ResponseEntity<ApiResponse<Void>> joinRoom(
-            @PathVariable Long roomId,
+            @PathVariable(name = "roomId") Long roomId,
             @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+        }
         roomService.joinRoom(roomId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Joined room successfully"));
     }
 
     @PostMapping("/{roomId}/leave")
     public ResponseEntity<ApiResponse<Void>> leaveRoom(
-            @PathVariable Long roomId,
+            @PathVariable(name = "roomId") Long roomId,
             @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+        }
         roomService.leaveRoom(roomId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Left room successfully"));
     }
 
     @PostMapping("/{roomId}/archive")
     public ResponseEntity<ApiResponse<Void>> archiveRoom(
-            @PathVariable Long roomId,
+            @PathVariable(name = "roomId") Long roomId,
             @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+        }
         roomService.archiveRoom(roomId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Room archived successfully"));
     }
 
     @PostMapping("/{roomId}/invite")
     public ResponseEntity<ApiResponse<Void>> inviteUser(
-            @PathVariable Long roomId,
+            @PathVariable(name = "roomId") Long roomId,
             @Valid @RequestBody InviteUserRequest request,
             @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+        }
         roomService.inviteUser(roomId, request, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Invitation sent"));
     }
 
     @GetMapping("/{roomId}/members")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getRoomMembers(
-            @PathVariable Long roomId,
+            @PathVariable(name = "roomId") Long roomId,
             @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+        }
         return ResponseEntity.ok(ApiResponse.success(roomService.getRoomMembers(roomId, currentUser), "Room members fetched"));
     }
 
     @GetMapping("/{roomId}/messages")
     @Operation(summary = "Get room messages", description = "Retrieves a paginated list of messages for a specific room.")
     public ResponseEntity<ApiResponse<Page<MessageResponse>>> getRoomMessages(
-            @PathVariable Long roomId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size,
+            @PathVariable(name = "roomId") Long roomId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "50") int size,
             @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+        }
         Page<MessageResponse> messages = messageService.getRoomMessages(roomId, page, size, currentUser);
         return ResponseEntity.ok(ApiResponse.success(messages, "Messages fetched successfully"));
     }

@@ -1,4 +1,5 @@
 import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client/dist/sockjs';
 import useAuthStore from '../store/authStore';
 
 let client = null;
@@ -7,12 +8,14 @@ let subscriptions = new Map();
 function getWebSocketUrl() {
   const configuredUrl = import.meta.env.VITE_WS_URL;
   if (configuredUrl) {
-    return configuredUrl;
+    return configuredUrl
+      .replace(/^ws:/i, 'http:')
+      .replace(/^wss:/i, 'https:');
   }
 
-  const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api';
+  const apiBase = import.meta.env.VITE_API_URL ?? '/api';
   const origin = apiBase.replace(/\/api\/?$/, '');
-  return origin.replace(/^http/i, 'ws') + '/ws';
+  return `${origin}/ws`;
 }
 
 function getClient() {
@@ -21,7 +24,7 @@ function getClient() {
   }
 
   client = new Client({
-    brokerURL: getWebSocketUrl(),
+    webSocketFactory: () => new SockJS(getWebSocketUrl()),
     connectHeaders: {
       Authorization: `Bearer ${useAuthStore.getState().accessToken ?? ''}`,
     },
@@ -73,11 +76,15 @@ export function disconnectWebSocket() {
 export function subscribeToRoom(roomId, callback) {
   const stompClient = getClient();
   const key = `room:${roomId}`;
-  if (!stompClient.connected || subscriptions.has(key)) {
-    return subscriptions.get(key);
+  
+  if (!stompClient.connected) return null;
+
+  // Cleanup old subscription to the same topic if it exists
+  if (subscriptions.has(key)) {
+    subscriptions.get(key).unsubscribe();
   }
 
-  const subscription = stompClient.subscribe(`/topic/room.${roomId}`, (message) => {
+  const subscription = stompClient.subscribe(`/topic/room/${roomId}`, (message) => {
     callback(JSON.parse(message.body));
   });
   subscriptions.set(key, subscription);
@@ -87,11 +94,31 @@ export function subscribeToRoom(roomId, callback) {
 export function subscribeToTyping(roomId, callback) {
   const stompClient = getClient();
   const key = `typing:${roomId}`;
-  if (!stompClient.connected || subscriptions.has(key)) {
-    return subscriptions.get(key);
+  
+  if (!stompClient.connected) return null;
+
+  if (subscriptions.has(key)) {
+    subscriptions.get(key).unsubscribe();
   }
 
   const subscription = stompClient.subscribe(`/topic/room/${roomId}/typing`, (message) => {
+    callback(JSON.parse(message.body));
+  });
+  subscriptions.set(key, subscription);
+  return subscription;
+}
+
+export function subscribeToNotifications(userId, callback) {
+  const stompClient = getClient();
+  const key = `notifications:${userId}`;
+  
+  if (!stompClient.connected) return null;
+
+  if (subscriptions.has(key)) {
+    subscriptions.get(key).unsubscribe();
+  }
+
+  const subscription = stompClient.subscribe(`/topic/user/${userId}/notifications`, (message) => {
     callback(JSON.parse(message.body));
   });
   subscriptions.set(key, subscription);
@@ -105,7 +132,7 @@ export function publishRoomMessage(roomId, payload) {
   }
 
   stompClient.publish({
-    destination: `/app/chat.room.${roomId}`,
+    destination: `/app/chat/room/${roomId}`,
     body: JSON.stringify(payload),
   });
   return true;
@@ -118,7 +145,7 @@ export function publishTyping(roomId, payload) {
   }
 
   stompClient.publish({
-    destination: '/app/chat.typing',
+    destination: '/app/chat/typing',
     body: JSON.stringify({ roomId, ...payload }),
   });
   return true;

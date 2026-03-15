@@ -38,10 +38,16 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                 .build();
                 
         dm = directMessageRepository.save(dm);
+        
+        // Check if the message mentions the recipient
+        boolean mentionsRecipient = request.getContent().contains("@" + toUser.getDisplayName().replaceAll("\\s+", ""));
+        
         notificationService.sendNotification(
                 toUser.getId(),
-                "DIRECT_MESSAGE",
-                sender.getDisplayName() + " sent you a direct message",
+                mentionsRecipient ? "MENTION" : "DIRECT_MESSAGE",
+                mentionsRecipient 
+                    ? sender.getDisplayName() + " mentioned you in a direct message"
+                    : sender.getDisplayName() + " sent you a direct message",
                 dm.getId()
         );
         return mapToResponse(dm);

@@ -28,3 +28,8 @@ springdoc:
     operationsSorter: method
   api-docs:
     path: /v3/api-docs
+
+cloudinary:
+  cloud-name: "${CLOUDINARY_CLOUD_NAME:dxkoeutlb}"
+  api-key: "${CLOUDINARY_API_KEY:678825641375837}"
+  api-secret: "${CLOUDINARY_API_SECRET:uS9TJsgwuD4uL0TVZengOAuNW8s}"

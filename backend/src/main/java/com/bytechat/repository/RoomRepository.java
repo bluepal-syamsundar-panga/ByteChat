@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 public interface RoomRepository extends JpaRepository<Room, Long> {
     Page<Room> findByIsPrivateFalseAndIsArchivedFalse(Pageable pageable);
 
-    @Query("select rm.room from RoomMember rm where rm.user.id = :userId and rm.room.isArchived = false")
+    @Query(value = "select rm.room from RoomMember rm where rm.user.id = :userId and rm.room.isArchived = false",
+           countQuery = "select count(rm) from RoomMember rm where rm.user.id = :userId and rm.room.isArchived = false")
     Page<Room> findJoinedRooms(@Param("userId") Long userId, Pageable pageable);
 }

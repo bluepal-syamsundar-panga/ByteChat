@@ -55,6 +55,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<RoomResponse> getUserRooms(User currentUser, int page, int size) {
         return roomRepository.findJoinedRooms(currentUser.getId(), PageRequest.of(page, size))
                 .map(this::mapToResponse);
@@ -155,6 +156,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserResponse> getRoomMembers(Long roomId, User currentUser) {
         if (!roomMemberRepository.existsByRoomIdAndUserId(roomId, currentUser.getId())) {
             throw new RuntimeException("You are not a member of this room");
@@ -178,18 +180,20 @@ public class RoomServiceImpl implements RoomService {
     }
 
     private RoomResponse mapToResponse(Room room) {
+        if (room == null) return null;
         return RoomResponse.builder()
                 .id(room.getId())
                 .name(room.getName())
                 .description(room.getDescription())
                 .isPrivate(room.isPrivate())
                 .isArchived(room.isArchived())
-                .createdById(room.getCreatedBy().getId())
+                .createdById(room.getCreatedBy() != null ? room.getCreatedBy().getId() : null)
                 .createdAt(room.getCreatedAt())
                 .build();
     }
 
     private UserResponse mapUser(User user) {
+        if (user == null) return null;
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -197,7 +201,7 @@ public class RoomServiceImpl implements RoomService {
                 .avatarUrl(user.getAvatarUrl())
                 .lastSeen(user.getLastSeen())
                 .online(user.isOnline())
-                .role(user.getRole().name())
+                .role(user.getRole() != null ? user.getRole().name() : "MEMBER")
                 .build();
     }
 }

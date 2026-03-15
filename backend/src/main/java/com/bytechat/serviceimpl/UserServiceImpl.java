@@ -4,10 +4,13 @@ import com.bytechat.dto.request.UpdateProfileRequest;
 import com.bytechat.dto.response.UserResponse;
 import com.bytechat.entity.User;
 import com.bytechat.repository.UserRepository;
+import com.bytechat.services.CloudinaryService;
 import com.bytechat.services.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -16,6 +19,7 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     public List<UserResponse> getAllUsers() {
@@ -46,6 +50,19 @@ public class UserServiceImpl implements UserService {
         user.setDisplayName(request.getDisplayName());
         user.setAvatarUrl(request.getAvatarUrl());
         return mapToResponse(userRepository.save(user));
+    }
+
+    @Override
+    public UserResponse updateAvatar(Long userId, MultipartFile file) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        try {
+            String avatarUrl = cloudinaryService.uploadFile(file);
+            user.setAvatarUrl(avatarUrl);
+            return mapToResponse(userRepository.save(user));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload avatar", e);
+        }
     }
 
     private UserResponse mapToResponse(User user) {

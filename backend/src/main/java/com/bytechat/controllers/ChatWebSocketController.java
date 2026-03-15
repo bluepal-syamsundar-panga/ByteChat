@@ -6,6 +6,7 @@ import com.bytechat.entity.User;
 import com.bytechat.repository.UserRepository;
 import com.bytechat.services.MessageService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -13,22 +14,27 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
+import java.util.Map;
+
 @Controller
 @RequiredArgsConstructor
+@Slf4j
 public class ChatWebSocketController {
 
     private final MessageService messageService;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepository;
 
-    @MessageMapping("/chat.room.{roomId}")
+    @MessageMapping("/chat/room/{roomId}")
     public void sendMessageToRoom(@DestinationVariable Long roomId, 
                                   @Payload MessageRequest chatMessage,
                                   SimpMessageHeaderAccessor headerAccessor) {
                                   
-        // Ideally handled by an interceptor reading JWT, but as an example, fetch user identity from STOMP
         String email = headerAccessor.getUser() != null ? headerAccessor.getUser().getName() : null;
-        if (email == null) return;
+        if (email == null) {
+            log.warn("WebSocket message received without authenticated user for room: {}", roomId);
+            return;
+        }
         
         User sender = userRepository.findByEmail(email).orElse(null);
         if (sender == null) return;
@@ -37,6 +43,16 @@ public class ChatWebSocketController {
         MessageResponse savedMessage = messageService.sendMessage(roomId, chatMessage, sender);
         
         // Broadcast to clients listening on this room topic
-        messagingTemplate.convertAndSend("/topic/room." + roomId, savedMessage);
+        messagingTemplate.convertAndSend("/topic/room/" + roomId, savedMessage);
+    }
+
+    @MessageMapping("/chat/typing")
+    public void handleTyping(@Payload Map<String, Object> payload,
+                             SimpMessageHeaderAccessor headerAccessor) {
+        Long roomId = payload.get("roomId") != null ? Long.valueOf(payload.get("roomId").toString()) : null;
+        if (roomId == null) return;
+
+        // Broadcast typing status to everyone in the room
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/typing", payload);
     }
 }

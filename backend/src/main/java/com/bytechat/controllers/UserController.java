@@ -12,9 +12,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -37,18 +40,28 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(@AuthenticationPrincipal User currentUser) {
-        return ResponseEntity.ok(ApiResponse.success(userService.getUserProfile(currentUser.getId()), "Current user fetched"));
+        return ResponseEntity
+                .ok(ApiResponse.success(userService.getUserProfile(currentUser.getId()), "Current user fetched"));
     }
 
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> updateCurrentUser(
             @AuthenticationPrincipal User currentUser,
             @Valid @RequestBody UpdateProfileRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(userService.updateProfile(currentUser.getId(), request), "Profile updated"));
+        return ResponseEntity
+                .ok(ApiResponse.success(userService.updateProfile(currentUser.getId(), request), "Profile updated"));
+    }
+
+    @PostMapping("/me/avatar")
+    public ResponseEntity<ApiResponse<UserResponse>> updateAvatar(
+            @AuthenticationPrincipal User currentUser,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity
+                .ok(ApiResponse.success(userService.updateAvatar(currentUser.getId(), file), "Avatar updated"));
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<ApiResponse<UserResponse>> getUserProfile(@PathVariable Long userId) {
+    public ResponseEntity<ApiResponse<UserResponse>> getUserProfile(@PathVariable(name = "userId") Long userId) {
         return ResponseEntity.ok(ApiResponse.success(userService.getUserProfile(userId), "User profile fetched"));
     }
 }

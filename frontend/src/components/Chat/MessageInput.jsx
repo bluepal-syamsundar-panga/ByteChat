@@ -1,5 +1,6 @@
-import { Paperclip, SendHorizonal, SmilePlus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Paperclip, SendHorizonal, SmilePlus, X } from 'lucide-react';
+import { useMemo, useRef, useState, useEffect } from 'react';
+import EmojiPicker from 'emoji-picker-react';
 
 const MessageInput = ({
   placeholder,
@@ -10,6 +11,10 @@ const MessageInput = ({
   mentionSuggestions = [],
 }) => {
   const [content, setContent] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const fileInputRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+
   const canSend = useMemo(() => content.trim().length > 0 && !disabled, [content, disabled]);
   const mentionQuery = useMemo(() => {
     const match = content.match(/@([A-Za-z0-9._-]*)$/);
@@ -23,6 +28,32 @@ const MessageInput = ({
       .filter((member) => member.displayName?.toLowerCase().includes(mentionQuery))
       .slice(0, 5);
   }, [mentionQuery, mentionSuggestions]);
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function handleEmojiClick(emojiData) {
+    setContent((prev) => prev + emojiData.emoji);
+  }
+
+  function handleFileChange(event) {
+    const file = event.target.files?.[0];
+    if (file && onUploadFile) {
+      onUploadFile(file);
+    }
+    // reset input so the same file can be uploaded again if needed
+    if (event.target) {
+      event.target.value = '';
+    }
+  }
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -46,66 +77,100 @@ const MessageInput = ({
 
   return (
     <div className="border-t border-black/5 bg-white px-4 py-4 md:px-5">
-      <form onSubmit={handleSubmit} className="rounded-[24px] border border-[#d8d8d8] bg-[#fbfbfb] p-3 shadow-sm">
-        <textarea
-          rows={3}
-          value={content}
-          onChange={handleChange}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              handleSubmit(event);
-            }
-          }}
-          disabled={disabled}
-          placeholder={placeholder}
-          className="min-h-[72px] w-full resize-none bg-transparent text-sm text-[#1d1c1d] outline-none placeholder:text-[#6b6a6b]"
-        />
+      <div className="relative">
         {filteredSuggestions.length > 0 && (
-          <div className="mb-3 rounded-2xl border border-black/8 bg-white p-2 shadow-sm">
+          <div className="absolute bottom-full left-0 mb-2 w-full max-w-sm border border-black/8 bg-white p-2 shadow-lg">
             {filteredSuggestions.map((member) => (
               <button
                 key={member.id}
                 type="button"
                 onClick={() => handleSelectMention(member)}
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition hover:bg-black/5"
+                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm transition hover:bg-black/5"
               >
-                <span className="font-medium text-[#1d1c1d]">{member.displayName}</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center bg-[#611f69] text-xs font-bold text-white">
+                    {member.displayName?.[0]?.toUpperCase() ?? 'U'}
+                  </div>
+                  <span className="font-medium text-[#1d1c1d]">{member.displayName}</span>
+                </div>
                 <span className="text-xs text-[#6b6a6b]">{member.email}</span>
               </button>
             ))}
           </div>
         )}
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <form onSubmit={handleSubmit} className="flex items-end gap-3 border border-[#d8d8d8] bg-[#fbfbfb] p-2 pl-4 shadow-sm transition-colors focus-within:border-black/30 focus-within:bg-white">
+          <textarea
+            rows={1}
+            value={content}
+            onChange={handleChange}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                handleSubmit(event);
+              }
+            }}
+            disabled={disabled}
+            placeholder={placeholder}
+            className="scrollbar-thin my-1.5 max-h-[120px] min-h-[24px] w-full resize-none bg-transparent text-sm text-[#1d1c1d] outline-none placeholder:text-[#6b6a6b]"
+            style={{
+              height: 'auto',
+              minHeight: '24px',
+            }}
+            onInput={(e) => {
+              e.target.style.height = 'auto';
+              e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+            }}
+          />
+          <div className="mb-0.5 flex shrink-0 items-center gap-1 sm:gap-2">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              className="hidden" 
+              accept="image/*,.pdf,.doc,.docx,.txt"
+            />
             <button
               type="button"
-              onClick={onUploadFile}
-              className="rounded-full p-2 text-[#6b6a6b] transition hover:bg-black/5 hover:text-[#1d1c1d]"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 text-[#6b6a6b] transition hover:bg-black/5 hover:text-[#1d1c1d]"
               title="Upload attachment"
+              disabled={disabled}
             >
               <Paperclip size={18} />
             </button>
-            <button
-              type="button"
-              className="rounded-full p-2 text-[#6b6a6b] transition hover:bg-black/5 hover:text-[#1d1c1d]"
-              title="Add reaction hint"
-            >
-              <SmilePlus size={18} />
-            </button>
-            <div className="hidden text-xs text-[#6b6a6b] md:block">
-              Use <span className="font-semibold">@mentions</span>, reactions, editing, pinning, and files.
+            
+            <div className="relative" ref={emojiPickerRef}>
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className={`p-2 transition hover:bg-black/5 hover:text-[#1d1c1d] ${showEmojiPicker ? 'bg-black/5 text-[#1d1c1d]' : 'text-[#6b6a6b]'}`}
+                title="Add emoji"
+                disabled={disabled}
+              >
+                <SmilePlus size={18} />
+              </button>
+              
+              {showEmojiPicker && (
+                <div className="absolute bottom-full right-0 mb-2 z-50 shadow-xl border border-black/10 bg-white">
+                  <EmojiPicker 
+                    onEmojiClick={handleEmojiClick}
+                    autoFocusSearch={false}
+                    theme="light"
+                  />
+                </div>
+              )}
             </div>
+            <button
+              type="submit"
+              disabled={!canSend}
+              className="ml-1 flex h-9 w-9 items-center justify-center bg-[#3f0e40] text-white transition hover:bg-[#350d36] disabled:cursor-not-allowed disabled:bg-transparent disabled:text-[#b0c9de]"
+              title="Send message"
+            >
+              <SendHorizonal size={16} className={canSend ? 'ml-0.5' : ''} />
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={!canSend}
-            className="inline-flex items-center gap-2 rounded-full bg-[#1164a3] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0c548a] disabled:cursor-not-allowed disabled:bg-[#b0c9de]"
-          >
-            Send
-            <SendHorizonal size={16} />
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 };

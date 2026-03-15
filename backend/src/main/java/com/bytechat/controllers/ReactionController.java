@@ -26,8 +26,8 @@ public class ReactionController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<Reaction>> addReaction(
-            @PathVariable Long messageId,
-            @RequestParam String emoji,
+            @PathVariable(name = "messageId") Long messageId,
+            @RequestParam(name = "emoji") String emoji,
             @AuthenticationPrincipal User currentUser) {
         log.info("User {} adding reaction {} to message {}", currentUser.getId(), emoji, messageId);
         // The original snippet had a syntax error here. Correcting based on common patterns.
@@ -47,8 +47,8 @@ public class ReactionController {
 
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> removeReaction(
-            @PathVariable Long messageId,
-            @RequestParam String emoji,
+            @PathVariable(name = "messageId") Long messageId,
+            @RequestParam(name = "emoji") String emoji,
             @AuthenticationPrincipal User currentUser) {
         log.info("User {} removing reaction {} from message {}", currentUser.getId(), emoji, messageId);
         // Similar correction for removeReaction based on the provided snippet and common patterns.
@@ -61,7 +61,7 @@ public class ReactionController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Reaction>>> getReactions(@PathVariable Long messageId) {
+    public ResponseEntity<ApiResponse<List<Reaction>>> getReactions(@PathVariable(name = "messageId") Long messageId) {
         List<Reaction> reactions = reactionService.getReactionsForMessage(messageId);
         return ResponseEntity.ok(ApiResponse.success(reactions, "Reactions retrieved"));
     }

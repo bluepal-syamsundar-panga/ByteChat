@@ -12,7 +12,12 @@ const useChatStore = create((set) => ({
   setRooms: (rooms) => set({ rooms }),
   setUsers: (users) => set({ users }),
   setOnlineUsers: (onlineUsers) => set({ onlineUsers }),
-  setNotifications: (notifications) => set({ notifications }),
+  setNotifications: (notifications) =>
+    set((state) => ({
+      notifications: typeof notifications === 'function'
+        ? notifications(state.notifications)
+        : notifications,
+    })),
   setActiveThread: (activeThread) => set({ activeThread }),
   setRoomMessages: (roomId, messages) =>
     set((state) => ({ roomMessages: { ...state.roomMessages, [roomId]: messages } })),
@@ -52,8 +57,22 @@ function dedupe(messages) {
   const map = new Map();
   messages
     .slice()
-    .sort((left, right) => new Date(left.sentAt).getTime() - new Date(right.sentAt).getTime())
-    .forEach((message) => map.set(message.id, message));
+    .sort((left, right) => {
+      const getMillis = (dateVal) => {
+        if (!dateVal) return 0;
+        // Handle Jackson array format [YYYY, MM, DD, HH, mm, ss]
+        if (Array.isArray(dateVal)) {
+          return new Date(dateVal[0], dateVal[1] - 1, dateVal[2], dateVal[3], dateVal[4], dateVal[5]).getTime();
+        }
+        return new Date(dateVal).getTime() || 0;
+      };
+      return getMillis(left.sentAt) - getMillis(right.sentAt);
+    })
+    .forEach((message) => {
+      if (message && message.id) {
+        map.set(message.id, message);
+      }
+    });
   return [...map.values()];
 }
 
