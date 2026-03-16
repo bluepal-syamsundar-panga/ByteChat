@@ -15,5 +15,7 @@ public interface UserService {
 
     UserResponse updateProfile(Long userId, UpdateProfileRequest request);
 
+    List<UserResponse> getSharedRoomUsers(Long userId);
+
     UserResponse updateAvatar(Long userId, MultipartFile file);
 }

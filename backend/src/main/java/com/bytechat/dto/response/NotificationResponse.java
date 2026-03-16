@@ -1,6 +1,7 @@
 package com.bytechat.dto.response;
 
 import com.bytechat.entity.Notification;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,7 @@ public class NotificationResponse {
     private String type;
     private String content;
     private Long relatedEntityId;
+    @JsonProperty("isRead")
     private boolean isRead;
     private LocalDateTime createdAt;
 

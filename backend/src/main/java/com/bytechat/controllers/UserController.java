@@ -60,6 +60,12 @@ public class UserController {
                 .ok(ApiResponse.success(userService.updateAvatar(currentUser.getId(), file), "Avatar updated"));
     }
 
+    @GetMapping("/shared")
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getSharedRoomUsers(
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(userService.getSharedRoomUsers(currentUser.getId()), "Shared room users fetched"));
+    }
+
     @GetMapping("/{userId}")
     public ResponseEntity<ApiResponse<UserResponse>> getUserProfile(@PathVariable(name = "userId") Long userId) {
         return ResponseEntity.ok(ApiResponse.success(userService.getUserProfile(userId), "User profile fetched"));

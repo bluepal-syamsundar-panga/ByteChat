@@ -65,6 +65,13 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    @Override
+    public List<UserResponse> getSharedRoomUsers(Long userId) {
+        return userRepository.findUsersSharingRoomWith(userId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
     private UserResponse mapToResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())

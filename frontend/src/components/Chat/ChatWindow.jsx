@@ -11,6 +11,7 @@ import {
 } from '../../services/websocket';
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
+import notificationService from '../../services/notificationService';
 import Modal from '../Shared/Modal';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
@@ -86,6 +87,18 @@ const ChatWindow = ({ room }) => {
         const newMessages = [...(messagesResponse.data?.content ?? [])].reverse();
         setRoomMessages(roomId, newMessages);
         setRoomMembers(membersResponse.data ?? []);
+
+        // Auto-clear room notifications (mentions)
+        try {
+          await notificationService.markRoomRead(roomId);
+          // Update local store to remove these from panels
+          const { setNotifications } = useChatStore.getState();
+          setNotifications(prev => prev.map(n => 
+            (n.type === 'MENTION' && n.relatedEntityId === roomId) ? { ...n, isRead: true, read: true } : n
+          ));
+        } catch (e) {
+          console.error('Failed to clear room notifications', e);
+        }
 
         // Instant scroll on room switch
         setTimeout(() => {

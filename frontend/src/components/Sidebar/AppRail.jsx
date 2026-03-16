@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
 import NotificationPanel from '../Common/NotificationPanel';
+import DMPanel from '../Common/DMPanel';
 
 const AppRail = ({ onCreateRoom }) => {
   const navigate = useNavigate();
@@ -52,17 +53,8 @@ const AppRail = ({ onCreateRoom }) => {
           <NotificationPanel />
         </div>
 
-        {/* DM Notifications */}
-        <div className="relative">
-          <div className="flex h-10 w-10 items-center justify-center text-white/70 transition hover:bg-white/10 hover:text-white">
-            <MessageSquare size={22} />
-          </div>
-          {unreadDMs > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center bg-[#e01e5a] text-[10px] font-bold text-white">
-              {unreadDMs > 9 ? '9+' : unreadDMs}
-            </span>
-          )}
-        </div>
+        {/* Direct Messages Hub */}
+        <DMPanel />
       </div>
 
       {/* Profile */}

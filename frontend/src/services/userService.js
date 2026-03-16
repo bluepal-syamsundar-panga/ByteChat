@@ -27,6 +27,10 @@ const userService = {
     });
     return response.data;
   },
+  async getSharedRoomUsers() {
+    const response = await api.get('/users/shared');
+    return response.data;
+  },
 };
 
 export default userService;

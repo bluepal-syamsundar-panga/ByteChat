@@ -5,6 +5,7 @@ const useChatStore = create((set) => ({
   users: [],
   onlineUsers: [],
   notifications: [],
+  sharedUsers: [],
   activeThread: null,
   roomMessages: {},
   dmMessages: {},
@@ -12,6 +13,7 @@ const useChatStore = create((set) => ({
   setRooms: (rooms) => set({ rooms }),
   setUsers: (users) => set({ users }),
   setOnlineUsers: (onlineUsers) => set({ onlineUsers }),
+  setSharedUsers: (sharedUsers) => set({ sharedUsers }),
   setNotifications: (notifications) =>
     set((state) => ({
       notifications: typeof notifications === 'function'

@@ -53,4 +53,20 @@ public class NotificationController {
         roomService.acceptInvite(notificationId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Invite accepted"));
     }
+
+    @PutMapping("/mark-room-read/{roomId}")
+    public ResponseEntity<ApiResponse<Void>> markRoomRead(
+            @PathVariable(name = "roomId") Long roomId,
+            @AuthenticationPrincipal User currentUser) {
+        notificationService.markRoomNotificationsAsRead(currentUser.getId(), roomId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Room notifications marked as read"));
+    }
+
+    @PutMapping("/mark-dm-read/{senderId}")
+    public ResponseEntity<ApiResponse<Void>> markDMRead(
+            @PathVariable(name = "senderId") Long senderId,
+            @AuthenticationPrincipal User currentUser) {
+        notificationService.markDMNotificationsAsRead(currentUser.getId(), senderId);
+        return ResponseEntity.ok(ApiResponse.success(null, "DM notifications marked as read"));
+    }
 }

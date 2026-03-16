@@ -1,5 +1,6 @@
 package com.bytechat.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,6 +31,8 @@ public class Notification {
 
     private Long relatedEntityId; // e.g., Room ID or DM ID
 
+    @JsonProperty("isRead")
+    @Column(name = "is_read")
     @Builder.Default
     private boolean isRead = false;
 

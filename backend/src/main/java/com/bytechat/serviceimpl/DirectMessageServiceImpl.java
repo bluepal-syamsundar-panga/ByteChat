@@ -2,8 +2,10 @@ package com.bytechat.serviceimpl;
 
 import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.MessageResponse;
+import com.bytechat.entity.DMRequestStatus;
 import com.bytechat.entity.DirectMessage;
 import com.bytechat.entity.User;
+import com.bytechat.repository.DMRequestRepository;
 import com.bytechat.repository.DirectMessageRepository;
 import com.bytechat.repository.UserRepository;
 import com.bytechat.services.DirectMessageService;
@@ -22,6 +24,7 @@ public class DirectMessageServiceImpl implements DirectMessageService {
 
     private final DirectMessageRepository directMessageRepository;
     private final UserRepository userRepository;
+    private final DMRequestRepository dmRequestRepository;
     private final NotificationService notificationService;
 
     @Override
@@ -29,6 +32,19 @@ public class DirectMessageServiceImpl implements DirectMessageService {
     public MessageResponse sendDirectMessage(Long toUserId, MessageRequest request, User sender) {
         User toUser = userRepository.findById(toUserId)
                 .orElseThrow(() -> new RuntimeException("Recipient not found"));
+
+        // Check permission: Shared room OR accepted DM request
+        boolean sharesRoom = userRepository.findUsersSharingRoomWith(sender.getId()).stream()
+                .anyMatch(u -> u.getId().equals(toUserId));
+        
+        if (!sharesRoom) {
+            boolean hasAcceptedRequest = dmRequestRepository.existsBySenderAndReceiverAndStatus(sender, toUser, DMRequestStatus.ACCEPTED) ||
+                                         dmRequestRepository.existsBySenderAndReceiverAndStatus(toUser, sender, DMRequestStatus.ACCEPTED);
+            
+            if (!hasAcceptedRequest) {
+                throw new RuntimeException("You do not have permission to send direct messages to this user. They must share a room with you or accept your DM invitation.");
+            }
+        }
 
         DirectMessage dm = DirectMessage.builder()
                 .fromUser(sender)
@@ -61,10 +77,18 @@ public class DirectMessageServiceImpl implements DirectMessageService {
 
     @Override
     @Transactional
-    // Very simplified logic, real app would take a list of message IDs
     public void markAsRead(Long otherUserId, User currentUser) {
-        // Here you would typically get all unread direct messages from `otherUser` to `currentUser` and set readAt.
-        // For simplicity, we assume this acts as a read receipt flag.
+        // Mark messages as read
+        directMessageRepository.findConversation(currentUser.getId(), otherUserId, PageRequest.of(0, 1000))
+                .forEach(dm -> {
+                    if (dm.getToUser().getId().equals(currentUser.getId()) && dm.getReadAt() == null) {
+                        dm.setReadAt(LocalDateTime.now());
+                        directMessageRepository.save(dm);
+                    }
+                });
+        
+        // Mark DM notifications as read
+        notificationService.markDMNotificationsAsRead(currentUser.getId(), otherUserId);
     }
 
     private MessageResponse mapToResponse(DirectMessage dm) {

@@ -62,4 +62,20 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setRead(true);
         notificationRepository.save(notification);
     }
+
+    @Override
+    @Transactional
+    public void markRoomNotificationsAsRead(Long userId, Long roomId) {
+        List<Notification> notifications = notificationRepository.findUnreadMentionsByRoom(userId, roomId);
+        notifications.forEach(n -> n.setRead(true));
+        notificationRepository.saveAll(notifications);
+    }
+
+    @Override
+    @Transactional
+    public void markDMNotificationsAsRead(Long userId, Long senderId) {
+        List<Notification> notifications = notificationRepository.findUnreadDMsBySender(userId, senderId);
+        notifications.forEach(n -> n.setRead(true));
+        notificationRepository.saveAll(notifications);
+    }
 }

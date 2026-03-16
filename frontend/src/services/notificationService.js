@@ -13,6 +13,14 @@ const notificationService = {
     const response = await api.post(`/notifications/${notificationId}/accept`);
     return response.data;
   },
+  async markRoomRead(roomId) {
+    const response = await api.put(`/notifications/mark-room-read/${roomId}`);
+    return response.data;
+  },
+  async markDMRead(senderId) {
+    const response = await api.put(`/notifications/mark-dm-read/${senderId}`);
+    return response.data;
+  },
 };
 
 export default notificationService;

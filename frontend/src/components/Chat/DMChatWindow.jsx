@@ -40,6 +40,12 @@ const DMChatWindow = ({ user }) => {
 
           setDmMessages(user.id, newMessages);
           await dmService.markAsRead(user.id);
+          
+          // Clear DM notifications in local store
+          const { setNotifications } = useChatStore.getState();
+          setNotifications(prev => prev.map(n => 
+            (n.type === 'DIRECT_MESSAGE') ? { ...n, isRead: true, read: true } : n
+          ));
 
           if (isInitial) {
             // Instant scroll on first load

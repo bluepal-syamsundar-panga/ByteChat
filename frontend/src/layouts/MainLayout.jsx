@@ -1,4 +1,3 @@
-import { Search } from 'lucide-react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar/Sidebar';
@@ -133,10 +132,21 @@ const MainLayout = () => {
             <div className="text-lg font-semibold">Real-Time Slack Clone Workspace</div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 border border-black/10 bg-white px-4 py-2 shadow-sm md:flex text-navbar-search">
-              <Search size={16} className="text-[#6b6a6b]" />
-              <span className="text-sm text-[#6b6a6b]">Search messages, rooms, and people</span>
-            </div>
+            {user && (
+              <div className="flex items-center gap-3 border border-black/5 bg-white/50 px-4 py-1.5 shadow-sm">
+                <div className="flex h-8 w-8 items-center justify-center bg-[#3f0e40] text-xs font-bold text-white overflow-hidden">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.displayName} className="h-full w-full object-cover" />
+                  ) : (
+                    user.displayName?.[0]?.toUpperCase() ?? 'U'
+                  )}
+                </div>
+                <div className="hidden flex-col md:flex">
+                  <div className="text-sm font-bold text-[#1d1c1d]">{user.displayName}</div>
+                  <div className="text-[10px] uppercase font-bold tracking-tight text-[#6b6a6b]">{user.role}</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

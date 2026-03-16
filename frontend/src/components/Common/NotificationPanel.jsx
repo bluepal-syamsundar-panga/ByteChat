@@ -35,13 +35,15 @@ const NotificationPanel = () => {
     });
   }, [currentUser?.id, setNotifications]);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const relevantNotifications = notifications.filter(
+    (n) => (n.type === 'MENTION' || n.type === 'ROOM_INVITE') && !n.isRead && !n.read
+  );
 
   const handleMarkAsRead = async (notificationId) => {
     try {
       await notificationService.markAsRead(notificationId);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
+        prev.map((n) => (n.id === notificationId ? { ...n, isRead: true, read: true } : n))
       );
     } catch (error) {
       console.error('Failed to mark notification as read', error);
@@ -51,9 +53,20 @@ const NotificationPanel = () => {
   const handleAccept = async (notificationId) => {
     try {
       await notificationService.accept(notificationId);
+      // Immediately remove from list locally
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
     } catch (error) {
       console.error('Failed to accept notification', error);
+    }
+  };
+
+  const handleReject = async (notificationId) => {
+    try {
+      // For room invite, we just mark as read to "clear" it
+      await notificationService.markAsRead(notificationId);
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    } catch (error) {
+      console.error('Failed to reject notification', error);
     }
   };
 
@@ -79,9 +92,9 @@ const NotificationPanel = () => {
         title="Notifications"
       >
         <Bell size={20} />
-        {unreadCount > 0 && (
+        {relevantNotifications.length > 0 && (
           <span className="absolute top-0 right-0 flex h-5 w-5 items-center justify-center bg-[#e01e5a] text-[10px] font-bold text-white">
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {relevantNotifications.length > 9 ? '9+' : relevantNotifications.length}
           </span>
         )}
       </button>
@@ -111,17 +124,15 @@ const NotificationPanel = () => {
                 <div className="px-4 py-8 text-center text-sm text-[#6b6a6b]">
                   Loading notifications...
                 </div>
-              ) : notifications.length === 0 ? (
+              ) : relevantNotifications.length === 0 ? (
                 <div className="px-4 py-8 text-center text-sm text-[#6b6a6b]">
-                  No notifications yet
+                  No new notifications
                 </div>
               ) : (
-                notifications.map((notification) => (
+                relevantNotifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`border-b border-black/5 px-4 py-3 transition hover:bg-black/[0.02] ${
-                      !notification.isRead ? 'bg-[#3f0e40]/5' : ''
-                    }`}
+                    className="border-b border-black/5 px-4 py-3 transition hover:bg-black/[0.02]"
                   >
                     <div className="flex items-start gap-3">
                       <div className="text-2xl">
@@ -135,24 +146,31 @@ const NotificationPanel = () => {
                           {formatMessageTimestamp(notification.createdAt)}
                         </p>
                         <div className="mt-2 flex items-center gap-2">
-                          {!notification.isRead && (
-                            <button
-                              type="button"
-                              onClick={() => handleMarkAsRead(notification.id)}
-                              className="flex items-center gap-1 bg-[#3f0e40] px-2 py-1 text-xs text-white transition hover:bg-[#350d36]"
-                            >
-                              <Check size={12} />
-                              Mark as read
-                            </button>
-                          )}
-                          {notification.type === 'INVITE' && (
-                            <button
-                              type="button"
-                              onClick={() => handleAccept(notification.id)}
-                              className="bg-[#007a5a] px-2 py-1 text-xs text-white transition hover:bg-[#005a3f]"
-                            >
-                              Accept
-                            </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMarkAsRead(notification.id)}
+                            className="flex items-center gap-1 bg-black/5 px-2 py-1 text-xs text-[#1d1c1d] transition hover:bg-black/10"
+                          >
+                            <Check size={12} />
+                            Dismiss
+                          </button>
+                          {notification.type === 'ROOM_INVITE' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleAccept(notification.id)}
+                                className="bg-[#007a5a] px-2 py-1 text-xs text-white transition hover:bg-[#005a3f]"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleReject(notification.id)}
+                                className="bg-[#e01e5a] px-2 py-1 text-xs text-white transition hover:bg-[#c2184e]"
+                              >
+                                Reject
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>

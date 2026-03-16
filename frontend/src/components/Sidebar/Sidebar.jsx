@@ -1,37 +1,34 @@
-import { Bell, Hash, Lock, Mail, MessageCircleMore, Plus } from 'lucide-react';
+import { Bell, Hash, Lock, Mail, MessageCircleMore, Plus, Check, X } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
 import userService from '../../services/userService';
-
 const Sidebar = ({ onCreateRoom, onAcceptInvite }) => {
   const location = useLocation();
   const { user } = useAuthStore();
-  const { rooms, notifications } = useChatStore();
-  const unreadNotifications = notifications.filter((item) => !(item.read || item.isRead)).length;
-  const inviteNotifications = notifications.filter((item) => item.type === 'ROOM_INVITE' && !(item.read || item.isRead));
-  const directMessageNotifications = notifications.filter((item) => item.type === 'DIRECT_MESSAGE' && !(item.read || item.isRead));
-
-  const [allUsers, setAllUsers] = useState([]);
-
+  const { rooms, sharedUsers, setSharedUsers } = useChatStore();
+  
   useEffect(() => {
     let mounted = true;
-    async function loadUsers() {
+    async function loadData() {
       try {
-        const resp = await userService.getUsers();
+        const usersResp = await userService.getSharedRoomUsers();
         if (mounted) {
-          setAllUsers(resp.data?.content || resp.data || []);
+          setSharedUsers(usersResp.data || []);
         }
       } catch (e) {
-        console.error('Failed to load users for sidebar', e);
+        console.error('Failed to load sidebar data', e);
       }
     }
-    loadUsers();
+    loadData();
+    // Poll for updates every 10 seconds
+    const interval = setInterval(loadData, 10000);
     return () => {
       mounted = false;
+      clearInterval(interval);
     };
-  }, []);
+  }, [setSharedUsers]);
 
   return (
     <aside className="flex w-full max-w-[340px] shrink-0 flex-col bg-[#3f0e40] text-white md:w-[340px]">
@@ -68,15 +65,13 @@ const Sidebar = ({ onCreateRoom, onAcceptInvite }) => {
           </div>
         </section>
 
-
-
         <section className="bg-[#350d36] p-4 shadow-inner">
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
             <MessageCircleMore size={16} />
             Direct messages
           </div>
           <div className="space-y-1">
-            {allUsers.filter(u => u.id !== user?.id).map((u) => (
+            {sharedUsers.filter(u => u.id !== user?.id).map((u) => (
               <SidebarLink
                 key={u.id}
                 to={`/chat/dm/${u.id}`}
@@ -96,8 +91,8 @@ const Sidebar = ({ onCreateRoom, onAcceptInvite }) => {
                 badge={null}
               />
             ))}
-            {allUsers.length <= 1 && (
-              <p className="px-2 py-1 text-sm leading-6 text-white/70">No other users found.</p>
+            {sharedUsers.length <= 1 && (
+              <p className="px-2 py-1 text-sm leading-6 text-white/70">No shared room members found.</p>
             )}
           </div>
         </section>
