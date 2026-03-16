@@ -34,7 +34,7 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                 .orElseThrow(() -> new RuntimeException("Recipient not found"));
 
         // Check permission: Shared room OR accepted DM request
-        boolean sharesRoom = userRepository.findUsersSharingRoomWith(sender.getId()).stream()
+        boolean sharesRoom = userRepository.findUsersSharingRoomWith(sender.getId(), DMRequestStatus.ACCEPTED).stream()
                 .anyMatch(u -> u.getId().equals(toUserId));
         
         if (!sharesRoom) {
@@ -92,8 +92,9 @@ public class DirectMessageServiceImpl implements DirectMessageService {
     }
 
     private MessageResponse mapToResponse(DirectMessage dm) {
-        return MessageResponse.builder()
+        MessageResponse response = MessageResponse.builder()
                 .id(dm.getId())
+                .roomId(dm.getWorkspace() != null ? dm.getWorkspace().getId() : null)
                 .senderId(dm.getFromUser().getId())
                 .senderName(dm.getFromUser().getDisplayName())
                 .senderAvatar(dm.getFromUser().getAvatarUrl())
@@ -104,5 +105,8 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                 .isPinned(false) // DMs usually don't have pinned in simple slack clone
                 .sentAt(dm.getSentAt())
                 .build();
+        
+        response.setReadCount(dm.getReadAt() != null ? 1 : 0);
+        return response;
     }
 }

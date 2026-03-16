@@ -6,9 +6,10 @@ import com.bytechat.entity.User;
 import org.springframework.data.domain.Page;
 
 public interface MessageService {
-    MessageResponse sendMessage(Long roomId, MessageRequest request, User sender);
-    Page<MessageResponse> getRoomMessages(Long roomId, int page, int size, User currentUser);
+    MessageResponse sendMessage(Long channelId, MessageRequest request, User sender);
+    Page<MessageResponse> getRoomMessages(Long channelId, int page, int size, User currentUser);
     MessageResponse editMessage(Long messageId, MessageRequest request, User currentUser);
-    void deleteMessage(Long messageId, User currentUser);
+    MessageResponse deleteMessage(Long messageId, User currentUser);
     MessageResponse pinMessage(Long messageId, User currentUser);
+    void markAsRead(Long messageId, User currentUser);
 }

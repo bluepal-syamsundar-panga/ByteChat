@@ -91,9 +91,9 @@ export function subscribeToRoom(roomId, callback) {
   return subscription;
 }
 
-export function subscribeToTyping(roomId, callback) {
+export function subscribeToChannel(channelId, callback) {
   const stompClient = getClient();
-  const key = `typing:${roomId}`;
+  const key = `channel:${channelId}`;
   
   if (!stompClient.connected) return null;
 
@@ -101,7 +101,24 @@ export function subscribeToTyping(roomId, callback) {
     subscriptions.get(key).unsubscribe();
   }
 
-  const subscription = stompClient.subscribe(`/topic/room/${roomId}/typing`, (message) => {
+  const subscription = stompClient.subscribe(`/topic/channel/${channelId}`, (message) => {
+    callback(JSON.parse(message.body));
+  });
+  subscriptions.set(key, subscription);
+  return subscription;
+}
+
+export function subscribeToTyping(workspaceId, callback) {
+  const stompClient = getClient();
+  const key = `typing:${workspaceId}`;
+  
+  if (!stompClient.connected) return null;
+
+  if (subscriptions.has(key)) {
+    subscriptions.get(key).unsubscribe();
+  }
+
+  const subscription = stompClient.subscribe(`/topic/typing.${workspaceId}`, (message) => {
     callback(JSON.parse(message.body));
   });
   subscriptions.set(key, subscription);
@@ -125,6 +142,23 @@ export function subscribeToNotifications(userId, callback) {
   return subscription;
 }
 
+export function subscribeToDM(userId, callback) {
+  const stompClient = getClient();
+  const key = `dm:${userId}`;
+  
+  if (!stompClient.connected) return null;
+
+  if (subscriptions.has(key)) {
+    subscriptions.get(key).unsubscribe();
+  }
+
+  const subscription = stompClient.subscribe(`/topic/dm/${userId}`, (message) => {
+    callback(JSON.parse(message.body));
+  });
+  subscriptions.set(key, subscription);
+  return subscription;
+}
+
 export function publishRoomMessage(roomId, payload) {
   const stompClient = getClient();
   if (!stompClient.connected) {
@@ -138,15 +172,28 @@ export function publishRoomMessage(roomId, payload) {
   return true;
 }
 
-export function publishTyping(roomId, payload) {
+export function publishChannelMessage(channelId, payload) {
   const stompClient = getClient();
   if (!stompClient.connected) {
     return false;
   }
 
   stompClient.publish({
-    destination: '/app/chat/typing',
-    body: JSON.stringify({ roomId, ...payload }),
+    destination: `/app/chat/channel/${channelId}`,
+    body: JSON.stringify(payload),
+  });
+  return true;
+}
+
+export function publishTyping(workspaceId, payload) {
+  const stompClient = getClient();
+  if (!stompClient.connected) {
+    return false;
+  }
+
+  stompClient.publish({
+    destination: '/app/chat.typing',
+    body: JSON.stringify({ workspaceId, ...payload }),
   });
   return true;
 }

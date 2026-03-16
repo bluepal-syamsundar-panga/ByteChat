@@ -17,15 +17,15 @@ public class TypingController {
 
     @MessageMapping("/chat.typing")
     public void handleTyping(@Payload TypingEvent event) {
-        // Broadcast typing event to the specific room
-        messagingTemplate.convertAndSend("/topic/room/" + event.getRoomId() + "/typing", event);
+        // Broadcast typing event to the specific workspace
+        messagingTemplate.convertAndSend("/topic/typing." + event.getWorkspaceId(), event);
     }
 
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
     public static class TypingEvent {
-        private Long roomId;
+        private Long workspaceId;
         private Long userId;
         private String displayName;
         private boolean isTyping;

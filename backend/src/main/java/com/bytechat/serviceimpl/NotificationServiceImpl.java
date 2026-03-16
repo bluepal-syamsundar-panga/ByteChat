@@ -65,8 +65,8 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public void markRoomNotificationsAsRead(Long userId, Long roomId) {
-        List<Notification> notifications = notificationRepository.findUnreadMentionsByRoom(userId, roomId);
+    public void markWorkspaceNotificationsAsRead(Long userId, Long workspaceId) {
+        List<Notification> notifications = notificationRepository.findUnreadMentionsByWorkspace(userId, workspaceId);
         notifications.forEach(n -> n.setRead(true));
         notificationRepository.saveAll(notifications);
     }
@@ -77,5 +77,12 @@ public class NotificationServiceImpl implements NotificationService {
         List<Notification> notifications = notificationRepository.findUnreadDMsBySender(userId, senderId);
         notifications.forEach(n -> n.setRead(true));
         notificationRepository.saveAll(notifications);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Notification getNotification(Long notificationId) {
+        return notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new RuntimeException("Notification not found"));
     }
 }

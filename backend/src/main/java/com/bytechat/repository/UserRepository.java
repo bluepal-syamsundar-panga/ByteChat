@@ -13,9 +13,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     @Query("SELECT DISTINCT u FROM User u WHERE u.id != :userId AND (" +
-           "u.id IN (SELECT m.user.id FROM RoomMember m WHERE m.room.id IN " +
-           "(SELECT rm.room.id FROM RoomMember rm WHERE rm.user.id = :userId)) " +
-           "OR u.id IN (SELECT dmr.sender.id FROM DMRequest dmr WHERE dmr.receiver.id = :userId AND dmr.status = com.bytechat.entity.DMRequestStatus.ACCEPTED) " +
-           "OR u.id IN (SELECT dmr.receiver.id FROM DMRequest dmr WHERE dmr.sender.id = :userId AND dmr.status = com.bytechat.entity.DMRequestStatus.ACCEPTED))")
-    List<User> findUsersSharingRoomWith(@Param("userId") Long userId);
+           "u.id IN (SELECT m.user.id FROM WorkspaceMember m WHERE m.workspace.id IN " +
+           "(SELECT rm.workspace.id FROM WorkspaceMember rm WHERE rm.user.id = :userId)) " +
+           "OR u.id IN (SELECT dmr.sender.id FROM DMRequest dmr WHERE dmr.receiver.id = :userId AND dmr.status = :status) " +
+           "OR u.id IN (SELECT dmr.receiver.id FROM DMRequest dmr WHERE dmr.sender.id = :userId AND dmr.status = :status))")
+    List<User> findUsersSharingRoomWith(@Param("userId") Long userId, @Param("status") com.bytechat.entity.DMRequestStatus status);
 }

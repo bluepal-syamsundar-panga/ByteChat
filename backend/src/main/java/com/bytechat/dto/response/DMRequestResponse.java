@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class DMRequestResponse {
     private Long id;
+    private Long workspaceId;
     private UserResponse sender;
     private UserResponse receiver;
     private String status;
@@ -23,6 +24,7 @@ public class DMRequestResponse {
     public static DMRequestResponse fromEntity(DMRequest request) {
         return DMRequestResponse.builder()
                 .id(request.getId())
+                .workspaceId(request.getWorkspace() != null ? request.getWorkspace().getId() : null)
                 .sender(UserResponse.builder()
                         .id(request.getSender().getId())
                         .displayName(request.getSender().getDisplayName())

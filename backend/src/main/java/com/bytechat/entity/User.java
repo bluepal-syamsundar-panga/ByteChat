@@ -38,12 +38,21 @@ public class User implements UserDetails {
     private LocalDateTime lastSeen;
 
     @Builder.Default
+    @Column(nullable = false)
     private boolean online = false;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean isVerified = false;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private Role role = Role.MEMBER;
+
+    @Column(nullable = false, updatable = false)
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

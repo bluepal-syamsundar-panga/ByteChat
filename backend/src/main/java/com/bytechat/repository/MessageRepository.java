@@ -8,5 +8,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Long> {
-    Page<Message> findByRoomIdOrderBySentAtDesc(Long roomId, Pageable pageable);
+    Page<Message> findByChannelIdOrderBySentAtDesc(Long channelId, Pageable pageable);
 }

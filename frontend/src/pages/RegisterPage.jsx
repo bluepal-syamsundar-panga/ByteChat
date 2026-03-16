@@ -1,112 +1,256 @@
-import { ArrowRight, LockKeyhole, Mail, UserRound } from 'lucide-react';
+import { ArrowRight, LockKeyhole, Mail, UserRound, ArrowLeft, SendHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import useToastStore from '../store/toastStore';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const addToast = useToastStore((state) => state.addToast);
+  const [step, setStep] = useState(1); // 1: Info, 2: OTP
   const [form, setForm] = useState({
     displayName: '',
     email: '',
     password: '',
+    otpCode: '',
   });
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  const validateStep1 = () => {
+    const newErrors = {};
+    if (!form.displayName.trim()) newErrors.displayName = 'Name is required';
+    if (!form.email.trim()) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'Invalid email format';
+    if (!form.password) newErrors.password = 'Password is required';
+    else if (form.password.length < 6) newErrors.password = 'Min. 6 characters required';
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep2 = () => {
+    const newErrors = {};
+    if (!form.otpCode.trim()) newErrors.otpCode = 'Code is required';
+    else if (form.otpCode.length !== 6) newErrors.otpCode = 'Code must be 6 digits';
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  async function handleSendOtp(event) {
+    if (event) event.preventDefault();
+    if (!validateStep1()) return;
+    
+    setSubmitting(true);
+    setErrors({});
+
+    try {
+      await authService.sendRegistrationOtp(form.email);
+      addToast('Verification code sent to your email');
+      setStep(2);
+    } catch (requestError) {
+      const data = requestError.response?.data;
+      if (data?.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+        setErrors(data.data);
+      } else {
+        const msg = data?.message ?? 'Unable to send OTP';
+        setErrors({ global: msg });
+        if (msg.toLowerCase().includes('email')) setErrors({ email: msg });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (!validateStep2()) return;
+
     setSubmitting(true);
-    setError('');
+    setErrors({});
 
     try {
       await authService.register(form);
+      addToast('Account created successfully! Please sign in.');
       navigate('/login');
     } catch (requestError) {
-      setError(requestError.response?.data?.message ?? 'Unable to create account');
+      const data = requestError.response?.data;
+      if (data?.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+        setErrors(data.data);
+      } else {
+        const msg = data?.message ?? 'Unable to create account';
+        if (msg.toLowerCase().includes('otp')) {
+          setErrors({ otpCode: msg });
+        } else {
+          setErrors({ global: msg });
+        }
+      }
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen bg-white items-center justify-center px-6 py-12">
-      <div className="grid w-full max-w-6xl overflow-hidden bg-white shadow-[0_18px_60px_rgba(63,14,64,0.12)] border border-black/5 lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="bg-[linear-gradient(160deg,#3f0e40,#611f69)] px-10 py-12 text-white">
-          <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Build Week</div>
-          <h1 className="mt-4 text-4xl font-bold leading-tight">Create your ByteChat workspace identity.</h1>
-          <div className="mt-8 space-y-4 text-sm leading-7 text-white/76">
-            <p>OWNER and MEMBER roles only.</p>
-            <p>Slack-inspired sidebar, conversation canvas, and live collaboration flows.</p>
-            <p>JWT access + refresh tokens, STOMP room messaging, direct messages, presence, notifications.</p>
+    <div className="flex h-screen bg-white overflow-hidden">
+      {/* Left side: branding/visual */}
+      <section className="hidden lg:flex lg:flex-1 bg-[linear-gradient(135deg,#3f0e40_0%,#611f69_100%)] p-20 flex-col justify-center text-white relative">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+        <div className="relative z-10 max-w-xl">
+          <div className="text-sm font-bold uppercase tracking-[0.4em] text-white/50 mb-8">ByteChat Platform</div>
+          <h1 className="text-7xl font-extrabold leading-[1.1] tracking-tight">
+            Connect your <br />
+            <span className="text-white/60">teams in one</span> <br />
+            powerful space.
+          </h1>
+        </div>
+      </section>
+
+      {/* Right side: Form (Half Page) */}
+      <section className="flex-1 flex flex-col justify-center items-center p-8 lg:p-20 relative bg-white overflow-y-auto custom-scrollbar">
+        <div className="w-full max-w-md">
+          {/* Heading inside the section */}
+          <div className="mb-10">
+            <h2 className="text-4xl font-extrabold text-[#1d1c1d] tracking-tight mb-2">Join the workspace</h2>
+            <p className="text-[#6b6a6b] font-medium">Step {step} of 2: {step === 1 ? 'Account details' : 'Verify email'}</p>
           </div>
-        </section>
 
-        <section className="px-8 py-10">
-          <div className="mb-8">
-            <div className="text-sm font-semibold uppercase tracking-[0.25em] text-[#611f69]">Join ByteChat</div>
-            <h2 className="mt-2 text-3xl font-bold text-[#1d1c1d]">Create your account</h2>
+          <div className="w-full">
+            {step === 1 ? (
+              <form className="space-y-8" onSubmit={handleSendOtp}>
+                <Field
+                  icon={<UserRound size={18} />}
+                  label="What should we call you?"
+                  placeholder="e.g. John Doe"
+                  value={form.displayName}
+                  error={errors.displayName}
+                  onChange={(v) => setForm(f => ({ ...f, displayName: v }))}
+                />
+                <Field
+                  icon={<Mail size={18} />}
+                  label="Email address"
+                  type="email"
+                  placeholder="name@work.com"
+                  value={form.email}
+                  error={errors.email}
+                  onChange={(v) => setForm(f => ({ ...f, email: v }))}
+                />
+                <Field
+                  icon={<LockKeyhole size={18} />}
+                  label="Choose a password"
+                  type="password"
+                  placeholder="Min. 6 characters"
+                  value={form.password}
+                  error={errors.password}
+                  onChange={(v) => setForm(f => ({ ...f, password: v }))}
+                />
+
+                {errors.global && (
+                  <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl text-xs font-semibold text-rose-600 animate-in fade-in zoom-in-95 duration-200">
+                    {errors.global}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full h-14 bg-[#3f0e40] text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-[#2d0a2d] transition-all transform active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-[#3f0e40]/20"
+                >
+                  {submitting ? 'Sending code...' : 'Continue'}
+                  <ArrowRight size={18} />
+                </button>
+              </form>
+            ) : (
+              <form className="space-y-8 animate-in slide-in-from-right-4 duration-300" onSubmit={handleSubmit}>
+                <div className="mb-6">
+                  <p className="text-sm text-[#6b6a6b] mb-1">We sent a 6-digit code to</p>
+                  <p className="font-bold text-[#1d1c1d]">{form.email}</p>
+                  <button 
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="mt-2 text-xs font-bold text-[#611f69] hover:underline flex items-center gap-1"
+                  >
+                    <ArrowLeft size={12} /> Change email
+                  </button>
+                </div>
+
+                <Field
+                  icon={<SendHorizontal size={18} />}
+                  label="Verification Code"
+                  placeholder="Enter 6-digit code"
+                  value={form.otpCode}
+                  error={errors.otpCode}
+                  maxLength={6}
+                  onChange={(v) => setForm(f => ({ ...f, otpCode: v }))}
+                />
+
+                {errors.global && (
+                  <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl text-xs font-semibold text-rose-600">
+                    {errors.global}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full h-14 bg-[#3f0e40] text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-[#2d0a2d] transition-all shadow-lg shadow-[#3f0e40]/20"
+                >
+                  {submitting ? 'Verifying...' : 'Complete registration'}
+                  <ArrowRight size={18} />
+                </button>
+                
+                <div className="text-center">
+                  <button 
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={submitting}
+                    className="text-xs font-bold text-[#611f69] hover:opacity-70 disabled:opacity-30"
+                  >
+                    Resend code
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <Field
-              icon={<UserRound size={16} />}
-              label="Display name"
-              value={form.displayName}
-              onChange={(value) => setForm((current) => ({ ...current, displayName: value }))}
-            />
-            <Field
-              icon={<Mail size={16} />}
-              label="Email"
-              type="email"
-              value={form.email}
-              onChange={(value) => setForm((current) => ({ ...current, email: value }))}
-            />
-            <Field
-              icon={<LockKeyhole size={16} />}
-              label="Password"
-              type="password"
-              value={form.password}
-              onChange={(value) => setForm((current) => ({ ...current, password: value }))}
-            />
-
-            {error && <div className="bg-[#fdecef] px-4 py-3 text-sm text-[#b42318]">{error}</div>}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex w-full items-center justify-center gap-2 bg-[#3f0e40] px-4 py-3 font-semibold text-white transition hover:bg-[#350d36] disabled:opacity-60"
-            >
-              {submitting ? 'Creating account...' : 'Create account'}
-              <ArrowRight size={16} />
-            </button>
-          </form>
-
-          <div className="mt-6 text-center text-sm text-[#6b6a6b]">
-            Already have an account?{' '}
-            <Link className="font-semibold text-[#611f69] hover:underline" to="/login">
-              Sign in
+          <p className="mt-12 text-sm font-medium text-[#6b6a6b]">
+            Already using ByteChat?{' '}
+            <Link to="/login" className="text-[#611f69] font-bold hover:underline">
+              Sign in to your workspace
             </Link>
-          </div>
-        </section>
-      </div>
+          </p>
+        </div>
+      </section>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 0px; }
+        body { overflow: hidden; }
+      `}} />
     </div>
   );
 };
 
-const Field = ({ icon, label, value, onChange, type = 'text' }) => (
-  <label className="block">
-    <div className="mb-2 text-sm font-medium text-[#1d1c1d]">{label}</div>
-    <div className="flex items-center gap-3 border border-black/10 bg-[#fbfbfb] px-4 py-3">
-      <span className="text-[#6b6a6b]">{icon}</span>
+const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error, maxLength }) => (
+  <div className="w-full group">
+    <div className="flex justify-between items-center mb-2 px-1">
+      <span className="text-xs font-bold uppercase tracking-wider text-[#6b6a6b] group-focus-within:text-[#3f0e40] transition-colors">{label}</span>
+      {error && <span className="text-[10px] font-bold text-rose-500 animate-in fade-in slide-in-from-top-1">{error}</span>}
+    </div>
+    <div className={`
+      flex items-center gap-3 bg-[#f8f8f8] border-[1.5px] rounded-2xl px-5 transition-all duration-200
+      ${error ? 'border-rose-200 bg-rose-50/30' : 'border-transparent group-focus-within:border-[#3f0e40]/20 group-focus-within:bg-white group-focus-within:shadow-[0_0_0_4px_rgba(63,14,64,0.05)]'}
+    `}>
+      <span className={`${error ? 'text-rose-400' : 'text-[#6b6a6b] group-focus-within:text-[#3f0e40]'} transition-colors`}>{icon}</span>
       <input
         type={type}
         value={value}
+        placeholder={placeholder}
+        maxLength={maxLength}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full border-0 bg-transparent outline-none"
-        required
+        className="w-full h-14 bg-transparent outline-none text-[#1d1c1d] font-medium placeholder:text-[#6b6a6b]/40"
       />
     </div>
-  </label>
+  </div>
 );
 
 export default RegisterPage;

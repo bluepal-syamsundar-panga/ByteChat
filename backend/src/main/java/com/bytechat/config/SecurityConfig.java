@@ -63,7 +63,10 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/workspaces/send-otp", "/api/workspaces/verify-otp").permitAll()
+                        .requestMatchers("/api/workspaces/create").permitAll() 
                         .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/api/channels/**", "/api/rooms/**", "/api/users/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
                 )

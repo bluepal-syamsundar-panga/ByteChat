@@ -25,6 +25,10 @@ public class DirectMessage {
     @JoinColumn(name = "to_user_id", nullable = false)
     private User toUser;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "workspace_id")
+    private Workspace workspace;
+
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 

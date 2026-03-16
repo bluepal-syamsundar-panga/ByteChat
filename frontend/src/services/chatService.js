@@ -1,40 +1,32 @@
 import api from './api';
 
 const chatService = {
-  async getRooms(page = 0, size = 50) {
-    const response = await api.get(`/rooms?page=${page}&size=${size}`);
+  async getWorkspaces(page = 0, size = 50) {
+    const response = await api.get(`/workspaces?page=${page}&size=${size}`);
     return response.data;
   },
-  async createRoom(payload) {
-    const response = await api.post('/rooms', payload);
+  async createWorkspace(payload) { // Note: now handled primarily via workspaceService with OTP
+    const response = await api.post('/workspaces/create', payload);
     return response.data;
   },
-  async inviteUser(roomId, email) {
-    const response = await api.post(`/rooms/${roomId}/invite`, { email });
+  async inviteToWorkspace(workspaceId, email) {
+    const response = await api.post(`/workspaces/${workspaceId}/invite`, { email });
     return response.data;
   },
-  async joinRoom(roomId) {
-    const response = await api.post(`/rooms/${roomId}/join`);
+  async joinWorkspace(workspaceId) {
+    const response = await api.post(`/workspaces/${workspaceId}/join`);
     return response.data;
   },
-  async leaveRoom(roomId) {
-    const response = await api.post(`/rooms/${roomId}/leave`);
+  async getWorkspaceMembers(workspaceId) {
+    const response = await api.get(`/workspaces/${workspaceId}/members`);
     return response.data;
   },
-  async archiveRoom(roomId) {
-    const response = await api.post(`/rooms/${roomId}/archive`);
+  async getChannelMessages(channelId, page = 0, size = 50) {
+    const response = await api.get(`/messages/channel/${channelId}?page=${page}&size=${size}`);
     return response.data;
   },
-  async getRoomMessages(roomId, page = 0, size = 50) {
-    const response = await api.get(`/messages/room/${roomId}?page=${page}&size=${size}`);
-    return response.data;
-  },
-  async getRoomMembers(roomId) {
-    const response = await api.get(`/rooms/${roomId}/members`);
-    return response.data;
-  },
-  async sendRoomMessage(roomId, payload) {
-    const response = await api.post(`/messages/room/${roomId}`, payload);
+  async sendChannelMessage(channelId, payload) {
+    const response = await api.post(`/messages/channel/${channelId}`, payload);
     return response.data;
   },
   async editMessage(messageId, content) {
@@ -61,6 +53,14 @@ const chatService = {
         'Content-Type': 'multipart/form-data'
       }
     });
+    return response.data;
+  },
+  async archiveChannel(channelId) {
+    const response = await api.post(`/channels/${channelId}/archive`);
+    return response.data;
+  },
+  async markAsRead(messageId) {
+    const response = await api.post(`/messages/${messageId}/read`);
     return response.data;
   },
 };

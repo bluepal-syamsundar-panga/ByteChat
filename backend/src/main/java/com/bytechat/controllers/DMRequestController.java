@@ -19,11 +19,12 @@ public class DMRequestController {
 
     private final DMRequestService dmRequestService;
 
-    @PostMapping("/send/{receiverId}")
+    @PostMapping("/send/{workspaceId}/{receiverId}")
     public ResponseEntity<ApiResponse<DMRequestResponse>> sendRequest(
+            @PathVariable(name = "workspaceId") Long workspaceId,
             @PathVariable(name = "receiverId") Long receiverId,
             @AuthenticationPrincipal User sender) {
-        DMRequest request = dmRequestService.sendRequest(sender, receiverId);
+        DMRequest request = dmRequestService.sendRequest(workspaceId, sender, receiverId);
         return ResponseEntity.ok(ApiResponse.success(DMRequestResponse.fromEntity(request), "DM request sent successfully"));
     }
 

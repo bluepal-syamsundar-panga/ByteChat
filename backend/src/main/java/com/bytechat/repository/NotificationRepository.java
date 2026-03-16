@@ -15,8 +15,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByRecipientIdAndTypeAndRelatedEntityIdAndIsReadFalse(Long recipientId, String type, Long relatedEntityId);
     
     @Query("SELECT n FROM Notification n WHERE n.recipient.id = :userId AND n.type = 'MENTION' AND n.isRead = false " +
-           "AND n.relatedEntityId IN (SELECT m.id FROM Message m WHERE m.room.id = :roomId)")
-    List<Notification> findUnreadMentionsByRoom(@Param("userId") Long userId, @Param("roomId") Long roomId);
+           "AND n.relatedEntityId IN (SELECT m.id FROM Message m WHERE m.channel.workspace.id = :workspaceId)")
+    List<Notification> findUnreadMentionsByWorkspace(@Param("userId") Long userId, @Param("workspaceId") Long workspaceId);
 
     @Query("SELECT n FROM Notification n WHERE n.recipient.id = :userId AND n.type = 'DIRECT_MESSAGE' AND n.isRead = false " +
            "AND n.relatedEntityId IN (SELECT dm.id FROM DirectMessage dm WHERE dm.fromUser.id = :senderId)")

@@ -6,7 +6,7 @@ import com.bytechat.entity.User;
 import java.util.List;
 
 public interface DMRequestService {
-    DMRequest sendRequest(User sender, Long receiverId);
+    DMRequest sendRequest(Long workspaceId, User sender, Long receiverId);
     DMRequest acceptRequest(User receiver, Long requestId);
     void rejectRequest(User receiver, Long requestId);
     List<DMRequest> getPendingRequests(User user);

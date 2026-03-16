@@ -26,29 +26,29 @@ public class MessageController {
     private final MessageService messageService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    @GetMapping("/room/{roomId}") 
-    @Operation(summary = "Get room messages", description = "Retrieves a paginated list of messages for a specific room.")
-    public ResponseEntity<ApiResponse<Page<MessageResponse>>> getRoomMessages(
-            @PathVariable(name = "roomId") Long roomId,
+    @GetMapping("/channel/{channelId}") 
+    @Operation(summary = "Get channel messages", description = "Retrieves a paginated list of messages for a specific channel.")
+    public ResponseEntity<ApiResponse<Page<MessageResponse>>> getChannelMessages(
+            @PathVariable(name = "channelId") Long channelId,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "50") int size,
             @AuthenticationPrincipal User currentUser) {
-        log.info("Fetching messages for room ID: {}", roomId);
-        Page<MessageResponse> messages = messageService.getRoomMessages(roomId, page, size, currentUser);
+        log.info("Fetching messages for channel ID: {}", channelId);
+        Page<MessageResponse> messages = messageService.getRoomMessages(channelId, page, size, currentUser);
         return ResponseEntity.ok(ApiResponse.success(messages, "Messages fetched successfully"));
     }
 
-    @PostMapping("/room/{roomId}")
-    @Operation(summary = "Send message", description = "Sends a new message to the specified room.")
+    @PostMapping("/channel/{channelId}")
+    @Operation(summary = "Send message", description = "Sends a new message to the specified channel.")
     public ResponseEntity<ApiResponse<MessageResponse>> sendMessage(
-            @PathVariable(name = "roomId") Long roomId,
+            @PathVariable(name = "channelId") Long channelId,
             @Valid @RequestBody MessageRequest request,
             @AuthenticationPrincipal User currentUser) {
-        log.info("Sending message to room ID: {}", roomId);
-        MessageResponse response = messageService.sendMessage(roomId, request, currentUser);
+        log.info("Sending message to channel ID: {}", channelId);
+        MessageResponse response = messageService.sendMessage(channelId, request, currentUser);
         
         // Broadcast via WebSocket
-        messagingTemplate.convertAndSend("/topic/room/" + roomId, response);
+        messagingTemplate.convertAndSend("/topic/channel/" + channelId, response);
         
         return ResponseEntity.ok(ApiResponse.success(response, "Message sent successfully"));
     }
@@ -61,8 +61,12 @@ public class MessageController {
         log.info("Editing message with ID: {}", messageId);
         MessageResponse response = messageService.editMessage(messageId, request, currentUser);
         
-        // Broadcast update
-        messagingTemplate.convertAndSend("/topic/room/" + response.getRoomId(), response);
+        // Broadcast update to channel topic (frontend subscribes to channel topics)
+        if (response.getChannelId() != null) {
+            messagingTemplate.convertAndSend("/topic/channel/" + response.getChannelId(), response);
+        } else if (response.getRoomId() != null) {
+            messagingTemplate.convertAndSend("/topic/room/" + response.getRoomId(), response);
+        }
         
         return ResponseEntity.ok(ApiResponse.success(response, "Message edited successfully"));
     }
@@ -72,17 +76,24 @@ public class MessageController {
             @PathVariable(name = "messageId") Long messageId,
             @AuthenticationPrincipal User currentUser) {
         log.info("Deleting message with ID: {}", messageId);
+        MessageResponse response = messageService.deleteMessage(messageId, currentUser);
         
-        // We need the room ID to broadcast the deletion
-        // MessageService doesn't return it on delete usually, but we can broadcast a specific 'deleted' event
-        // For now, let's assume the client gets the update if we broadcast a skeleton response or similar
-        // A better way is to return the MessageResponse with isDeleted=true
-        messageService.deleteMessage(messageId, currentUser);
-        
-        // Note: Simple delete broadcast is tricky without the roomId. 
-        // In a real app, deleteMessage would return the deleted object's ID and RoomID.
+        // Broadcast update to channel topic
+        if (response.getChannelId() != null) {
+            messagingTemplate.convertAndSend("/topic/channel/" + response.getChannelId(), response);
+        } else if (response.getRoomId() != null) {
+            messagingTemplate.convertAndSend("/topic/room/" + response.getRoomId(), response);
+        }
         
         return ResponseEntity.ok(ApiResponse.success(null, "Message deleted successfully"));
+    }
+
+    @PostMapping("/{messageId}/read")
+    public ResponseEntity<ApiResponse<Void>> markAsRead(
+            @PathVariable(name = "messageId") Long messageId,
+            @AuthenticationPrincipal User currentUser) {
+        messageService.markAsRead(messageId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null, "Message marked as read"));
     }
 
     @PostMapping("/{messageId}/pin")
@@ -93,8 +104,12 @@ public class MessageController {
         log.info("Toggling pin for message ID: {}", messageId);
         MessageResponse response = messageService.pinMessage(messageId, currentUser);
         
-        // Broadcast update
-        messagingTemplate.convertAndSend("/topic/room/" + response.getRoomId(), response);
+        // Broadcast update to channel topic (frontend subscribes to channel topics)
+        if (response.getChannelId() != null) {
+            messagingTemplate.convertAndSend("/topic/channel/" + response.getChannelId(), response);
+        } else if (response.getRoomId() != null) {
+            messagingTemplate.convertAndSend("/topic/room/" + response.getRoomId(), response);
+        }
         
         return ResponseEntity.ok(ApiResponse.success(response, "Message pin toggled"));
     }

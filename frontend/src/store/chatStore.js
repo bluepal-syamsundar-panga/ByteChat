@@ -1,16 +1,23 @@
 import { create } from 'zustand';
 
 const useChatStore = create((set) => ({
-  rooms: [],
+  workspaces: [],
+  rooms: [], // Kept for backward compatibility during transition if needed, but will alias to workspaces
+  channels: [],
   users: [],
   onlineUsers: [],
   notifications: [],
   sharedUsers: [],
+  activeWorkspaceId: null,
   activeThread: null,
   roomMessages: {},
+  channelMessages: {},
   dmMessages: {},
-  typingByRoom: {},
-  setRooms: (rooms) => set({ rooms }),
+  typingByWorkspace: {},
+  setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id }),
+  setWorkspaces: (workspaces) => set({ workspaces, rooms: workspaces }),
+  setRooms: (rooms) => set({ rooms, workspaces: rooms }), // Legacy support
+  setChannels: (channels) => set({ channels }),
   setUsers: (users) => set({ users }),
   setOnlineUsers: (onlineUsers) => set({ onlineUsers }),
   setSharedUsers: (sharedUsers) => set({ sharedUsers }),
@@ -23,6 +30,8 @@ const useChatStore = create((set) => ({
   setActiveThread: (activeThread) => set({ activeThread }),
   setRoomMessages: (roomId, messages) =>
     set((state) => ({ roomMessages: { ...state.roomMessages, [roomId]: messages } })),
+  setChannelMessages: (channelId, messages) =>
+    set((state) => ({ channelMessages: { ...state.channelMessages, [channelId]: messages } })),
   appendRoomMessage: (roomId, message) =>
     set((state) => ({
       roomMessages: {
@@ -30,11 +39,25 @@ const useChatStore = create((set) => ({
         [roomId]: dedupe([...(state.roomMessages[roomId] ?? []), message]),
       },
     })),
+  appendChannelMessage: (channelId, message) =>
+    set((state) => ({
+      channelMessages: {
+        ...state.channelMessages,
+        [channelId]: dedupe([...(state.channelMessages[channelId] ?? []), message]),
+      },
+    })),
   upsertRoomMessage: (roomId, message) =>
     set((state) => ({
       roomMessages: {
         ...state.roomMessages,
         [roomId]: dedupe([...(state.roomMessages[roomId] ?? []).filter((item) => item.id !== message.id), message]),
+      },
+    })),
+  upsertChannelMessage: (channelId, message) =>
+    set((state) => ({
+      channelMessages: {
+        ...state.channelMessages,
+        [channelId]: dedupe([...(state.channelMessages[channelId] ?? []).filter((item) => item.id !== message.id), message]),
       },
     })),
   setDmMessages: (userId, messages) =>
@@ -46,11 +69,11 @@ const useChatStore = create((set) => ({
         [userId]: dedupe([...(state.dmMessages[userId] ?? []), message]),
       },
     })),
-  setTyping: (roomId, typingState) =>
+  setTyping: (workspaceId, typingState) =>
     set((state) => ({
-      typingByRoom: {
-        ...state.typingByRoom,
-        [roomId]: { ...(state.typingByRoom[roomId] ?? {}), ...typingState },
+      typingByWorkspace: {
+        ...state.typingByWorkspace,
+        [workspaceId]: { ...(state.typingByWorkspace[workspaceId] ?? {}), ...typingState },
       },
     })),
 }));

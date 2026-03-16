@@ -83,7 +83,10 @@ const MessageBubble = ({ message, isSelected, onClick }) => {
         <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
           <div className="flex items-center gap-2">
             {!isMine && <div className="truncate text-xs font-bold">{message.senderName}</div>}
-            <div className="text-[10px] text-[#6b6a6b]">{formatMessageTimestamp(message.sentAt)}</div>
+            <div className="text-[10px] text-[#6b6a6b]">
+              {formatMessageTimestamp(message.sentAt)}
+              {message.editedAt && <span className="ml-1 italic">(edited)</span>}
+            </div>
           </div>
 
           <div className={`mt-1 inline-block px-4 py-2 text-sm shadow-sm ${isMine ? 'bg-[#3f0e40] text-white' : 'bg-black/5 text-[#1d1c1d]'}`}>
@@ -106,6 +109,12 @@ const MessageBubble = ({ message, isSelected, onClick }) => {
                   {count > 1 && <span className="text-[#6b6a6b]">{count}</span>}
                 </div>
               ))}
+            </div>
+          )}
+
+          {isMine && message.readCount > 0 && (
+            <div className="mt-1 text-[10px] text-[#6b6a6b] italic">
+              Seen by {message.readCount}
             </div>
           )}
         </div>

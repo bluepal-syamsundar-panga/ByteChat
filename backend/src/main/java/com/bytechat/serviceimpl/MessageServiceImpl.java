@@ -3,14 +3,16 @@ package com.bytechat.serviceimpl;
 import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.dto.response.ReactionResponse;
+import com.bytechat.entity.Channel;
 import com.bytechat.entity.Message;
-import com.bytechat.entity.Room;
-import com.bytechat.entity.RoomMember;
+import com.bytechat.entity.WorkspaceMember;
 import com.bytechat.entity.User;
+import com.bytechat.entity.MessageRead;
+import com.bytechat.repository.ChannelRepository;
+import com.bytechat.repository.MessageReadRepository;
 import com.bytechat.repository.MessageRepository;
 import com.bytechat.repository.ReactionRepository;
-import com.bytechat.repository.RoomMemberRepository;
-import com.bytechat.repository.RoomRepository;
+import com.bytechat.repository.WorkspaceMemberRepository;
 import com.bytechat.services.MessageService;
 import com.bytechat.services.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -34,28 +36,35 @@ import java.util.regex.Pattern;
 public class MessageServiceImpl implements MessageService {
 
     private final MessageRepository messageRepository;
-    private final RoomRepository roomRepository;
-    private final RoomMemberRepository roomMemberRepository;
+    private final ChannelRepository channelRepository;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
     private final ReactionRepository reactionRepository;
     private final NotificationService notificationService;
+    private final MessageReadRepository messageReadRepository;
 
     private static final Pattern MENTION_PATTERN = Pattern.compile("@([A-Za-z0-9._-]+)");
 
     @Override
     @Transactional
-    public MessageResponse sendMessage(Long roomId, MessageRequest request, User sender) {
-        log.info("Attempting to send message to room {} by user {}", roomId, sender.getEmail());
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+    public MessageResponse sendMessage(Long channelId, MessageRequest request, User sender) {
+        log.info("Attempting to send message to channel {} by user {}", channelId, sender.getEmail());
+        Channel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new RuntimeException("Channel not found"));
+        
+        if (channel.isArchived()) {
+            throw new RuntimeException("Cannot send message to an archived channel");
+        }
+        
+        Long workspaceId = channel.getWorkspace().getId();
                 
-        // Ensure user is member
-        if (!roomMemberRepository.existsByRoomIdAndUserId(roomId, sender.getId())) {
-            log.warn("User {} is not a member of room {}", sender.getEmail(), roomId);
-            throw new RuntimeException("User is not a member of this room");
+        // Ensure user is member of the workspace
+        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, sender.getId())) {
+            log.warn("User {} is not a member of workspace {}", sender.getEmail(), workspaceId);
+            throw new RuntimeException("User is not a member of this workspace");
         }
 
         Message message = Message.builder()
-                .room(room)
+                .channel(channel)
                 .sender(sender)
                 .content(request.getContent())
                 .type(request.getType() != null ? request.getType() : "TEXT")
@@ -72,22 +81,26 @@ public class MessageServiceImpl implements MessageService {
             log.info("Message {} updated with {} mentions", message.getId(), mentionedIds.size());
         } catch (Exception e) {
             log.error("Failed to process mentions for message {}: {}", message.getId(), e.getMessage());
-            // We don't rethrow to allow the message itself to be sent
         }
         
         return mapToResponse(message);
     }
 
     @Override
-    public Page<MessageResponse> getRoomMessages(Long roomId, int page, int size, User currentUser) {
-        // Ensure joined
-        if (!roomMemberRepository.existsByRoomIdAndUserId(roomId, currentUser.getId())) {
-             throw new RuntimeException("User is not a member of this room");
+    public Page<MessageResponse> getRoomMessages(Long channelId, int page, int size, User currentUser) {
+        Channel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new RuntimeException("Channel not found"));
+        
+        Long workspaceId = channel.getWorkspace().getId();
+        
+        // Ensure joined workspace
+        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, currentUser.getId())) {
+             throw new RuntimeException("User is not a member of this workspace");
         }
         
-        Page<MessageResponse> messages = messageRepository.findByRoomIdOrderBySentAtDesc(roomId, PageRequest.of(page, size))
+        Page<MessageResponse> messages = messageRepository.findByChannelIdOrderBySentAtDesc(channelId, PageRequest.of(page, size))
                 .map(this::mapToResponse);
-        log.info("Fetched {} messages for room {}", messages.getNumberOfElements(), roomId);
+        log.info("Fetched {} messages for channel {}", messages.getNumberOfElements(), channelId);
         return messages;
     }
 
@@ -111,7 +124,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     @Transactional
-    public void deleteMessage(Long messageId, User currentUser) {
+    public MessageResponse deleteMessage(Long messageId, User currentUser) {
         Message message = getMessageOrThrow(messageId);
         
         if (!message.getSender().getId().equals(currentUser.getId())) {
@@ -119,7 +132,21 @@ public class MessageServiceImpl implements MessageService {
         }
         
         message.setDeleted(true);
-        messageRepository.save(message);            
+        Message savedMessage = messageRepository.save(message);
+        return mapToResponse(savedMessage);
+    }
+
+    @Override
+    @Transactional
+    public void markAsRead(Long messageId, User currentUser) {
+        if (!messageReadRepository.existsByMessageIdAndUserId(messageId, currentUser.getId())) {
+            Message message = getMessageOrThrow(messageId);
+            MessageRead messageRead = MessageRead.builder()
+                    .message(message)
+                    .user(currentUser)
+                    .build();
+            messageReadRepository.save(messageRead);
+        }
     }
 
     @Override
@@ -127,8 +154,8 @@ public class MessageServiceImpl implements MessageService {
     public MessageResponse pinMessage(Long messageId, User currentUser) {
          Message message = getMessageOrThrow(messageId);
          // Any member can pin a message
-         if (!roomMemberRepository.existsByRoomIdAndUserId(message.getRoom().getId(), currentUser.getId())) {
-             throw new RuntimeException("Must be a member to pin messages");
+         if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(message.getChannel().getWorkspace().getId(), currentUser.getId())) {
+             throw new RuntimeException("Must be a member of the workspace to pin messages");
          }
          
          message.setPinned(!message.isPinned()); // Toggle
@@ -141,9 +168,10 @@ public class MessageServiceImpl implements MessageService {
     }
 
     private MessageResponse mapToResponse(Message message) {
-        return MessageResponse.builder()
+        MessageResponse response = MessageResponse.builder()
                 .id(message.getId())
-                .roomId(message.getRoom().getId())
+                .roomId(message.getChannel().getWorkspace().getId())
+                .channelId(message.getChannel().getId())
                 .senderId(message.getSender().getId())
                 .senderName(message.getSender().getDisplayName())
                 .senderAvatar(message.getSender().getAvatarUrl())
@@ -163,18 +191,25 @@ public class MessageServiceImpl implements MessageService {
                                 .build())
                         .collect(Collectors.toList()))
                 .build();
+        
+        response.setReadCount((int) messageReadRepository.findByMessageId(message.getId()).stream()
+                .map(mr -> mr.getUser().getDisplayName())
+                .distinct()
+                .count());
+        
+        return response;
     }
 
     private List<Long> notifyMentionedUsers(Message message, User sender) {
         List<Long> mentionedUserIds = new ArrayList<>();
-        List<RoomMember> members = roomMemberRepository.findByRoomId(message.getRoom().getId());
+        List<WorkspaceMember> members = workspaceMemberRepository.findByWorkspaceId(message.getChannel().getWorkspace().getId());
         Matcher matcher = MENTION_PATTERN.matcher(message.getContent());
 
         while (matcher.find()) {
             String mentionToken = normalize(matcher.group(1));
 
             members.stream()
-                    .map(RoomMember::getUser)
+                    .map(WorkspaceMember::getUser)
                     .filter(user -> !user.getId().equals(sender.getId()))
                     .filter(user -> normalize(user.getDisplayName()).equals(mentionToken))
                     .findFirst()
@@ -183,7 +218,7 @@ public class MessageServiceImpl implements MessageService {
                         notificationService.sendNotification(
                                 user.getId(),
                                 "MENTION",
-                                sender.getDisplayName() + " mentioned you in #" + message.getRoom().getName(),
+                                sender.getDisplayName() + " mentioned you in #" + message.getChannel().getName(),
                                 message.getId()
                         );
                     });

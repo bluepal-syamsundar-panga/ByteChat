@@ -4,7 +4,6 @@ import com.bytechat.config.JwtService;
 import com.bytechat.dto.request.AuthRequest;
 import com.bytechat.dto.request.RefreshTokenRequest;
 import com.bytechat.dto.response.AuthResponse;
-import com.bytechat.entity.Role;
 import com.bytechat.entity.User;
 import com.bytechat.repository.UserRepository;
 import com.bytechat.services.AuthService;
@@ -25,24 +24,30 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final com.bytechat.services.OtpService otpService;
 
     @Override
     @Transactional
-    public AuthResponse register(AuthRequest request) {
+    public AuthResponse register(AuthRequest request, String otpCode) {
+        if (!otpService.verifyOtp(request.getEmail(), otpCode)) {
+            throw new IllegalArgumentException("Invalid or expired OTP");
+        }
+
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already taken");
+            throw new IllegalArgumentException("Email already taken");
         }
 
         User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .displayName(request.getDisplayName())
-                .role(Role.MEMBER)
+                .role(com.bytechat.entity.Role.MEMBER)
                 .lastSeen(LocalDateTime.now())
                 .online(true)
                 .build();
 
         userRepository.save(user);
+        otpService.clearOtp(request.getEmail());
 
         String accessToken = jwtService.generateToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
@@ -61,15 +66,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse login(AuthRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    )
+            );
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         user.setOnline(true);
         user.setLastSeen(LocalDateTime.now());
@@ -96,10 +105,10 @@ public class AuthServiceImpl implements AuthService {
         String email = jwtService.extractUsername(refreshToken);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         if (!jwtService.isTokenValid(refreshToken, user)) {
-            throw new RuntimeException("Invalid refresh token");
+            throw new IllegalArgumentException("Invalid refresh token");
         }
 
         String newAccessToken = jwtService.generateToken(user);
@@ -114,5 +123,36 @@ public class AuthServiceImpl implements AuthService {
                 user.getId(),
                 user.getRole().name()
         );
+    }
+
+    @Override
+    public void sendRegistrationOtp(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email already registered");
+        }
+        otpService.generateAndSendOtp(email, com.bytechat.entity.OtpType.REGISTRATION);
+    }
+
+    @Override
+    public void sendForgotPasswordOtp(String email) {
+        if (!userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("No account found with this email");
+        }
+        otpService.generateAndSendOtp(email, com.bytechat.entity.OtpType.PASSWORD_RESET);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(com.bytechat.dto.request.PasswordResetRequest request) {
+        if (!otpService.verifyOtp(request.getEmail(), request.getCode())) {
+            throw new IllegalArgumentException("Invalid or expired OTP");
+        }
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        otpService.clearOtp(request.getEmail());
     }
 }

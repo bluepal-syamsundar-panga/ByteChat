@@ -2,8 +2,10 @@ package com.bytechat.controllers;
 
 import com.bytechat.dto.response.ApiResponse;
 import com.bytechat.dto.response.NotificationResponse;
+import com.bytechat.entity.Notification;
 import com.bytechat.entity.User;
-import com.bytechat.services.RoomService;
+import com.bytechat.services.ChannelService;
+import com.bytechat.services.WorkspaceService;
 import com.bytechat.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +22,8 @@ import java.util.List;
 public class NotificationController {
 
     private final NotificationService notificationService;
-    private final RoomService roomService;
+    private final WorkspaceService workspaceService;
+    private final ChannelService channelService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNotifications(
@@ -50,16 +53,22 @@ public class NotificationController {
     public ResponseEntity<ApiResponse<Void>> acceptNotification(
             @PathVariable(name = "notificationId") Long notificationId,
             @AuthenticationPrincipal User currentUser) {
-        roomService.acceptInvite(notificationId, currentUser);
+        
+        Notification notification = notificationService.getNotification(notificationId);
+        if ("CHANNEL_INVITE".equals(notification.getType())) {
+            channelService.acceptInvite(notificationId, currentUser);
+        } else {
+            workspaceService.acceptInvite(notificationId, currentUser);
+        }
         return ResponseEntity.ok(ApiResponse.success(null, "Invite accepted"));
     }
 
-    @PutMapping("/mark-room-read/{roomId}")
-    public ResponseEntity<ApiResponse<Void>> markRoomRead(
-            @PathVariable(name = "roomId") Long roomId,
+    @PutMapping("/mark-workspace-read/{workspaceId}")
+    public ResponseEntity<ApiResponse<Void>> markWorkspaceRead(
+            @PathVariable(name = "workspaceId") Long workspaceId,
             @AuthenticationPrincipal User currentUser) {
-        notificationService.markRoomNotificationsAsRead(currentUser.getId(), roomId);
-        return ResponseEntity.ok(ApiResponse.success(null, "Room notifications marked as read"));
+        notificationService.markWorkspaceNotificationsAsRead(currentUser.getId(), workspaceId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Workspace notifications marked as read"));
     }
 
     @PutMapping("/mark-dm-read/{senderId}")

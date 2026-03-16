@@ -2,6 +2,7 @@ package com.bytechat.serviceimpl;
 
 import com.bytechat.dto.request.UpdateProfileRequest;
 import com.bytechat.dto.response.UserResponse;
+import com.bytechat.entity.DMRequestStatus;
 import com.bytechat.entity.User;
 import com.bytechat.repository.UserRepository;
 import com.bytechat.services.CloudinaryService;
@@ -67,7 +68,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserResponse> getSharedRoomUsers(Long userId) {
-        return userRepository.findUsersSharingRoomWith(userId).stream()
+        return userRepository.findUsersSharingRoomWith(userId, DMRequestStatus.ACCEPTED).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -80,7 +81,7 @@ public class UserServiceImpl implements UserService {
                 .avatarUrl(user.getAvatarUrl())
                 .lastSeen(user.getLastSeen())
                 .online(user.isOnline())
-                .role(user.getRole().name())
+                .role(user.getRole() != null ? user.getRole().name() : "MEMBER")
                 .build();
     }
 }

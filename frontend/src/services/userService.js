@@ -27,6 +27,10 @@ const userService = {
     });
     return response.data;
   },
+  async getChannelMembers(channelId) {
+    const response = await api.get(`/channels/${channelId}/members`);
+    return response.data;
+  },
   async getSharedRoomUsers() {
     const response = await api.get('/users/shared');
     return response.data;

@@ -13,6 +13,10 @@ import java.util.Optional;
 public interface DMRequestRepository extends JpaRepository<DMRequest, Long> {
     List<DMRequest> findByReceiverAndStatus(User receiver, DMRequestStatus status);
     List<DMRequest> findBySenderAndStatus(User sender, DMRequestStatus status);
-    Optional<DMRequest> findBySenderAndReceiver(User sender, User receiver);
+    Optional<DMRequest> findByWorkspaceIdAndSenderIdAndReceiverId(Long workspaceId, Long senderId, Long receiverId);
+    boolean existsByWorkspaceIdAndSenderIdAndReceiverIdAndStatus(Long workspaceId, Long senderId, Long receiverId, DMRequestStatus status);
     boolean existsBySenderAndReceiverAndStatus(User sender, User receiver, DMRequestStatus status);
+    
+    // Legacy support or fallback
+    List<DMRequest> findByWorkspaceIdAndReceiverAndStatus(Long workspaceId, User receiver, DMRequestStatus status);
 }

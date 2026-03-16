@@ -9,12 +9,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder(toBuilder = true)
 public class MessageResponse {
     private Long id;
     private Long roomId;
+    private Long channelId;
     private Long senderId;
     private String senderName;
     private String senderAvatar;
@@ -26,4 +27,5 @@ public class MessageResponse {
     private LocalDateTime sentAt;
     private List<Long> mentionedUserIds;
     private List<ReactionResponse> reactions;
+    private int readCount;
 }

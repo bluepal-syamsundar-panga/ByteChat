@@ -8,25 +8,25 @@ import DMPanel from '../Common/DMPanel';
 const AppRail = ({ onCreateRoom }) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { notifications, rooms } = useChatStore();
+  const { notifications, workspaces } = useChatStore();
 
   const handleHomeClick = () => {
-    if (rooms && rooms.length > 0) {
-      navigate(`/chat/room/${rooms[0].id}`);
+    if (workspaces && workspaces.length > 0) {
+      navigate(`/chat/workspace/${workspaces[0].id}`);
     } else {
       navigate('/profile');
     }
   };
 
-  const unreadDMs = notifications.filter(
-    (n) => n.type === 'DIRECT_MESSAGE' && !(n.read || n.isRead)
-  ).length;
+  const firstWorkspaceInitials = (workspaces && workspaces.length > 0) 
+    ? workspaces[0].name.substring(0, 2).toUpperCase() 
+    : 'BC';
 
   return (
     <div className="flex h-full w-[68px] flex-col items-center bg-[#2c0b2e] py-4 text-white">
       {/* Branding */}
       <div className="mb-6 flex h-10 w-10 items-center justify-center bg-[#3f0e40] text-sm font-bold border border-white/10">
-        BT
+        {firstWorkspaceInitials}
       </div>
 
       <div className="flex flex-1 flex-col items-center gap-6">
@@ -34,16 +34,16 @@ const AppRail = ({ onCreateRoom }) => {
         <button
           onClick={handleHomeClick}
           className="flex h-10 w-10 items-center justify-center text-white/70 transition hover:bg-white/10 hover:text-white"
-          title="Home - First Room"
+          title="Home - First Workspace"
         >
           <Home size={22} />
         </button>
 
-        {/* Create Room */}
+        {/* Create Workspace */}
         <button
           onClick={onCreateRoom}
           className="flex h-10 w-10 items-center justify-center transition hover:bg-white/10"
-          title="Create Room"
+          title="Create Workspace"
         >
           <Plus size={22} />
         </button>

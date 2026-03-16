@@ -3,8 +3,10 @@ package com.bytechat.serviceimpl;
 import com.bytechat.entity.DMRequest;
 import com.bytechat.entity.DMRequestStatus;
 import com.bytechat.entity.User;
+import com.bytechat.entity.Workspace;
 import com.bytechat.repository.DMRequestRepository;
 import com.bytechat.repository.UserRepository;
+import com.bytechat.repository.WorkspaceRepository;
 import com.bytechat.services.DMRequestService;
 import com.bytechat.services.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -22,11 +24,15 @@ public class DMRequestServiceImpl implements DMRequestService {
 
     private final DMRequestRepository dmRequestRepository;
     private final UserRepository userRepository;
+    private final WorkspaceRepository workspaceRepository;
     private final NotificationService notificationService;
 
     @Override
     @Transactional
-    public DMRequest sendRequest(User sender, Long receiverId) {
+    public DMRequest sendRequest(Long workspaceId, User sender, Long receiverId) {
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+                .orElseThrow(() -> new RuntimeException("Workspace not found"));
+        
         User receiver = userRepository.findById(receiverId)
                 .orElseThrow(() -> new RuntimeException("Receiver not found"));
 
@@ -35,15 +41,16 @@ public class DMRequestServiceImpl implements DMRequestService {
             throw new IllegalArgumentException("Cannot send DM request to yourself");
         }
 
-        // Check for existing request
-        dmRequestRepository.findBySenderAndReceiver(sender, receiver).ifPresent(req -> {
+        // Check for existing request in this workspace
+        dmRequestRepository.findByWorkspaceIdAndSenderIdAndReceiverId(workspaceId, sender.getId(), receiverId).ifPresent(req -> {
             if (req.getStatus() == DMRequestStatus.PENDING) {
-                log.warn("User {} tried to send duplicate DM request to {}", sender.getId(), receiverId);
-                throw new IllegalArgumentException("Request already pending");
+                log.warn("User {} tried to send duplicate DM request to {} in workspace {}", sender.getId(), receiverId, workspaceId);
+                throw new IllegalArgumentException("Request already pending in this workspace");
             }
         });
 
         DMRequest request = DMRequest.builder()
+                .workspace(workspace)
                 .sender(sender)
                 .receiver(receiver)
                 .status(DMRequestStatus.PENDING)

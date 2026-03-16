@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class DirectMessageController {
 
     private final DirectMessageService dmService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @GetMapping("/{userId}")
     public ResponseEntity<ApiResponse<Page<MessageResponse>>> getDirectMessages(
@@ -39,6 +41,11 @@ public class DirectMessageController {
             @AuthenticationPrincipal User currentUser) {
         log.info("Sending direct message from current user {} to user ID: {}", currentUser.getId(), userId);
         MessageResponse response = dmService.sendDirectMessage(userId, request, currentUser);
+        
+        // Broadcast via WebSocket to both users
+        messagingTemplate.convertAndSend("/topic/dm/" + currentUser.getId(), response);
+        messagingTemplate.convertAndSend("/topic/dm/" + userId, response);
+        
         return ResponseEntity.ok(ApiResponse.success(response, "DM sent successfully"));
     }
 

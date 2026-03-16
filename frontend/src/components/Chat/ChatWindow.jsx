@@ -1,11 +1,16 @@
 import { Hash, Pin, Users, MoreVertical, SmilePlus, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EmojiPicker from 'emoji-picker-react';
+import { useNavigate } from 'react-router-dom';
 import chatService from '../../services/chatService';
+import userService from '../../services/userService';
+import channelService from '../../services/channelService';
 import {
   connectWebSocket,
+  publishChannelMessage,
   publishRoomMessage,
   publishTyping,
+  subscribeToChannel,
   subscribeToRoom,
   subscribeToTyping,
 } from '../../services/websocket';
@@ -17,19 +22,24 @@ import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import TypingIndicator from './TypingIndicator';
 
-const ChatWindow = ({ room }) => {
+const ChatWindow = ({ room, channel }) => {
+  const navigate = useNavigate();
   const currentUser = useAuthStore((state) => state.user);
   const {
     roomMessages,
+    channelMessages,
     onlineUsers,
-    typingByRoom,
+    typingByWorkspace,
     setRoomMessages,
+    setChannelMessages,
     appendRoomMessage,
+    appendChannelMessage,
     upsertRoomMessage,
+    upsertChannelMessage,
     setTyping,
   } = useChatStore();
   const [loading, setLoading] = useState(true);
-  const [roomMembers, setRoomMembers] = useState([]);
+  const [members, setMembers] = useState([]);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -42,8 +52,36 @@ const ChatWindow = ({ room }) => {
   const menuRef = useRef(null);
   const emojiPickerRef = useRef(null);
   
+  useEffect(() => {
+    if (room && !channel) {
+      // If we only have room, fetch channels and pick #general or first one
+      console.log('Fetching channels for room:', room.id);
+      channelService.getWorkspaceChannels(room.id).then(res => {
+         const foundChannels = res.data.data || res.data; // Handle different response structures
+         const channelsList = Array.isArray(foundChannels) ? foundChannels : [];
+         if (channelsList.length > 0) {
+            const general = channelsList.find(c => c.name === 'general') || channelsList[0];
+            console.log('Redirecting to channel:', general.id);
+            navigate(`/chat/channel/${general.id}`, { replace: true });
+         }
+      }).catch(err => {
+        console.error('Failed to redirect to channel', err);
+        // If 403, might be token issue. Let's trace.
+        if (err.response?.status === 403) {
+          console.warn('403 Forbidden on workspace channels. Checking auth state...');
+          console.log('Current token:', useAuthStore.getState().accessToken);
+        }
+      });
+    }
+  }, [room, channel, navigate]);
+
   const roomId = room?.id;
-  const messages = roomMessages[roomId] ?? [];
+  const channelId = channel?.id;
+  const workspaceId = channel?.workspaceId || room?.id;
+  const entityId = channelId || roomId;
+  const entityType = channelId ? 'channel' : 'room';
+  
+  const messages = (channelId ? channelMessages[channelId] : roomMessages[roomId]) ?? [];
   const selectedMessage = useMemo(() => 
     messages.find(m => m.id === selectedMessageId), 
     [messages, selectedMessageId]
@@ -67,66 +105,96 @@ const ChatWindow = ({ room }) => {
   }, []);
 
   useEffect(() => {
-    if (!roomId) {
+    if (!entityId) {
       return;
     }
 
     let mounted = true;
     setLoading(true);
 
-    async function loadRoom() {
+    async function loadData() {
       try {
-        const [messagesResponse, membersResponse] = await Promise.all([
-          chatService.getRoomMessages(roomId),
-          chatService.getRoomMembers(roomId),
-        ]);
-        if (!mounted) {
-          return;
+        if (entityType !== 'channel') {
+           setLoading(false);
+           return;
         }
 
-        const newMessages = [...(messagesResponse.data?.content ?? [])].reverse();
-        setRoomMessages(roomId, newMessages);
-        setRoomMembers(membersResponse.data ?? []);
+        const messagesResponse = await chatService.getChannelMessages(entityId);
+        if (!mounted) return;
 
-        // Auto-clear room notifications (mentions)
+        // chatService returns response.data (ApiResponse { data: Page<MessageResponse> })
+        const messagesData = messagesResponse?.data?.data || messagesResponse?.data || messagesResponse;
+        const newMessages = [...(messagesData.content ?? messagesData ?? [])].reverse();
+        console.log('Loaded', newMessages.length, 'messages for channel', entityId);
+        setChannelMessages(entityId, newMessages);
+
+        // Fetch members separately — failure here must NOT block message display
         try {
-          await notificationService.markRoomRead(roomId);
-          // Update local store to remove these from panels
+          const membersResponse = await userService.getChannelMembers(entityId);
+          // userService returns ApiResponse { data: UserResponse[] }; so .data = array
+          const membersList = Array.isArray(membersResponse?.data) ? membersResponse.data : [];
+          setMembers(membersList);
+        } catch (memberErr) {
+          console.warn('Could not load channel members:', memberErr?.response?.status);
+          if (channel?.memberCount !== undefined) {
+            setMembers(new Array(channel.memberCount).fill({}));
+          }
+        }
+
+        // Auto-clear notifications
+        try {
+          await notificationService.markRoomRead(entityId); // Assuming markRoomRead handles both or needs update
           const { setNotifications } = useChatStore.getState();
           setNotifications(prev => prev.map(n => 
-            (n.type === 'MENTION' && n.relatedEntityId === roomId) ? { ...n, isRead: true, read: true } : n
+            (n.relatedEntityId === entityId) ? { ...n, isRead: true, read: true } : n
           ));
         } catch (e) {
-          console.error('Failed to clear room notifications', e);
+          console.error('Failed to clear notifications', e);
         }
 
-        // Instant scroll on room switch
         setTimeout(() => {
           scrollToBottom('auto');
         }, 50);
 
         connectWebSocket(() => {
-          subscribeToRoom(roomId, (message) => {
-            console.log('[DEBUG] Received message via WebSocket:', message);
-            if (mounted) {
-              const container = messageContainerRef.current;
-              const isAtBottom = container ? (container.scrollHeight - container.scrollTop <= container.clientHeight + 100) : true;
-              
-              appendRoomMessage(roomId, message);
-              
-              if (isAtBottom) {
-                setTimeout(() => scrollToBottom('smooth'), 50);
+          if (entityType === 'channel') {
+            subscribeToChannel(entityId, (message) => {
+              if (mounted) {
+                const container = messageContainerRef.current;
+                const isAtBottom = container ? (container.scrollHeight - container.scrollTop <= container.clientHeight + 100) : true;
+                appendChannelMessage(entityId, message);
+                if (isAtBottom) setTimeout(() => scrollToBottom('smooth'), 50);
               }
-            }
-          });
-          subscribeToTyping(roomId, (event) => {
-            setTyping(roomId, {
-              [event.userId]: event.isTyping ? event.displayName : null,
             });
-          });
+          } else {
+            subscribeToRoom(entityId, (message) => {
+              if (mounted) {
+                const container = messageContainerRef.current;
+                const isAtBottom = container ? (container.scrollHeight - container.scrollTop <= container.clientHeight + 100) : true;
+                appendRoomMessage(entityId, message);
+                if (isAtBottom) setTimeout(() => scrollToBottom('smooth'), 50);
+              }
+            });
+          }
+          
+          if (workspaceId) {
+            subscribeToTyping(workspaceId, (event) => {
+              setTyping(workspaceId, {
+                [event.userId]: event.isTyping ? event.displayName : null,
+              });
+            });
+          }
         });
+
+        // Mark last message as read
+        if (newMessages.length > 0) {
+          const lastMsg = newMessages[newMessages.length - 1];
+          if (lastMsg.senderId !== currentUser.id) {
+            chatService.markAsRead(lastMsg.id).catch(err => console.error('Failed to mark as read', err));
+          }
+        }
       } catch (error) {
-        console.error('Failed to load room', error);
+        console.error('Failed to load data', error);
       } finally {
         if (mounted) {
           setLoading(false);
@@ -134,31 +202,37 @@ const ChatWindow = ({ room }) => {
       }
     }
 
-    loadRoom();
+    loadData();
 
     return () => {
       mounted = false;
     };
-  }, [roomId, appendRoomMessage, setRoomMessages, setTyping]);
+  }, [entityId, entityType, appendChannelMessage, appendRoomMessage, setChannelMessages, setRoomMessages, setTyping]);
 
   const typingUsers = useMemo(() => {
-    const entries = Object.entries(typingByRoom[roomId] ?? {});
+    const entries = Object.entries(typingByWorkspace[workspaceId] ?? {});
     return entries
       .filter(([userId, name]) => name && Number(userId) !== currentUser?.id)
       .map(([, name]) => name);
-  }, [currentUser?.id, roomId, typingByRoom]);
+  }, [currentUser?.id, workspaceId, typingByWorkspace]);
 
   async function handleSend(content) {
     try {
       const payload = { content, type: 'TEXT' };
-      const response = await chatService.sendRoomMessage(roomId, payload);
-      // We don't append here because we expect the WebSocket broadcast
-      // This helps avoid double-rendering if the broadcast is fast
+      // Send via REST — backend also broadcasts this via WebSocket to all subscribers.
+      // We immediately append the response so the sender sees their own message right away.
+      // dedupe() in the store prevents duplicates when the WebSocket echo arrives.
+      const apiResponse = await chatService.sendChannelMessage(entityId, payload);
+      // chatService returns response.data (ApiResponse). The message is in apiResponse.data
+      const sentMessage = apiResponse?.data ?? apiResponse;
+      if (sentMessage?.id) {
+        appendChannelMessage(entityId, sentMessage);
+      }
+      setTimeout(() => scrollToBottom('smooth'), 50);
     } catch (error) {
       console.error('Failed to send message:', error);
       alert('Failed to send message. Please check your connection.');
     }
-    setTimeout(() => scrollToBottom('smooth'), 50);
   }
 
   async function handleUpload(file) {
@@ -166,10 +240,10 @@ const ChatWindow = ({ room }) => {
       const resp = await chatService.uploadFile(file);
       if (resp && resp.data && resp.data.fileUrl) {
         const payload = { content: resp.data.fileUrl, type: 'FILE' };
-        const sentOverWebSocket = publishRoomMessage(roomId, payload);
+        const sentOverWebSocket = publishChannelMessage(entityId, payload);
         if (!sentOverWebSocket) {
-          const response = await chatService.sendRoomMessage(roomId, payload);
-          appendRoomMessage(roomId, response.data);
+          const response = await chatService.sendChannelMessage(entityId, payload);
+          appendChannelMessage(entityId, response.data);
         }
       }
     } catch (e) {
@@ -184,8 +258,20 @@ const ChatWindow = ({ room }) => {
       return;
     }
 
-    const response = await chatService.editMessage(message.id, nextContent);
-    upsertRoomMessage(roomId, response.data);
+    const apiResponse = await chatService.editMessage(message.id, nextContent);
+    // chatService returns ApiResponse; the message is in apiResponse.data
+    const updatedMessage = apiResponse?.data ?? apiResponse;
+    if (updatedMessage?.id) {
+      if (updatedMessage.channelId) {
+        upsertChannelMessage(updatedMessage.channelId, updatedMessage);
+      } else if (updatedMessage.roomId) {
+        upsertRoomMessage(updatedMessage.roomId, updatedMessage);
+      } else if (entityType === 'channel') {
+        upsertChannelMessage(entityId, updatedMessage);
+      } else {
+        upsertRoomMessage(entityId, updatedMessage);
+      }
+    }
   }
 
   async function handleInviteSubmit(e) {
@@ -207,17 +293,47 @@ const ChatWindow = ({ room }) => {
     }
 
     await chatService.deleteMessage(message.id);
-    upsertRoomMessage(roomId, {
+    const deletedMsg = {
       ...message,
       content: 'This message was deleted.',
       isDeleted: true,
-    });
+    };
+    if (entityType === 'channel') {
+      upsertChannelMessage(entityId, deletedMsg);
+    } else {
+      upsertRoomMessage(entityId, deletedMsg);
+    }
   }
 
-  async function handlePin(message) {
-    const response = await chatService.pinMessage(message.id);
-    upsertRoomMessage(roomId, response.data);
-  }
+  const handlePin = async (message) => {
+    const apiResponse = await chatService.pinMessage(message.id);
+    const updatedMessage = apiResponse?.data ?? apiResponse;
+    if (updatedMessage?.id) {
+      if (updatedMessage.channelId) {
+        upsertChannelMessage(updatedMessage.channelId, updatedMessage);
+      } else if (updatedMessage.roomId) {
+        upsertRoomMessage(updatedMessage.roomId, updatedMessage);
+      } else if (entityType === 'channel') {
+        upsertChannelMessage(entityId, updatedMessage);
+      } else {
+        upsertRoomMessage(entityId, updatedMessage);
+      }
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!window.confirm(`Are you sure you want to archive #${name}?`)) return;
+    try {
+      await chatService.archiveChannel(channelId);
+      window.alert('Channel archived successfully');
+      // Update local state isArchived
+      const updatedChannel = { ...channel, isArchived: true };
+      const { setChannels, channels } = useChatStore.getState();
+      setChannels(channels.map(c => c.id === channelId ? updatedChannel : c));
+    } catch (e) {
+      window.alert('Failed to archive channel');
+    }
+  };
 
   async function handleReact(message, emoji) {
     if (!emoji) {
@@ -236,14 +352,21 @@ const ChatWindow = ({ room }) => {
       reactions: [...(message.reactions || []), currentUserReaction]
     };
     
-    upsertRoomMessage(roomId, updatedMessage);
+    if (entityType === 'channel') {
+      upsertChannelMessage(entityId, updatedMessage);
+    } else {
+      upsertRoomMessage(entityId, updatedMessage);
+    }
     
     try {
       await chatService.reactToMessage(message.id, emoji);
     } catch (e) {
       console.error('Failed to react', e);
-      // Rollback on failure (optional, but good practice)
-      upsertRoomMessage(roomId, message);
+      if (entityType === 'channel') {
+        upsertChannelMessage(entityId, message);
+      } else {
+        upsertRoomMessage(entityId, message);
+      }
     }
   }
 
@@ -253,7 +376,8 @@ const ChatWindow = ({ room }) => {
   );
 
   function handleTyping(isTyping) {
-    publishTyping(roomId, {
+    if (!workspaceId) return;
+    publishTyping(workspaceId, {
       userId: currentUser?.id,
       displayName: currentUser?.displayName,
       isTyping,
@@ -262,7 +386,7 @@ const ChatWindow = ({ room }) => {
     window.clearTimeout(typingTimeoutRef.current);
     if (isTyping) {
       typingTimeoutRef.current = window.setTimeout(() => {
-        publishTyping(roomId, {
+        publishTyping(workspaceId, {
           userId: currentUser?.id,
           displayName: currentUser?.displayName,
           isTyping: false,
@@ -271,14 +395,17 @@ const ChatWindow = ({ room }) => {
     }
   }
 
-  if (!room) {
+  if (!entityId) {
     return (
       <EmptyState
-        title="Select a channel"
-        description="Choose a room from the sidebar or create a new one."
+        title="Select a channel or workspace"
+        description="Choose a workspace from the home page and then a channel from the sidebar."
       />
     );
   }
+
+  const name = channel?.name || room?.name;
+  const description = channel?.description || room?.description;
 
   return (
     <section className="flex h-full min-h-0 flex-col">
@@ -286,10 +413,10 @@ const ChatWindow = ({ room }) => {
         <div>
           <div className="flex items-center gap-2 text-lg font-semibold">
             <Hash size={18} className="text-[#6b6a6b]" />
-            {room.name}
+            {name}
           </div>
           <div className="mt-1 text-sm text-[#6b6a6b]">
-            {room.description || 'Real-time room conversation'}
+            {description || `Real-time ${entityType} conversation`}
           </div>
         </div>
 
@@ -304,7 +431,7 @@ const ChatWindow = ({ room }) => {
 
           <div className="bg-black/5 px-3 py-1.5 flex items-center">
             <Users size={14} className="mr-1 inline" />
-            {roomMembers.length} members
+            {members.length} members
           </div>
           
           <div className="relative" ref={menuRef}>
@@ -384,6 +511,18 @@ const ChatWindow = ({ room }) => {
                     </button>
                   </>
                 )}
+
+                {entityType === 'channel' && !channel?.isArchived && (
+                  <button 
+                    onClick={() => {
+                      handleArchive();
+                      setShowMenu(false);
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10 border-t border-black/5"
+                  >
+                    <Trash2 size={16} className="text-[#e01e5a]" /> Archive Channel
+                  </button>
+                )}
                 <button 
                   onClick={() => {
                     setShowInviteModal(true);
@@ -455,17 +594,17 @@ const ChatWindow = ({ room }) => {
       <TypingIndicator users={typingUsers} />
 
       <MessageInput
-        placeholder={`Message #${room.name}`}
+        placeholder={channel?.isArchived ? "This channel is archived" : `Message #${name}`}
         onSendMessage={handleSend}
         onTyping={handleTyping}
         onUploadFile={handleUpload}
-        disabled={false}
-        mentionSuggestions={roomMembers}
+        disabled={channel?.isArchived}
+        mentionSuggestions={members}
       />
       <Modal 
         isOpen={showInviteModal} 
         onClose={() => setShowInviteModal(false)} 
-        title={`Invite to #${room.name}`}
+        title={`Invite to #${name}`}
       >
         <form onSubmit={handleInviteSubmit} className="space-y-4">
           <div>

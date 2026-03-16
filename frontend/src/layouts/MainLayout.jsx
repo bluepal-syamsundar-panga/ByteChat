@@ -1,5 +1,5 @@
-import { Outlet, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState, useMemo } from 'react';
 import Sidebar from '../components/Sidebar/Sidebar';
 import AppRail from '../components/Sidebar/AppRail';
 import Modal from '../components/Shared/Modal';
@@ -7,6 +7,7 @@ import NotificationPanel from '../components/Common/NotificationPanel';
 import useAuthStore from '../store/authStore';
 import useChatStore from '../store/chatStore';
 import chatService from '../services/chatService';
+import workspaceService from '../services/workspaceService';
 import notificationService from '../services/notificationService';
 import userService from '../services/userService';
 import { connectWebSocket, disconnectWebSocket, subscribeToNotifications } from '../services/websocket';
@@ -15,15 +16,31 @@ const MainLayout = () => {
   const navigate = useNavigate();
   const { user, logout, updateUser } = useAuthStore();
   const {
-    setRooms,
+    setWorkspaces,
     setUsers,
     setOnlineUsers,
     setNotifications,
+    workspaces,
+    activeWorkspaceId,
   } = useChatStore();
-  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
-  const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
-  const [newRoomName, setNewRoomName] = useState('');
-  const [newRoomDescription, setNewRoomDescription] = useState('');
+  const location = useLocation();
+
+  const activeWorkspace = useMemo(() => {
+    if (!activeWorkspaceId) return null;
+    return workspaces.find(ws => ws.id === activeWorkspaceId);
+  }, [activeWorkspaceId, workspaces]);
+
+  const displayRole = useMemo(() => {
+    if (!user) return 'MEMBER';
+    if (activeWorkspace && activeWorkspace.createdById === user.id) {
+        return 'OWNER';
+    }
+    return user.role || 'MEMBER';
+  }, [user, activeWorkspace]);
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+  const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [newWorkspaceDescription, setNewWorkspaceDescription] = useState('');
 
   useEffect(() => {
     if (!user?.id) return;
@@ -33,25 +50,24 @@ const MainLayout = () => {
         setNotifications((prev) => [notification, ...prev]);
       });
     });
-    loadWorkspace();
+    loadAppContent();
     return () => disconnectWebSocket();
   }, [user?.id]);
 
-  async function loadWorkspace() {
+  async function loadAppContent() {
     try {
-      const [roomsRes, usersRes, onlineRes, meRes, notificationsRes] = await Promise.allSettled([
-        chatService.getRooms(),
+      const [workspacesRes, usersRes, onlineRes, meRes, notificationsRes] = await Promise.allSettled([
+        chatService.getWorkspaces(),
         userService.getUsers(),
         userService.getOnlineUsers(),
         userService.getCurrentUser(),
         notificationService.getNotifications(),
       ]);
 
-      if (roomsRes.status === 'fulfilled') {
-        // Updated to match ApiResponse structure: res.data.data.content
-        setRooms(roomsRes.value.data?.content ?? roomsRes.value.data ?? []);
+      if (workspacesRes.status === 'fulfilled') {
+        setWorkspaces(workspacesRes.value.data?.content ?? workspacesRes.value.data ?? []);
       } else {
-        console.error('Failed to load rooms:', roomsRes.reason?.response?.data || roomsRes.reason);
+        console.error('Failed to load workspaces:', workspacesRes.reason?.response?.data || workspacesRes.reason);
       }
 
       if (usersRes.status === 'fulfilled') {
@@ -78,39 +94,27 @@ const MainLayout = () => {
         console.error('Failed to load notifications:', notificationsRes.reason?.response?.data || notificationsRes.reason);
       }
     } catch (error) {
-      console.error('Failed to load workspace', error);
+      console.error('Failed to load app content', error);
     }
   }
 
-  async function handleCreateRoomSubmit(e) {
+  async function handleCreateWorkspaceSubmit(e) {
     if (e) e.preventDefault();
-    if (!newRoomName.trim()) return;
+    if (!newWorkspaceName.trim()) return;
 
-    try {
-      setIsCreatingRoom(true);
-      const response = await chatService.createRoom({
-        name: newRoomName.trim(),
-        description: newRoomDescription.trim() || `Welcome to ${newRoomName.trim()}`,
-        isPrivate: false,
-      });
-      const room = response.data;
-      await loadWorkspace();
-      setShowCreateRoomModal(false);
-      setNewRoomName('');
-      setNewRoomDescription('');
-      navigate(`/chat/room/${room.id}`);
-    } catch (error) {
-      window.alert(error.response?.data?.message ?? 'Unable to create room');
-    } finally {
-      setIsCreatingRoom(false);
-    }
+    // For full flow, we should use WorkspaceWizard or an OTP-enabled modal.
+    // However, if the user is ALREADY logged in, we might allow direct creation or redirect to a wizard.
+    // The requirement says: "If user create Workspace also at that time also User can verify with OTP"
+    // So we should navigate them to the WorkspaceWizard.
+    navigate('/create-workspace');
+    setShowCreateWorkspaceModal(false);
   }
 
   async function handleAcceptInvite(notificationId) {
     try {
       await notificationService.accept(notificationId);
       setNotifications((prev) => prev.filter((item) => item.id !== notificationId));
-      await loadWorkspace();
+      await loadAppContent();
     } catch (error) {
       window.alert(error.response?.data?.message ?? 'Unable to accept invite');
     }
@@ -118,12 +122,11 @@ const MainLayout = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-transparent text-[#1d1c1d]">
-      <AppRail onCreateRoom={() => setShowCreateRoomModal(true)} />
+      <AppRail onCreateRoom={() => setShowCreateWorkspaceModal(true)} />
 
       <Sidebar onAcceptInvite={handleAcceptInvite} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* ... existing header ... */}
         <div className="glass-panel flex h-16 items-center justify-between border-b border-black/5 px-5">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6b6a6b]">
@@ -143,7 +146,7 @@ const MainLayout = () => {
                 </div>
                 <div className="hidden flex-col md:flex">
                   <div className="text-sm font-bold text-[#1d1c1d]">{user.displayName}</div>
-                  <div className="text-[10px] uppercase font-bold tracking-tight text-[#6b6a6b]">{user.role}</div>
+                  <div className="text-[10px] uppercase font-bold tracking-tight text-[#6b6a6b]">{displayRole}</div>
                 </div>
               </div>
             )}
@@ -156,72 +159,33 @@ const MainLayout = () => {
       </div>
 
       <Modal
-        isOpen={showCreateRoomModal}
-        onClose={() => setShowCreateRoomModal(false)}
-        title="Create a New Room"
+        isOpen={showCreateWorkspaceModal}
+        onClose={() => setShowCreateWorkspaceModal(false)}
+        title="Create a New Workspace"
       >
-        <form onSubmit={handleCreateRoomSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#6b6a6b]">Room Name</label>
-            <input
-              type="text"
-              value={newRoomName}
-              onChange={(e) => setNewRoomName(e.target.value)}
-              className="mt-1 w-full border border-black/10 bg-[#f8f8f8] px-4 py-2 text-sm focus:border-[#3f0e40] focus:ring-1 focus:ring-[#3f0e40] outline-none"
-              placeholder="e.g. general"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#6b6a6b]">Description (optional)</label>
-            <input
-              type="text"
-              value={newRoomDescription}
-              onChange={(e) => setNewRoomDescription(e.target.value)}
-              className="mt-1 w-full border border-black/10 bg-[#f8f8f8] px-4 py-2 text-sm focus:border-[#3f0e40] focus:ring-1 focus:ring-[#3f0e40] outline-none"
-              placeholder="What is this room about?"
-            />
-          </div>
+        <div className="space-y-4">
+          <p className="text-sm text-[#6b6a6b]">
+            To create a new workspace, you'll need to verify your email address.
+          </p>
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={() => setShowCreateRoomModal(false)}
+              onClick={() => setShowCreateWorkspaceModal(false)}
               className="px-4 py-2 text-sm font-semibold text-[#6b6a6b] hover:bg-black/5"
             >
               Cancel
             </button>
             <button
-              type="submit"
-              disabled={isCreatingRoom || !newRoomName.trim()}
-              className="bg-[#3f0e40] px-4 py-2 text-sm font-semibold text-white hover:bg-[#350d36] disabled:opacity-50"
+              onClick={handleCreateWorkspaceSubmit}
+              className="bg-[#3f0e40] px-4 py-2 text-sm font-semibold text-white hover:bg-[#350d36]"
             >
-              {isCreatingRoom ? 'Creating...' : 'Create Room'}
+              Start Setup
             </button>
           </div>
-        </form>
+        </div>
       </Modal>
     </div>
   );
 };
-
-function AvatarLabel({ user }) {
-  const initial = user?.displayName?.[0]?.toUpperCase() ?? 'B';
-  return (
-    <>
-      <div className="relative flex h-10 w-10 items-center justify-center bg-[#611f69] font-bold text-white border border-white/20 overflow-hidden">
-        {user?.avatarUrl ? (
-          <img src={user.avatarUrl} alt={user.displayName} className="h-full w-full object-cover" />
-        ) : (
-          initial
-        )}
-        <span className="absolute bottom-0 right-0 h-3 w-3 border-2 border-white bg-[#2bac76]" />
-      </div>
-      <div className="hidden text-left sm:block">
-        <div className="text-sm font-semibold">{user?.displayName ?? 'Workspace user'}</div>
-        <div className="text-xs text-[#6b6a6b]">{user?.role ?? 'MEMBER'}</div>
-      </div>
-    </>
-  );
-}
 
 export default MainLayout;

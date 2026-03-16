@@ -6,6 +6,9 @@ import ProfilePage from '../pages/ProfilePage';
 import RegisterPage from '../pages/RegisterPage';
 import useAuthStore from '../store/authStore';
 
+import LandingPage from '../pages/LandingPage';
+import WorkspaceWizard from '../pages/WorkspaceWizard';
+
 function ProtectedRoute({ children }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return isAuthenticated ? children : <Navigate to="/login" replace />;
@@ -16,8 +19,28 @@ const AppRouter = () => (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      
+      {/* Landing Page is protected but doesn't use MainLayout */}
       <Route
         path="/"
+        element={
+          <ProtectedRoute>
+            <LandingPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/create-workspace"
+        element={
+          <ProtectedRoute>
+            <WorkspaceWizard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/chat"
         element={
           <ProtectedRoute>
             <MainLayout />
@@ -25,7 +48,7 @@ const AppRouter = () => (
         }
       >
         <Route index element={<Navigate to="/profile" replace />} />
-        <Route path="chat/:type/:id" element={<ChatPage />} />
+        <Route path=":type/:id" element={<ChatPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
     </Routes>

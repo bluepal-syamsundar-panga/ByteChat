@@ -24,4 +24,5 @@ public class AuthRequest {
     // Only required for registration
     private String displayName;
     private Role role;
+    private String otpCode;
 }
