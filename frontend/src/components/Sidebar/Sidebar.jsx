@@ -25,6 +25,7 @@ const Sidebar = ({ onAcceptInvite }) => {
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(useChatStore.getState().activeWorkspaceId);
   const [activeChannelId, setActiveChannelId] = useState(null);
   const [channelMembersList, setChannelMembersList] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const workspaceIdMatch = location.pathname.match(/\/chat\/workspace\/(\d+)/);
@@ -154,106 +155,125 @@ const Sidebar = ({ onAcceptInvite }) => {
 
   return (
     <>
-      <aside className="flex w-full max-w-[340px] shrink-0 flex-col bg-[#3f0e40] text-white md:w-[340px]">
-        <div className="border-b border-white/10 px-5 py-5">
-          <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
-            {sidebarMode === 'archive' ? 'Archive Center' : sidebarMode === 'trash' ? 'Trash Bin' : 'Workspace'}
-          </div>
-          <div className="mt-2 flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-bold">
-                {sidebarMode === 'archive' ? 'Archived' : sidebarMode === 'trash' ? 'Deleted' : (activeWorkspace?.name || 'ByteChat')}
-              </div>
-              <div className="text-sm text-white/70">
-                {sidebarMode === 'archive' ? 'Historical channels' : sidebarMode === 'trash' ? 'Soft-deleted items' : 'Channels and teammates'}
+      <aside className="flex w-full max-w-[var(--sidebar-width)] shrink-0 flex-col sidebar-gradient text-white md:w-[var(--sidebar-width)] border-r border-white/5">
+        <div className="px-6 py-6 space-y-4">
+          <div className="flex flex-col">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">
+              {sidebarMode === 'archive' ? 'Archive' : sidebarMode === 'trash' ? 'Trash' : 'Workspace'}
+            </div>
+            <div className="mt-1.5 flex items-center justify-between">
+              <div>
+                <div className="text-xl font-black tracking-tight text-white">
+                  {sidebarMode === 'archive' ? 'Archived' : sidebarMode === 'trash' ? 'Deleted' : (activeWorkspace?.name || 'ByteChat')}
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Search/Filter Bar */}
+          <div className="relative group/search">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-white/30 group-focus-within/search:text-white/60 transition-smooth">
+              <Users2 size={14} />
+            </div>
+            <input
+              type="text"
+              placeholder="Jump to..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-black/20 border border-white/5 rounded-xl py-2 pl-9 pr-4 text-xs font-bold text-white placeholder:text-white/30 focus:outline-none focus:bg-black/40 focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-smooth shadow-inner"
+            />
+          </div>
         </div>
 
-        <div className="scrollbar-thin flex-1 space-y-6 overflow-y-auto px-3 py-4">
+        <div className="scrollbar-thin flex-1 space-y-8 overflow-y-auto px-4 py-2">
           <section>
-            <div className="mb-2 flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
+            <div className="mb-4 flex items-center justify-between px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-white/40">
               <span>{sidebarMode === 'archive' ? 'Archived Channels' : sidebarMode === 'trash' ? 'Trashed Channels' : 'Channels'}</span>
               {sidebarMode === 'channels' && (
                 <button 
                   onClick={() => setIsCreateChannelModalOpen(true)}
-                  className="hover:text-white transition-colors"
+                  className="hover:text-white transition-smooth p-1 hover:bg-white/10 rounded"
                   disabled={!activeWorkspaceId}
                 >
                   <Plus size={14} />
                 </button>
               )}
             </div>
-            <div className="space-y-1">
-              {channels.map((channel) => (
-                <SidebarLink
-                  key={channel.id}
-                  to={`/chat/channel/${channel.id}`}
-                  isActive={activeChannelId === channel.id}
-                  icon={channel.isPrivate || channel.private ? <Lock size={16} /> : <Hash size={16} />}
-                  title={`${channel.name}${channel.isArchived || channel.archived ? ' (archived)' : ''}`}
-                  subtitle={channel.description}
-                  badge={null}
-                  isArchived={channel.isArchived || channel.archived}
-                  isDeleted={channel.isDeleted || channel.deleted}
-                  onRestore={(e) => handleRestore(e, channel.id)}
-                  onPermanentDelete={(e) => handlePermanentDelete(e, channel.id)}
-                  sidebarMode={sidebarMode}
-                  isCreator={channel.createdBy?.id === user?.id}
-                />
-              ))}
+            <div className="space-y-0.5">
+              {channels
+                .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map((channel) => (
+                  <SidebarLink
+                    key={channel.id}
+                    to={`/chat/channel/${channel.id}`}
+                    isActive={activeChannelId === channel.id}
+                    icon={channel.isPrivate || channel.private ? <Lock size={15} /> : <Hash size={15} />}
+                    title={`${channel.name}${channel.isArchived || channel.archived ? ' (archived)' : ''}`}
+                    subtitle={channel.description}
+                    badge={channel.unreadCount > 0 ? channel.unreadCount : null}
+                    isArchived={channel.isArchived || channel.archived}
+                    isDeleted={channel.isDeleted || channel.deleted}
+                    onRestore={(e) => handleRestore(e, channel.id)}
+                    onPermanentDelete={(e) => handlePermanentDelete(e, channel.id)}
+                    sidebarMode={sidebarMode}
+                    isCreator={channel.createdBy?.id === user?.id}
+                  />
+                ))}
               {channels.length === 0 && activeWorkspaceId && (
-                <p className="px-3 text-xs text-white/40 italic">Nothing found here</p>
+                <p className="px-3 text-xs text-white/30 italic">No channels found</p>
               )}
               {channels.length === 0 && !activeWorkspaceId && (
-                <p className="px-3 text-xs text-white/40 italic">Select a workspace to see items</p>
+                <p className="px-3 text-xs text-white/30 italic">Select a workspace</p>
               )}
             </div>
           </section>
 
           {sidebarMode === 'channels' && (
-            <section className="bg-[#350d36] p-4 shadow-inner">
-              <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                <MessageCircleMore size={16} />
-                Direct messages
+            <section>
+              <div className="mb-4 flex items-center justify-between px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-white/40">
+                <div className="flex items-center gap-2">
+                  <MessageCircleMore size={14} />
+                  Direct messages
+                </div>
               </div>
-              <div className="space-y-1">
-                {visibleDMs.map((u) => (
-                  <SidebarLink
-                    key={u.id}
-                    to={`/chat/dm/${u.id}`}
-                    isActive={location.pathname === `/chat/dm/${u.id}`}
-                    icon={
-                      <div className="relative flex h-5 w-5 items-center justify-center bg-white/20 text-[10px] font-bold overflow-hidden">
-                        {u.avatarUrl ? (
-                          <img src={u.avatarUrl} alt={u.displayName} className="h-full w-full object-cover" />
-                        ) : (
-                          u.displayName?.[0]?.toUpperCase() ?? 'U'
-                        )}
-                        <span className={`absolute bottom-0 right-0 h-2 w-2 border-2 border-[#350d36] ${u.online ? 'bg-[#2bac76]' : 'bg-white/40'}`} />
-                      </div>
-                    }
-                    title={u.displayName}
-                    subtitle={u.online ? 'Online' : 'Offline'}
-                    badge={null}
-                    sidebarMode={sidebarMode}
-                  />
-                ))}
+              <div className="space-y-0.5">
+                {visibleDMs
+                  .filter(u => u.displayName.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map((u) => (
+                    <SidebarLink
+                      key={u.id}
+                      to={`/chat/dm/${u.id}`}
+                      isActive={location.pathname === `/chat/dm/${u.id}`}
+                      icon={
+                        <div className="relative flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-[10px] font-extrabold overflow-hidden border border-white/5 shadow-sm">
+                          {u.avatarUrl ? (
+                            <img src={u.avatarUrl} alt={u.displayName} className="h-full w-full object-cover" />
+                          ) : (
+                            u.displayName?.[0]?.toUpperCase() ?? 'U'
+                          )}
+                          <span className={`absolute bottom-0.5 right-0.5 h-1.5 w-1.5 rounded-full border border-[#2c0b2d] ${u.online ? 'bg-[#2bac76]' : 'bg-white/30'} ${u.online ? 'presence-dot' : ''}`} />
+                        </div>
+                      }
+                      title={u.displayName}
+                      subtitle={u.online ? 'Online' : 'Offline'}
+                      badge={u.unreadCount > 0 ? u.unreadCount : null}
+                      sidebarMode={sidebarMode}
+                    />
+                  ))}
                 {visibleDMs.length === 0 && (
-                  <p className="px-2 py-1 text-sm leading-6 text-white/70 italic opacity-50">No channel teammates.</p>
+                  <p className="px-2 py-1 text-xs text-white/30 italic">No teammates yet.</p>
                 )}
               </div>
             </section>
           )}
           
-          <div className="mt-8 px-2 border-t border-white/5 pt-4">
+          <div className="mt-auto px-4 pb-6">
              <button 
                onClick={() => setShowInviteModal(true)}
-               className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white group"
+               className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white/60 transition-smooth hover:bg-white/10 hover:text-white group border border-white/5"
              >
-               <div className="flex h-6 w-6 items-center justify-center rounded border border-white/20 bg-white/5 group-hover:border-white/40">
-                 <Users2 size={14} />
+               <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 transition-smooth group-hover:bg-white/10 group-hover:scale-105">
+                 <Users2 size={15} />
                </div>
                Invite Members
              </button>
@@ -263,35 +283,32 @@ const Sidebar = ({ onAcceptInvite }) => {
 
       {/* Invite Member Modal */}
       {showInviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-[#3f0e40] p-8 border border-white/10 shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Invite to workspace</h2>
-              <button onClick={() => setShowInviteModal(false)} className="text-white/60 hover:text-white">
-                <X size={24} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-sm bg-[#2c0b2d] p-8 rounded-3xl border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-xl font-extrabold text-white tracking-tight">Invite Team</h2>
+              <button onClick={() => setShowInviteModal(false)} className="text-white/40 hover:text-white transition-smooth p-1">
+                <X size={20} />
               </button>
             </div>
-            <p className="text-white/60 text-sm mb-6">
-              An invitation will be sent to the user's notification center.
-            </p>
-            <form onSubmit={handleInviteMember} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Email Address</label>
+            <form onSubmit={handleInviteMember} className="space-y-6">
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-white/30 ml-1">Email Address</label>
                 <input
                   type="email"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="name@gmail.com"
-                  className="w-full bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-white/30 transition-colors"
+                  placeholder="teammate@company.com"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white placeholder:text-white/10 focus:outline-none focus:ring-2 focus:ring-white/20 focus:bg-white/10 transition-smooth"
                   required
                 />
               </div>
-              <div className="pt-4">
+              <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full bg-white text-[#3f0e40] font-bold py-3 hover:bg-white/90 transition-colors"
+                  className="w-full bg-white text-[#3f0e40] font-bold py-4 rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-smooth shadow-lg"
                 >
-                  Send Invitation
+                  Send Invite
                 </button>
               </div>
             </form>
@@ -303,20 +320,24 @@ const Sidebar = ({ onAcceptInvite }) => {
 };
 
 const SidebarLink = ({ to, isActive, icon, title, subtitle, badge, isArchived, isDeleted, onRestore, onPermanentDelete, sidebarMode = 'channels', isCreator }) => (
-  <div className="group relative flex items-center pr-2">
+  <div className="group relative flex items-center px-2">
     <NavLink
       to={sidebarMode === 'channels' ? to : '#'}
       onClick={(e) => sidebarMode !== 'channels' && e.preventDefault()}
-      className={`flex flex-1 items-start gap-3 px-3 py-2.5 transition ${isActive ? 'bg-white/10 text-white border-l-4 border-white' : 'text-white/85 hover:bg-white/8'
-        } ${isArchived || isDeleted ? 'opacity-50' : ''}`}
+      className={`flex flex-1 items-start gap-3.5 px-3 py-2.5 rounded-xl transition-smooth ${isActive ? 'bg-white/10 text-white shadow-sm ring-1 ring-white/10' : 'text-white/60 hover:bg-white/5 hover:text-white/90'
+        } ${isArchived || isDeleted ? 'opacity-40' : ''}`}
     >
-      <div className="mt-0.5 shrink-0">{icon}</div>
+      <div className={`mt-0.5 shrink-0 ${isActive ? 'text-white' : 'text-white/40 group-hover:text-white/80'}`}>{icon}</div>
       <div className="min-w-0 flex-1">
-        <div className={`truncate text-sm font-medium ${isDeleted ? 'line-through text-red-400' : ''}`}>{title}</div>
-        <div className="truncate text-xs text-white/60">{subtitle}</div>
-      </div>
-      {badge && <div className="bg-white/12 px-2 py-1 text-[10px] font-bold">{badge}</div>}
-    </NavLink>
+            <div className={`truncate text-sm font-bold tracking-tight ${isDeleted ? 'line-through text-red-300' : ''}`}>{title}</div>
+            {subtitle && <div className="truncate text-[11px] font-bold text-white/30 group-hover:text-white/40 mt-0.5 transition-smooth">{subtitle}</div>}
+          </div>
+          {badge && (
+            <div className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-sm ring-2 ring-[#2c0b2d]">
+              {badge > 99 ? '99+' : badge}
+            </div>
+          )}
+        </NavLink>
     
     {(sidebarMode === 'archive' || sidebarMode === 'trash') && (
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

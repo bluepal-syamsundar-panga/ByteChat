@@ -16,4 +16,7 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
     
     @Query("SELECT COUNT(d) FROM DirectMessage d WHERE d.toUser.id = :userId AND d.readAt IS NULL")
     long countUnreadMessages(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(d) FROM DirectMessage d WHERE d.toUser.id = :userId AND d.fromUser.id = :senderId AND d.readAt IS NULL")
+    long countUnreadBySender(@Param("userId") Long userId, @Param("senderId") Long senderId);
 }

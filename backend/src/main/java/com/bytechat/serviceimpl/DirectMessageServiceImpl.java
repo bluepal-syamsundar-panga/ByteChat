@@ -151,6 +151,7 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                                 .emoji(emoji)
                                 .build())
                 );
+        reactionRepository.flush();
 
         notificationService.sendNotification(
                 dm.getFromUser().getId().equals(currentUser.getId()) ? dm.getToUser().getId() : dm.getFromUser().getId(),

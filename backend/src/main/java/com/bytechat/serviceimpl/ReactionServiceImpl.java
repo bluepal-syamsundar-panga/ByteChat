@@ -30,7 +30,8 @@ public class ReactionServiceImpl implements ReactionService {
 
         Optional<Reaction> existingReaction = reactionRepository.findByMessageIdAndUserIdAndEmoji(messageId, userId, emoji);
         if (existingReaction.isPresent()) {
-            return existingReaction.get(); // Prevent duplicate identical reactions from same user
+            reactionRepository.delete(existingReaction.get());
+            return null; // Return null to indicate toggle-off
         }
 
         Reaction reaction = Reaction.builder()
@@ -39,13 +40,18 @@ public class ReactionServiceImpl implements ReactionService {
                 .emoji(emoji)
                 .build();
 
-        return reactionRepository.save(reaction);
+        Reaction saved = reactionRepository.save(reaction);
+        reactionRepository.flush();
+        return saved;
     }
 
     @Override
     public void removeReaction(Long messageId, Long userId, String emoji) {
         reactionRepository.findByMessageIdAndUserIdAndEmoji(messageId, userId, emoji)
-                .ifPresent(reactionRepository::delete);
+                .ifPresent(r -> {
+                    reactionRepository.delete(r);
+                    reactionRepository.flush();
+                });
     }
 
     @Override

@@ -1,8 +1,12 @@
 package com.bytechat.controllers;
 
 import com.bytechat.dto.response.ApiResponse;
+import com.bytechat.dto.response.MessageResponse;
+import com.bytechat.entity.Message;
 import com.bytechat.entity.Reaction;
 import com.bytechat.entity.User;
+import com.bytechat.repository.MessageRepository;
+import com.bytechat.services.MessageService;
 import com.bytechat.services.ReactionService;
 
 import lombok.RequiredArgsConstructor;
@@ -11,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,12 +25,13 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class ReactionController {
 
-    private final TypingController typingController;
-
     private final ReactionService reactionService;
+    private final MessageService messageService;
+    private final MessageRepository messageRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Reaction>> addReaction(
+    public ResponseEntity<ApiResponse<MessageResponse>> addReaction(
             @PathVariable(name = "messageId") Long messageId,
             @RequestParam(name = "emoji") String emoji,
             @AuthenticationPrincipal User currentUser) {
@@ -37,10 +43,29 @@ public class ReactionController {
         // For this specific instruction, I will keep the try-catch as it was in the original,
         // but adapt it to the new parameters.
         try {
-            Reaction reaction = reactionService.addReaction(messageId, currentUser.getId(), emoji);
-            return ResponseEntity.ok(ApiResponse.success(reaction, "Reaction added"));
+            reactionService.addReaction(messageId, currentUser.getId(), emoji);
+            
+            // Get full updated message response
+            Message message = messageRepository.findById(messageId)
+                    .orElseThrow(() -> new RuntimeException("Message not found"));
+            MessageResponse response = messageService.getRoomMessages(message.getChannel().getId(), 0, 1, currentUser)
+                    .getContent().stream()
+                    .filter(m -> m.getId().equals(messageId))
+                    .findFirst()
+                    .orElse(null);
+            
+            if (response != null) {
+                // Broadcast update
+                if (response.getChannelId() != null) {
+                    messagingTemplate.convertAndSend("/topic/channel/" + response.getChannelId(), response);
+                } else if (response.getRoomId() != null) {
+                    messagingTemplate.convertAndSend("/topic/room/" + response.getRoomId(), response);
+                }
+            }
+
+            return ResponseEntity.ok(ApiResponse.success(response, "Reaction toggled"));
         } catch (Exception e) {
-            log.error("Error adding reaction: {}", e.getMessage());
+            log.error("Error toggling reaction: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }

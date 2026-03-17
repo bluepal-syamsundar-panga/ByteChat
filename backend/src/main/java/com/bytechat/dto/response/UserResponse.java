@@ -19,4 +19,5 @@ public class UserResponse {
     private LocalDateTime lastSeen;
     private boolean online;
     private String role;
+    private long unreadCount;
 }

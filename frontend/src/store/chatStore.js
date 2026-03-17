@@ -44,12 +44,18 @@ const useChatStore = create((set) => ({
       },
     })),
   appendChannelMessage: (channelId, message) =>
-    set((state) => ({
-      channelMessages: {
-        ...state.channelMessages,
-        [channelId]: dedupe([...(state.channelMessages[channelId] ?? []), message]),
-      },
-    })),
+    set((state) => {
+      const isCurrent = state.activeThread?.type === 'channel' && state.activeThread?.id === channelId;
+      return {
+        channelMessages: {
+          ...state.channelMessages,
+          [channelId]: dedupe([...(state.channelMessages[channelId] ?? []), message]),
+        },
+        channels: isCurrent 
+          ? state.channels 
+          : state.channels.map(c => c.id === channelId ? { ...c, unreadCount: (c.unreadCount || 0) + 1 } : c)
+      };
+    }),
   upsertRoomMessage: (roomId, message) =>
     set((state) => ({
       roomMessages: {
@@ -67,18 +73,36 @@ const useChatStore = create((set) => ({
   setDmMessages: (userId, messages) =>
     set((state) => ({ dmMessages: { ...state.dmMessages, [userId]: messages } })),
   appendDmMessage: (userId, message) =>
-    set((state) => ({
-      dmMessages: {
-        ...state.dmMessages,
-        [userId]: dedupe([...(state.dmMessages[userId] ?? []), message]),
-      },
-    })),
+    set((state) => {
+      const isCurrent = state.activeThread?.type === 'dm' && state.activeThread?.id === userId;
+      return {
+        dmMessages: {
+          ...state.dmMessages,
+          [userId]: dedupe([...(state.dmMessages[userId] ?? []), message]),
+        },
+        sharedUsers: isCurrent
+          ? state.sharedUsers
+          : state.sharedUsers.map(u => u.id === userId ? { ...u, unreadCount: (u.unreadCount || 0) + 1 } : u)
+      };
+    }),
   setTyping: (workspaceId, typingState) =>
     set((state) => ({
       typingByWorkspace: {
         ...state.typingByWorkspace,
         [workspaceId]: { ...(state.typingByWorkspace[workspaceId] ?? {}), ...typingState },
       },
+    })),
+  clearChannelUnread: (channelId) =>
+    set((state) => ({
+      channels: state.channels.map((c) =>
+        c.id === channelId ? { ...c, unreadCount: 0 } : c
+      ),
+    })),
+  clearDmUnread: (userId) =>
+    set((state) => ({
+      sharedUsers: state.sharedUsers.map((u) =>
+        u.id === userId ? { ...u, unreadCount: 0 } : u
+      ),
     })),
 }));
 

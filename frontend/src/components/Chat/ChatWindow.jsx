@@ -1,5 +1,5 @@
-import { Hash, Lock, Pin, Users, MoreVertical, SmilePlus, Pencil, Trash2, LogOut } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Hash, Lock, Pin, Users, MoreVertical, SmilePlus, Pencil, Trash2, LogOut, MessageSquareShare } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import { useNavigate } from 'react-router-dom';
 import chatService from '../../services/chatService';
@@ -17,11 +17,11 @@ import {
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
 import notificationService from '../../services/notificationService';
+import TypingIndicator from './TypingIndicator';
 import Modal from '../Shared/Modal';
 import ChannelInviteModal from './ChannelInviteModal';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
-import TypingIndicator from './TypingIndicator';
 
 const ChatWindow = ({ room, channel }) => {
   const navigate = useNavigate();
@@ -35,9 +35,10 @@ const ChatWindow = ({ room, channel }) => {
     setChannelMessages,
     appendRoomMessage,
     appendChannelMessage,
-    upsertRoomMessage,
     upsertChannelMessage,
     setTyping,
+    setActiveThread,
+    clearChannelUnread,
   } = useChatStore();
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState([]);
@@ -48,6 +49,7 @@ const ChatWindow = ({ room, channel }) => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [newOwnerId, setNewOwnerId] = useState(null);
+  const [showMembersList, setShowMembersList] = useState(false);
   
   const scrollRef = useRef(null);
   const messageContainerRef = useRef(null);
@@ -184,8 +186,9 @@ const ChatWindow = ({ room, channel }) => {
           
           if (workspaceId) {
             subscribeToTyping(workspaceId, (event) => {
+              // Store the full event object to include avatar and displayName
               setTyping(workspaceId, {
-                [event.userId]: event.isTyping ? event.displayName : null,
+                [event.userId]: event.isTyping ? event : null,
               });
             });
           }
@@ -207,19 +210,33 @@ const ChatWindow = ({ room, channel }) => {
       }
     }
 
+    if (entityId) {
+      setActiveThread({ type: entityType, id: entityId });
+      if (entityType === 'channel') clearChannelUnread(entityId);
+    }
+
     loadData();
 
     return () => {
       mounted = false;
+      setActiveThread(null);
     };
-  }, [entityId, entityType, appendChannelMessage, appendRoomMessage, setChannelMessages, setRoomMessages, setTyping]);
+  }, [entityId, entityType, appendChannelMessage, appendRoomMessage, setChannelMessages, setRoomMessages, setTyping, setActiveThread, clearChannelUnread]);
 
   const typingUsers = useMemo(() => {
     const entries = Object.entries(typingByWorkspace[workspaceId] ?? {});
-    return entries
-      .filter(([userId, name]) => name && Number(userId) !== currentUser?.id)
-      .map(([, name]) => name);
-  }, [currentUser?.id, workspaceId, typingByWorkspace]);
+    // Filter out historical nulls and current user, return the typing event objects
+    const active = {};
+    entries.forEach(([userId, data]) => {
+      if (data && data.isTyping && Number(userId) !== currentUser?.id) {
+        // Filter by channel if applicable
+        if (!channelId || !data.channelId || data.channelId === channelId) {
+           active[userId] = data;
+        }
+      }
+    });
+    return active;
+  }, [currentUser?.id, workspaceId, typingByWorkspace, channelId]);
 
   async function handleSend(content, file) {
     try {
@@ -394,16 +411,24 @@ const ChatWindow = ({ room, channel }) => {
       return;
     }
     
-    // Optimistic update
-    const currentUserReaction = {
-      emoji,
-      userId: currentUser.id,
-      username: currentUser.displayName
-    };
+    // Optimistic update: toggle reaction
+    const alreadyReacted = message.reactions?.find(r => r.emoji === emoji && String(r.userId) === String(currentUser.id));
+    
+    let updatedReactions;
+    if (alreadyReacted) {
+      updatedReactions = message.reactions.filter(r => r !== alreadyReacted);
+    } else {
+      const currentUserReaction = {
+        emoji,
+        userId: currentUser.id,
+        username: currentUser.displayName
+      };
+      updatedReactions = [...(message.reactions || []), currentUserReaction];
+    }
     
     const updatedMessage = {
       ...message,
-      reactions: [...(message.reactions || []), currentUserReaction]
+      reactions: updatedReactions
     };
     
     if (entityType === 'channel') {
@@ -413,7 +438,15 @@ const ChatWindow = ({ room, channel }) => {
     }
     
     try {
-      await chatService.reactToMessage(message.id, emoji);
+      const response = await chatService.reactToMessage(message.id, emoji);
+      const serverMessage = response.data || response;
+      if (entityType === 'channel') {
+        upsertChannelMessage(entityId, serverMessage);
+      } else {
+        upsertRoomMessage(entityId, serverMessage);
+      }
+      setSelectedMessageId(null);
+      setShowMenu(false);
     } catch (e) {
       console.error('Failed to react', e);
       if (entityType === 'channel') {
@@ -434,7 +467,9 @@ const ChatWindow = ({ room, channel }) => {
     publishTyping(workspaceId, {
       userId: currentUser?.id,
       displayName: currentUser?.displayName,
+      avatar: currentUser?.avatarUrl,
       isTyping,
+      channelId
     });
 
     window.clearTimeout(typingTimeoutRef.current);
@@ -462,8 +497,13 @@ const ChatWindow = ({ room, channel }) => {
   const description = channel?.description || room?.description;
 
   return (
-    <section className="flex h-full min-h-0 flex-col">
-      <header className="flex items-center justify-between border-b border-black/5 px-5 py-4">
+    <section className="flex h-full min-h-0 flex-col bg-white overflow-hidden">
+      <header className="flex items-center justify-between border-b border-gray-100 px-8 py-2.5 bg-white/50 backdrop-blur-md sticky top-0 z-20 transition-all duration-300">
+        {loading && (
+          <div className="absolute bottom-0 left-0 h-0.5 w-full bg-indigo-100 overflow-hidden">
+            <div className="h-full bg-indigo-500 skeleton-loading" style={{ width: '40%' }}></div>
+          </div>
+        )}
         {/* Transfer Ownership Modal */}
         {showTransferModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -513,93 +553,57 @@ const ChatWindow = ({ room, channel }) => {
             </div>
           </div>
         )}
-        <div>
-          <div className="flex items-center gap-2 text-lg font-semibold">
-            {(channel?.isPrivate || channel?.private) ? (
-              <Lock size={18} className="text-[#6b6a6b]" />
-            ) : (
-              <Hash size={18} className="text-[#6b6a6b]" />
-            )}
-            {name}
-          </div>
-          <div className="mt-1 text-sm text-[#6b6a6b]">
-            {description || `Real-time ${entityType} conversation`}
+        <div className="flex flex-col">
+          <div 
+            className="flex items-center gap-3 cursor-pointer group/title select-none"
+            onClick={() => {}}
+          >
+            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${(channel?.isPrivate || channel?.private) ? 'bg-indigo-50 text-indigo-600' : 'bg-blue-50 text-blue-600'} transition-smooth group-hover/title:scale-110`}>
+              {(channel?.isPrivate || channel?.private) ? (
+                <Lock size={16} />
+              ) : (
+                <Hash size={16} />
+              )}
+            </div>
+            <div>
+              <div className="text-[17px] font-black tracking-tight text-gray-900 leading-none group-hover/title:text-[#3f0e40] transition-colors">
+                {name}
+              </div>
+              <div className="mt-1 text-[10px] font-bold text-[#3f0e40] animate-in fade-in slide-in-from-left-2 duration-300">
+                {members.map(m => m.displayName || 'Unknown').join(', ')}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-sm text-[#6b6a6b]">
+        <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => setShowInviteModal(true)}
-            className="bg-[#3f0e40] px-3 py-1.5 text-white transition hover:bg-[#350d36]"
+            className="hidden sm:flex items-center gap-2 bg-[#3f0e40] text-white px-5 py-1 !rounded-full font-bold text-sm transition-smooth hover:bg-[#350d36] hover:scale-[1.02] active:scale-[0.98] shadow-md shadow-purple-900/10 h-7"
           >
-            Invite member
+            <Users size={16} />
+            <span>Invite</span>
           </button>
-
-          <div className="bg-black/5 px-3 py-1.5 flex items-center">
-            <Users size={14} className="mr-1 inline" />
-            {members.length} members
-          </div>
           
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className={`p-1.5 border border-black/5 transition flex items-center justify-center ${
-                showMenu ? 'bg-black/10 text-black' : 'hover:bg-black/5 text-[#6b6a6b] cursor-pointer'
+              className={`h-9 w-9 rounded-lg transition-smooth flex items-center justify-center ${
+                showMenu ? 'bg-black/5 text-gray-900' : 'text-gray-400 hover:text-gray-900 hover:bg-black/5'
               }`}
             >
               <MoreVertical size={20} />
             </button>
             
             {showMenu && (
-              <div className="absolute right-0 top-full mt-2 w-64 border border-black/10 bg-white shadow-xl z-50 py-1 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+              <div className="absolute right-0 top-full mt-3 w-72 bg-white rounded-2xl shadow-2xl z-50 py-2 border border-black/5 animate-in fade-in slide-in-from-top-4 duration-300 origin-top-right">
                 
-                {/* --- MESSAGE OPTIONS --- */}
                 {selectedMessage ? (
+                  /* --- MESSAGE OPTIONS --- */
                   <>
-                    <div className="px-4 py-2 border-b border-black/5">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#6b6a6b] mb-2">Reactions</div>
-                      <div className="flex items-center justify-between">
-                        {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
-                          <button
-                            key={emoji}
-                            onClick={() => {
-                              handleReact(selectedMessage, emoji);
-                              setShowMenu(false);
-                              setSelectedMessageId(null);
-                            }}
-                            className="bg-black/5 hover:bg-black/10 w-8 h-8 flex items-center justify-center rounded-full transition-all hover:scale-110"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="relative" ref={emojiPickerRef}>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowEmojiPicker(!showEmojiPicker);
-                        }}
-                        className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
-                      >
-                        <SmilePlus size={16} className="text-[#6b6a6b]" /> More Reactions
-                      </button>
-                      {showEmojiPicker && (
-                        <div className="absolute right-full top-0 mr-2 z-50">
-                          <EmojiPicker 
-                            onEmojiClick={(emojiData) => {
-                              handleReact(selectedMessage, emojiData.emoji);
-                              setShowEmojiPicker(false);
-                              setShowMenu(false);
-                              setSelectedMessageId(null);
-                            }}
-                            autoFocusSearch={false}
-                            theme="light"
-                          />
-                        </div>
-                      )}
+                    <div className="px-4 py-1.5 border-b border-black/5">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#6b6a6b]">Message Options</div>
                     </div>
                     
                     <button 
@@ -722,39 +726,89 @@ const ChatWindow = ({ room, channel }) => {
         )}
 
         {loading ? (
-          <EmptyState
-            title="Loading room"
-            description="Fetching latest message history and live subscriptions."
-          />
+          <div className="flex flex-col gap-8 p-10">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className={`flex gap-5 animate-pulse ${i % 2 === 0 ? 'flex-row-reverse' : ''}`}>
+                <div className="h-12 w-12 shrink-0 rounded-2xl bg-gray-100"></div>
+                <div className={`flex flex-col gap-3 ${i % 2 === 0 ? 'items-end' : ''}`}>
+                  <div className="h-3 w-32 rounded-full bg-gray-50"></div>
+                  <div className={`h-16 w-[280px] md:w-[400px] rounded-2xl bg-gray-100 ${i % 2 === 0 ? 'rounded-tr-none' : 'rounded-tl-none'}`}></div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : messages.length === 0 ? (
-          <EmptyState
-            title="No messages yet"
-            description="Start the room with a welcome note or a mention."
-          />
+          <div className="flex h-full flex-col items-center justify-center p-12 text-center animate-message">
+            <div className="h-20 w-20 rounded-3xl bg-indigo-50 flex items-center justify-center text-indigo-500 mb-6 rotate-12 transition-smooth hover:rotate-0">
+              <MessageSquareShare size={40} />
+            </div>
+            <div className="text-2xl font-black text-gray-900 tracking-tight">No messages yet</div>
+            <div className="mt-3 max-w-sm text-gray-500 font-medium leading-relaxed">
+              Start the conversation with a welcome note or a friendly wave.
+            </div>
+            <button 
+              onClick={() => handleSend(`Hey ${currentUser?.displayName?.split(' ')[0] || 'there'}! 👋`)}
+              className="mt-8 bg-[#2c0b2e] text-white px-6 py-3 rounded-2xl font-bold transition-smooth hover:bg-[#1a061b] hover:scale-110 active:scale-95 shadow-lg shadow-[#2c0b2e]/20"
+            >
+              Say Hello! 👋
+            </button>
+          </div>
         ) : (
-          messages.map((message) => (
-            <MessageBubble
-              key={message.id}
-              message={message}
-              isSelected={selectedMessageId === message.id}
-              onClick={() => {
-                if (selectedMessageId === message.id) {
-                  setSelectedMessageId(null);
-                  setShowMenu(false);
-                  setShowEmojiPicker(false);
-                } else {
-                  setSelectedMessageId(message.id);
-                  setShowMenu(false);
-                  setShowEmojiPicker(false);
-                }
-              }}
-            />
-          ))
+          messages.map((message, index) => {
+            const messageDate = new Date(message.sentAt).toLocaleDateString();
+            const prevMessageDate = index > 0 ? new Date(messages[index - 1].sentAt).toLocaleDateString() : null;
+            const showDateSeparator = messageDate !== prevMessageDate;
+
+            return (
+              <React.Fragment key={message.id}>
+                {showDateSeparator && (
+                  <div className="flex items-center my-6 px-8 select-none">
+                    <div className="flex-1 h-px bg-gray-100"></div>
+                    <div className="mx-4 text-[10px] font-black uppercase tracking-wider text-gray-400 bg-white px-4 py-1.5 rounded-full border border-gray-100 shadow-sm">
+                      {new Date(message.sentAt).toLocaleDateString(undefined, { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      }).includes(new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })) ? 'Today' : 
+                       new Date(message.sentAt).toLocaleDateString(undefined, { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      }).includes(new Date(Date.now() - 86400000).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })) ? 'Yesterday' : 
+                       new Date(message.sentAt).toLocaleDateString(undefined, { 
+                        month: 'long', 
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </div>
+                    <div className="flex-1 h-px bg-gray-100"></div>
+                  </div>
+                )}
+                <MessageBubble
+                  message={message}
+                  isSelected={selectedMessageId === message.id}
+                  onClick={() => {
+                    if (selectedMessageId === message.id) {
+                      setSelectedMessageId(null);
+                      setShowMenu(false);
+                      setShowEmojiPicker(false);
+                    } else {
+                      setSelectedMessageId(message.id);
+                      setShowMenu(false);
+                      setShowEmojiPicker(false);
+                    }
+                  }}
+                  onReact={(emoji) => handleReact(message, emoji)}
+                />
+              </React.Fragment>
+            );
+          })
         )}
+        <TypingIndicator users={typingUsers} />
         <div ref={scrollRef} />
       </div>
-
-      <TypingIndicator users={typingUsers} />
 
       <MessageInput
         placeholder={channel?.isArchived ? "This channel is archived" : `Message #${name}`}

@@ -57,17 +57,17 @@ const ChannelInviteModal = ({ isOpen, onClose, channelId, workspaceId, channelNa
         <Modal 
             isOpen={isOpen} 
             onClose={onClose} 
-            title={`Invite members to #${channelName}`}
+            title={`Invite to #${channelName}`}
         >
             <div className="space-y-4">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b6a6b]" size={18} />
+                <div className="relative group/search">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within/search:text-indigo-500 transition-smooth" size={18} />
                     <input
                         type="text"
                         placeholder="Search workspace members..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full border border-black/10 bg-[#f8f8f8] pl-10 pr-4 py-2.5 text-sm focus:border-[#3f0e40] focus:ring-1 focus:ring-[#3f0e40] outline-none transition-all"
+                        className="w-full border border-gray-100 bg-gray-50/50 rounded-2xl pl-11 pr-5 py-3.5 text-sm font-medium focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 outline-none transition-smooth shadow-inner"
                         autoFocus
                     />
                 </div>
@@ -91,8 +91,8 @@ const ChannelInviteModal = ({ isOpen, onClose, channelId, workspaceId, channelNa
                                         key={member.id}
                                         className="flex items-center justify-between p-2 rounded-md hover:bg-black/5 transition-colors group"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center bg-[#3f0e40]/10 text-[#3f0e40] font-bold text-sm overflow-hidden">
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 font-bold text-base overflow-hidden shadow-sm transition-smooth group-hover:scale-105">
                                                 {member.avatarUrl ? (
                                                     <img src={member.avatarUrl} alt={member.displayName} className="h-full w-full object-cover" />
                                                 ) : (
@@ -100,27 +100,27 @@ const ChannelInviteModal = ({ isOpen, onClose, channelId, workspaceId, channelNa
                                                 )}
                                             </div>
                                             <div className="min-w-0">
-                                                <div className="text-sm font-semibold truncate text-[#1d1c1d]">{member.displayName}</div>
-                                                <div className="text-xs text-[#6b6a6b] truncate">{member.email}</div>
+                                                <div className="text-sm font-bold truncate text-gray-900">{member.displayName}</div>
+                                                <div className="text-xs font-medium text-gray-400 truncate">{member.email}</div>
                                             </div>
                                         </div>
                                         <button
                                             onClick={() => handleInvite(member.email)}
                                             disabled={isInvited}
-                                            className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-bold transition-all ${
+                                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-smooth shadow-sm ${
                                                 isInvited 
-                                                ? 'bg-[#2bac76]/10 text-[#2bac76] cursor-default' 
-                                                : 'bg-[#3f0e40] text-white hover:bg-[#350d36]'
+                                                ? 'bg-green-50 text-green-600 ring-1 ring-green-100 cursor-default' 
+                                                : 'bg-[#3f0e40] text-white hover:bg-[#350d36] hover:scale-105 active:scale-95'
                                             }`}
                                         >
                                             {isInvited ? (
                                                 <>
-                                                    <Check size={14} />
+                                                    <Check size={14} className="stroke-[3]" />
                                                     Invited
                                                 </>
                                             ) : (
                                                 <>
-                                                    <UserPlus size={14} />
+                                                    <UserPlus size={14} className="stroke-[2.5]" />
                                                     Invite
                                                 </>
                                             )}

@@ -128,31 +128,6 @@ const MainLayout = () => {
       <CreateChannelModal />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="glass-panel flex h-16 items-center justify-between border-b border-black/5 px-5">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6b6a6b]">
-              ByteChat
-            </div>
-            <div className="text-lg font-semibold">Real-Time Slack Clone Workspace</div>
-          </div>
-          <div className="flex items-center gap-3">
-            {user && (
-              <div className="flex items-center gap-3 border border-black/5 bg-white/50 px-4 py-1.5 shadow-sm">
-                <div className="flex h-8 w-8 items-center justify-center bg-[#3f0e40] text-xs font-bold text-white overflow-hidden">
-                  {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={user.displayName} className="h-full w-full object-cover" />
-                  ) : (
-                    user.displayName?.[0]?.toUpperCase() ?? 'U'
-                  )}
-                </div>
-                <div className="hidden flex-col md:flex">
-                  <div className="text-sm font-bold text-[#1d1c1d]">{user.displayName}</div>
-                  <div className="text-[10px] uppercase font-bold tracking-tight text-[#6b6a6b]">{displayRole}</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
 
         <div className="min-h-0 flex-1">
           <Outlet />

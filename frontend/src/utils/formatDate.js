@@ -23,3 +23,14 @@ export function formatMessageTimestamp(value) {
   }
   return format(date, 'MMM d, h:mm a');
 }
+export function formatJustTime(value) {
+  if (!value) return '';
+  let date;
+  if (Array.isArray(value)) {
+    date = new Date(value[0], value[1] - 1, value[2], value[3], value[4], value[5]);
+  } else {
+    date = new Date(value);
+  }
+  if (isNaN(date.getTime())) return '';
+  return format(date, 'h:mm a');
+}

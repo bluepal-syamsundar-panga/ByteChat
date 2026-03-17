@@ -30,4 +30,5 @@ public class ChannelResponse {
     private LocalDateTime createdAt;
     private int memberCount;
     private UserResponse createdBy;
+    private long unreadCount;
 }

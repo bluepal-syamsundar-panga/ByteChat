@@ -1,4 +1,4 @@
-import { Paperclip, SendHorizonal, SmilePlus, X } from 'lucide-react';
+import { Paperclip, SendHorizonal, SmilePlus, X, Plus, Image as ImageIcon, FileText } from 'lucide-react';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 
@@ -14,8 +14,10 @@ const MessageInput = ({
   const [content, setContent] = useState('');
   const [pendingFile, setPendingFile] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const fileInputRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  const attachMenuRef = useRef(null);
 
   const canSend = useMemo(() => (content.trim().length > 0 || pendingFile) && !disabled, [content, pendingFile, disabled]);
   
@@ -41,6 +43,9 @@ const MessageInput = ({
     function handleClickOutside(event) {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
         setShowEmojiPicker(false);
+      }
+      if (attachMenuRef.current && !attachMenuRef.current.contains(event.target)) {
+        setShowAttachMenu(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -115,125 +120,171 @@ const MessageInput = ({
   }
 
   return (
-    <div className="border-t border-black/5 bg-white px-4 py-4 md:px-5">
-      <div className="relative">
-        {pendingFile && (
-          <div className="mb-2 flex items-center gap-3 border border-black/10 bg-[#fbfbfb] p-2">
-            {pendingFile.isImage && pendingFile.previewUrl ? (
-              <div className="h-10 w-10 shrink-0 border border-black/5">
-                <img src={pendingFile.previewUrl} alt="Preview" className="h-full w-full object-cover" />
-              </div>
-            ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-black/5">
-                <Paperclip size={16} className="text-[#6b6a6b]" />
-              </div>
-            )}
-            <div className="flex-1 overflow-hidden">
-              <div className="truncate text-xs font-semibold text-[#1d1c1d]">{pendingFile.name}</div>
-              <div className="text-[10px] text-[#6b6a6b]">Ready to send</div>
-            </div>
-            <button 
-              type="button" 
-              onClick={handleRemoveFile}
-              className="p-1 text-[#6b6a6b] hover:bg-black/5 hover:text-[#e01e5a]"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        )}
+    <div className="border-t border-gray-100 bg-white px-4 py-3 md:px-8">
+      <div className="max-w-6xl mx-auto relative flex items-end gap-3">
+        {/* Attachment menu button - LEFT side OUTSIDE */}
+        <div className="relative mb-0.5" ref={attachMenuRef}>
+          <button
+            type="button"
+            onClick={() => setShowAttachMenu(!showAttachMenu)}
+            className={`flex h-10 w-10 items-center justify-center rounded-full transition-smooth ${
+              showAttachMenu ? 'text-[#3f0e40]' : 'text-gray-400 hover:text-[#3f0e40]'
+            }`}
+          >
+            <Plus size={22} className={`transition-transform duration-300 ${showAttachMenu ? 'rotate-45' : ''}`} />
+          </button>
 
-        {filteredSuggestions.length > 0 && (
-          <div className="absolute bottom-full left-0 mb-2 w-full max-w-sm border border-black/8 bg-white p-2 shadow-lg">
-            {filteredSuggestions.map((member) => (
-              <button
-                key={member.id}
-                type="button"
-                onClick={() => handleSelectMention(member)}
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm transition hover:bg-black/5"
+          {showAttachMenu && (
+            <div className="absolute bottom-full left-0 mb-3 w-48 bg-white rounded-2xl shadow-2xl z-50 py-2 border border-black/5 animate-in slide-in-from-bottom-4 duration-300">
+              <button 
+                onClick={() => {
+                  fileInputRef.current.accept = "image/*";
+                  fileInputRef.current.click();
+                  setShowAttachMenu(false);
+                }}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center bg-[#611f69] text-xs font-bold text-white">
-                    {member.displayName?.[0]?.toUpperCase() ?? 'U'}
-                  </div>
-                  <span className="font-medium text-[#1d1c1d]">{member.displayName}</span>
+                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                  <ImageIcon size={16} />
                 </div>
-                <span className="text-xs text-[#6b6a6b]">{member.email}</span>
+                Images
               </button>
-            ))}
-          </div>
-        )}
-        <form onSubmit={handleSubmit} className="flex items-end gap-3 border border-[#d8d8d8] bg-[#fbfbfb] p-2 pl-4 shadow-sm transition-colors focus-within:border-black/30 focus-within:bg-white">
-          <textarea
-            rows={1}
-            value={content}
-            onChange={handleChange}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                handleSubmit(event);
-              }
-            }}
-            disabled={disabled}
-            placeholder={placeholder}
-            className="scrollbar-thin my-1.5 max-h-[120px] min-h-[24px] w-full resize-none bg-transparent text-sm text-[#1d1c1d] outline-none placeholder:text-[#6b6a6b]"
-            style={{
-              height: 'auto',
-              minHeight: '24px',
-            }}
-            onInput={(e) => {
-              e.target.style.height = 'auto';
-              e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-            }}
-          />
-          <div className="mb-0.5 flex shrink-0 items-center gap-1 sm:gap-2">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              className="hidden" 
-              accept="image/*,.pdf,.doc,.docx,.txt"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-[#6b6a6b] transition hover:bg-black/5 hover:text-[#1d1c1d]"
-              title="Upload attachment"
-              disabled={disabled}
-            >
-              <Paperclip size={18} />
-            </button>
-            
-            <div className="relative" ref={emojiPickerRef}>
-              <button
-                type="button"
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className={`p-2 transition hover:bg-black/5 hover:text-[#1d1c1d] ${showEmojiPicker ? 'bg-black/5 text-[#1d1c1d]' : 'text-[#6b6a6b]'}`}
-                title="Add emoji"
-                disabled={disabled}
+              <button 
+                onClick={() => {
+                  fileInputRef.current.accept = ".pdf,.doc,.docx,.txt";
+                  fileInputRef.current.click();
+                  setShowAttachMenu(false);
+                }}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                <SmilePlus size={18} />
+                <div className="p-1.5 bg-green-50 text-green-600 rounded-lg">
+                  <FileText size={16} />
+                </div>
+                Documents
               </button>
-              
-              {showEmojiPicker && (
-                <div className="absolute bottom-full right-0 mb-2 z-50 shadow-xl border border-black/10 bg-white">
-                  <EmojiPicker 
-                    onEmojiClick={handleEmojiClick}
-                    autoFocusSearch={false}
-                    theme="light"
-                  />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 flex flex-col min-w-0">
+          {pendingFile && (
+            <div className="mb-2 flex items-center gap-3 border border-gray-100 bg-gray-50 p-2 rounded-xl shadow-sm animate-in slide-in-from-bottom-2 duration-300 overflow-hidden">
+              {pendingFile.isImage && pendingFile.previewUrl ? (
+                <div className="h-8 w-8 shrink-0 border border-black/5 rounded-lg overflow-hidden shadow-sm">
+                  <img src={pendingFile.previewUrl} alt="Preview" className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-white rounded-lg border border-gray-100 text-blue-500 shadow-sm">
+                  <Paperclip size={16} />
                 </div>
               )}
+              <div className="flex-1 overflow-hidden">
+                <div className="truncate text-xs font-bold text-gray-800">{pendingFile.name}</div>
+              </div>
+              <button 
+                type="button" 
+                onClick={handleRemoveFile}
+                className="p-1.5 text-gray-400 hover:bg-white hover:text-red-500 rounded-lg transition-smooth"
+              >
+                <X size={16} />
+              </button>
             </div>
-            <button
-              type="submit"
-              disabled={!canSend}
-              className="ml-1 flex h-9 w-9 items-center justify-center bg-[#3f0e40] text-white transition hover:bg-[#350d36] disabled:cursor-not-allowed disabled:bg-transparent disabled:text-[#b0c9de]"
-              title="Send message"
-            >
-              <SendHorizonal size={16} className={canSend ? 'ml-0.5' : ''} />
-            </button>
+          )}
+
+          <div className="relative w-full">
+            {filteredSuggestions.length > 0 && (
+              <div className="absolute bottom-full left-0 mb-4 w-full max-w-sm border border-black/8 bg-white p-2 shadow-lg rounded-xl overflow-hidden z-[60]">
+                {filteredSuggestions.map((member) => (
+                  <button
+                    key={member.id}
+                    type="button"
+                    onClick={() => handleSelectMention(member)}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm transition hover:bg-black/5 rounded-lg"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-6 w-6 items-center justify-center bg-[#611f69] text-xs font-bold text-white rounded-md">
+                        {member.displayName?.[0]?.toUpperCase() ?? 'U'}
+                      </div>
+                      <span className="font-bold text-[#1d1c1d]">{member.displayName}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            <form onSubmit={handleSubmit} className="flex items-center border border-gray-200 bg-gray-50/50 pl-5 pr-2 rounded-full transition-smooth ring-2 ring-transparent focus-within:ring-[#3f0e40]/10 focus-within:border-[#3f0e40] focus-within:bg-white group/input">
+              <textarea
+                rows={1}
+                value={content}
+                onChange={handleChange}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    handleSubmit(event);
+                  }
+                }}
+                disabled={disabled}
+                placeholder={placeholder}
+                className="scrollbar-thin py-2 w-full resize-none bg-transparent text-[14px] font-medium text-gray-800 outline-none placeholder:text-gray-400 tracking-tight leading-normal"
+                style={{
+                  height: '36px',
+                  minHeight: '36px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                onInput={(e) => {
+                  e.target.style.height = '36px';
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+                }}
+              />
+              <div className="flex shrink-0 items-center">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  className="hidden"
+                />
+                
+                <div className="relative" ref={emojiPickerRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className={`p-2 transition-smooth hover:text-[#3f0e40] rounded-full ${showEmojiPicker ? 'text-[#3f0e40]' : 'text-gray-400'}`}
+                    title="Add emoji"
+                    disabled={disabled}
+                  >
+                    <SmilePlus size={18} />
+                  </button>
+                  
+                  {showEmojiPicker && (
+                    <div className="absolute bottom-full right-0 mb-4 z-50 shadow-2xl rounded-2xl border border-black/5 bg-white scale-100 animate-in slide-in-from-bottom-4 duration-300">
+                      <EmojiPicker 
+                        onEmojiClick={handleEmojiClick}
+                        autoFocusSearch={false}
+                        theme="light"
+                        width={300}
+                        height={400}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </form>
           </div>
-        </form>
+        </div>
+
+        {/* Send button - RIGHT side OUTSIDE */}
+        <button
+          onClick={handleSubmit}
+          type="submit"
+          disabled={!canSend}
+          className={`mb-1 flex h-10 w-10 shrink-0 items-center justify-center transition-smooth rounded-full ${
+            canSend ? 'text-[#3f0e40] hover:scale-110 active:scale-95' : 'text-gray-200 cursor-not-allowed'
+          }`}
+          title="Send message"
+        >
+          <SendHorizonal size={20} className={canSend ? 'ml-0.5' : ''} />
+        </button>
       </div>
     </div>
   );

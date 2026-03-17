@@ -177,6 +177,7 @@ public class MessageServiceImpl implements MessageService {
                                 .emoji(emoji)
                                 .build())
                 );
+        reactionRepository.flush();
         
         return mapToResponse(message);
     }

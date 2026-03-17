@@ -4,6 +4,7 @@ import com.bytechat.dto.request.UpdateProfileRequest;
 import com.bytechat.dto.response.UserResponse;
 import com.bytechat.entity.DMRequestStatus;
 import com.bytechat.entity.User;
+import com.bytechat.repository.DirectMessageRepository;
 import com.bytechat.repository.UserRepository;
 import com.bytechat.services.CloudinaryService;
 import com.bytechat.services.UserService;
@@ -21,6 +22,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
+    private final DirectMessageRepository directMessageRepository;
 
     @Override
     public List<UserResponse> getAllUsers() {
@@ -69,12 +71,16 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<UserResponse> getSharedRoomUsers(Long userId) {
         return userRepository.findUsersSharingRoomWith(userId, DMRequestStatus.ACCEPTED).stream()
-                .map(this::mapToResponse)
+                .map(user -> mapToResponse(user, userId))
                 .collect(Collectors.toList());
     }
 
     private UserResponse mapToResponse(User user) {
-        return UserResponse.builder()
+        return mapToResponse(user, null);
+    }
+
+    private UserResponse mapToResponse(User user, Long currentUserId) {
+        UserResponse response = UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .displayName(user.getDisplayName())
@@ -83,5 +89,11 @@ public class UserServiceImpl implements UserService {
                 .online(user.isOnline())
                 .role(user.getRole() != null ? user.getRole().name() : "MEMBER")
                 .build();
+        
+        if (currentUserId != null) {
+            response.setUnreadCount(directMessageRepository.countUnreadBySender(currentUserId, user.getId()));
+        }
+        
+        return response;
     }
 }

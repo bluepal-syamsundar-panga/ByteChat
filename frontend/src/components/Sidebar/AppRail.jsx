@@ -4,6 +4,7 @@ import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
 import NotificationPanel from '../Common/NotificationPanel';
 import DMPanel from '../Common/DMPanel';
+import logo3 from '../../assets/logo3.png';
 
 const AppRail = ({ onCreateRoom }) => {
   const navigate = useNavigate();
@@ -26,15 +27,20 @@ const AppRail = ({ onCreateRoom }) => {
   return (
     <div className="flex h-full w-[68px] flex-col items-center bg-[#2c0b2e] py-4 text-white">
       {/* Branding */}
-      <div className="mb-6 flex h-10 w-10 items-center justify-center bg-[#3f0e40] text-sm font-bold border border-white/10">
-        {firstWorkspaceInitials}
+      <div 
+        onClick={() => navigate('/')}
+        className="mb-4 flex h-16 w-full items-center justify-center cursor-pointer group"
+      >
+        <div className="flex h-12 w-12 items-center justify-center transition-transform group-hover:scale-110">
+          <img src={logo3} alt="ByteChat" className="h-full w-full object-contain" />
+        </div>
       </div>
 
-      <div className="flex flex-1 flex-col items-center gap-6">
+      <div className="flex flex-col items-center gap-3">
         {/* Home / Channels */}
         <button
           onClick={handleHomeClick}
-          className={`flex h-10 w-10 items-center justify-center transition hover:bg-white/10 ${sidebarMode === 'channels' ? 'bg-white/20 text-white' : 'text-white/70'}`}
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-smooth hover:scale-110 ${sidebarMode === 'channels' ? 'bg-white/20 text-white shadow-md shadow-white/5 ring-1 ring-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
           title="Channels"
         >
           <Home size={22} />
@@ -43,7 +49,7 @@ const AppRail = ({ onCreateRoom }) => {
         {/* Create Channel */}
         <button
           onClick={() => setIsCreateChannelModalOpen(true)}
-          className="flex h-10 w-10 items-center justify-center transition hover:bg-white/10 text-white/70 hover:text-white"
+          className="flex h-12 w-12 items-center justify-center rounded-2xl transition-smooth hover:scale-110 text-white/40 hover:text-white hover:bg-white/10 border border-dashed border-white/20"
           title="Create Channel"
         >
           <Plus size={22} />
@@ -52,7 +58,7 @@ const AppRail = ({ onCreateRoom }) => {
         {/* Archive */}
         <button
           onClick={() => setSidebarMode('archive')}
-          className={`flex h-10 w-10 items-center justify-center transition hover:bg-white/10 ${sidebarMode === 'archive' ? 'bg-white/20 text-white' : 'text-white/70'}`}
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-smooth hover:scale-110 ${sidebarMode === 'archive' ? 'bg-white/20 text-white shadow-md ring-1 ring-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
           title="Archived Channels"
         >
           <Archive size={22} />
@@ -61,7 +67,7 @@ const AppRail = ({ onCreateRoom }) => {
         {/* Trash */}
         <button
           onClick={() => setSidebarMode('trash')}
-          className={`flex h-10 w-10 items-center justify-center transition hover:bg-white/10 ${sidebarMode === 'trash' ? 'bg-white/20 text-white' : 'text-white/70'}`}
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-smooth hover:scale-110 ${sidebarMode === 'trash' ? 'bg-white/20 text-white shadow-md ring-1 ring-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
           title="Trash / Deleted Channels"
         >
           <Trash2 size={22} />
@@ -76,33 +82,34 @@ const AppRail = ({ onCreateRoom }) => {
         <DMPanel />
       </div>
 
-      {/* Profile */}
-      <div className="mt-auto flex flex-col items-center gap-4">
+      {/* Bottom Section: Profile & Logout */}
+      <div className="mt-auto flex flex-col items-center gap-3 pb-6">
         <NavLink
           to="/profile"
           className={({ isActive }) =>
-            `flex h-10 w-10 items-center justify-center transition hover:bg-white/10 overflow-hidden ${isActive ? 'bg-white/10 text-white' : 'text-white/70 shadow-sm'
-            }`
+            `relative flex h-12 w-12 items-center justify-center rounded-full transition-smooth hover:scale-110 shadow-sm`
           }
           title="Profile Settings"
         >
           {user?.avatarUrl ? (
-            <img src={user.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+            <img src={user.avatarUrl} alt="Avatar" className="h-full w-full object-cover rounded-full" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[#3f0e40] text-xs font-bold">
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#611f69] to-[#3f0e40] text-sm font-extrabold rounded-full">
               {user?.displayName?.[0]?.toUpperCase() ?? 'U'}
             </div>
           )}
+          <span className="absolute bottom-1 right-1 h-3 w-3 rounded-full bg-[#2bac76] border-2 border-[#2c0b2e] z-10 presence-dot" />
         </NavLink>
+
         <button
           onClick={() => {
             const logout = useAuthStore.getState().logout;
             logout();
           }}
-          className="mb-2 flex h-10 w-10 items-center justify-center text-white/70 transition hover:bg-white/10 hover:text-white"
+          className="flex h-12 w-12 items-center justify-center text-white/40 transition-smooth hover:bg-white/10 hover:text-white rounded-2xl hover:scale-110"
           title="Sign Out"
         >
-          <LogOut size={20} />
+          <LogOut size={22} />
         </button>
       </div>
     </div>

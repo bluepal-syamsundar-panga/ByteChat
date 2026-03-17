@@ -24,7 +24,7 @@ const RegisterPage = () => {
     else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'Invalid email format';
     if (!form.password) newErrors.password = 'Password is required';
     else if (form.password.length < 6) newErrors.password = 'Min. 6 characters required';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -33,7 +33,7 @@ const RegisterPage = () => {
     const newErrors = {};
     if (!form.otpCode.trim()) newErrors.otpCode = 'Code is required';
     else if (form.otpCode.length !== 6) newErrors.otpCode = 'Code must be 6 digits';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -41,7 +41,7 @@ const RegisterPage = () => {
   async function handleSendOtp(event) {
     if (event) event.preventDefault();
     if (!validateStep1()) return;
-    
+
     setSubmitting(true);
     setErrors({});
 
@@ -110,20 +110,20 @@ const RegisterPage = () => {
       <section className="flex-1 flex flex-col justify-center items-center p-8 lg:p-20 relative bg-white overflow-y-auto custom-scrollbar">
         <div className="w-full max-w-md">
           {/* Heading inside the section */}
-          <div className="mb-10">
-            <h2 className="text-4xl font-extrabold text-[#1d1c1d] tracking-tight mb-2">Join the workspace</h2>
-            <p className="text-[#6b6a6b] font-medium">Step {step} of 2: {step === 1 ? 'Account details' : 'Verify email'}</p>
+          <div className="mb-8">
+            <h2 className="text-4xl font-extrabold text-[#1d1c1d] tracking-tight">Join the workspace</h2>
           </div>
 
           <div className="w-full">
             {step === 1 ? (
-              <form className="space-y-8" onSubmit={handleSendOtp}>
+              <form className="space-y-5" onSubmit={handleSendOtp}>
                 <Field
                   icon={<UserRound size={18} />}
                   label="What should we call you?"
                   placeholder="e.g. John Doe"
                   value={form.displayName}
                   error={errors.displayName}
+                  required
                   onChange={(v) => setForm(f => ({ ...f, displayName: v }))}
                 />
                 <Field
@@ -133,6 +133,7 @@ const RegisterPage = () => {
                   placeholder="name@work.com"
                   value={form.email}
                   error={errors.email}
+                  required
                   onChange={(v) => setForm(f => ({ ...f, email: v }))}
                 />
                 <Field
@@ -142,6 +143,7 @@ const RegisterPage = () => {
                   placeholder="Min. 6 characters"
                   value={form.password}
                   error={errors.password}
+                  required
                   onChange={(v) => setForm(f => ({ ...f, password: v }))}
                 />
 
@@ -161,8 +163,8 @@ const RegisterPage = () => {
                 </button>
               </form>
             ) : (
-              <form className="space-y-8 animate-in slide-in-from-right-4 duration-300" onSubmit={handleSubmit}>
-                <div className="mb-6">
+              <form className="space-y-5 animate-in slide-in-from-right-4 duration-300" onSubmit={handleSubmit}>
+                <div className="mb-4">
                   <p className="text-sm text-[#6b6a6b] mb-1">We sent a 6-digit code to</p>
                   <p className="font-bold text-[#1d1c1d]">{form.email}</p>
                   <button 
@@ -180,6 +182,7 @@ const RegisterPage = () => {
                   placeholder="Enter 6-digit code"
                   value={form.otpCode}
                   error={errors.otpCode}
+                  required
                   maxLength={6}
                   onChange={(v) => setForm(f => ({ ...f, otpCode: v }))}
                 />
@@ -198,9 +201,9 @@ const RegisterPage = () => {
                   {submitting ? 'Verifying...' : 'Complete registration'}
                   <ArrowRight size={18} />
                 </button>
-                
+
                 <div className="text-center">
-                  <button 
+                  <button
                     type="button"
                     onClick={handleSendOtp}
                     disabled={submitting}
@@ -222,7 +225,8 @@ const RegisterPage = () => {
         </div>
       </section>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 0px; }
         body { overflow: hidden; }
       `}} />
@@ -230,15 +234,16 @@ const RegisterPage = () => {
   );
 };
 
-const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error, maxLength }) => (
+const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error, maxLength, required }) => (
   <div className="w-full group">
-    <div className="flex justify-between items-center mb-2 px-1">
-      <span className="text-xs font-bold uppercase tracking-wider text-[#6b6a6b] group-focus-within:text-[#3f0e40] transition-colors">{label}</span>
-      {error && <span className="text-[10px] font-bold text-rose-500 animate-in fade-in slide-in-from-top-1">{error}</span>}
+    <div className="mb-2 px-1">
+      <span className="text-xs font-bold uppercase tracking-wider text-[#6b6a6b] group-focus-within:text-[#3f0e40] transition-colors">
+        {label} {required && <span className="text-rose-500 ml-0.5">**</span>}
+      </span>
     </div>
     <div className={`
       flex items-center gap-3 bg-[#f8f8f8] border-[1.5px] rounded-2xl px-5 transition-all duration-200
-      ${error ? 'border-rose-200 bg-rose-50/30' : 'border-transparent group-focus-within:border-[#3f0e40]/20 group-focus-within:bg-white group-focus-within:shadow-[0_0_0_4px_rgba(63,14,64,0.05)]'}
+      ${error ? 'border-rose-200 bg-rose-50/30' : 'border-transparent group-focus-within:border-[#3f0e40]/20 group-focus-within:bg-white'}
     `}>
       <span className={`${error ? 'text-rose-400' : 'text-[#6b6a6b] group-focus-within:text-[#3f0e40]'} transition-colors`}>{icon}</span>
       <input
@@ -250,6 +255,11 @@ const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error
         className="w-full h-14 bg-transparent outline-none text-[#1d1c1d] font-medium placeholder:text-[#6b6a6b]/40"
       />
     </div>
+    {error && (
+      <div className="mt-1.5 px-1 text-[10px] font-bold text-rose-500 animate-in fade-in slide-in-from-top-1">
+        {error}
+      </div>
+    )}
   </div>
 );
 

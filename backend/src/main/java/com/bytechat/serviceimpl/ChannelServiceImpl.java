@@ -23,6 +23,7 @@ public class ChannelServiceImpl implements ChannelService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final MessageRepository messageRepository;
 
     @Override
     @Transactional
@@ -53,21 +54,21 @@ public class ChannelServiceImpl implements ChannelService {
     @Override
     public List<ChannelResponse> getWorkspaceChannels(Long workspaceId, User currentUser) {
         return channelRepository.findVisibleChannels(workspaceId, currentUser.getId()).stream()
-                .map(this::mapToResponse)
+                .map(channel -> mapToResponse(channel, currentUser))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<ChannelResponse> getArchivedChannels(Long workspaceId, User currentUser) {
         return channelRepository.findArchivedChannels(workspaceId, currentUser.getId()).stream()
-                .map(this::mapToResponse)
+                .map(channel -> mapToResponse(channel, currentUser))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<ChannelResponse> getDeletedChannels(Long workspaceId, User currentUser) {
         return channelRepository.findDeletedChannels(workspaceId, currentUser.getId()).stream()
-                .map(this::mapToResponse)
+                .map(channel -> mapToResponse(channel, currentUser))
                 .collect(Collectors.toList());
     }
 
@@ -289,7 +290,11 @@ public class ChannelServiceImpl implements ChannelService {
     }
 
     private ChannelResponse mapToResponse(Channel channel) {
-        return ChannelResponse.builder()
+        return mapToResponse(channel, null);
+    }
+
+    private ChannelResponse mapToResponse(Channel channel, User currentUser) {
+        ChannelResponse response = ChannelResponse.builder()
                 .id(channel.getId())
                 .name(channel.getName())
                 .description(channel.getDescription())
@@ -301,5 +306,11 @@ public class ChannelServiceImpl implements ChannelService {
                 .memberCount(channel.getMembers() != null ? channel.getMembers().size() : 0)
                 .createdBy(channel.getCreatedBy() != null ? mapToUserResponse(channel.getCreatedBy()) : null)
                 .build();
+        
+        if (currentUser != null) {
+            response.setUnreadCount((int) messageRepository.countUnreadInChannel(channel.getId(), currentUser.getId()));
+        }
+        
+        return response;
     }
 }

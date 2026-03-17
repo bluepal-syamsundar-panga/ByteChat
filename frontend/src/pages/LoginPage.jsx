@@ -180,12 +180,12 @@ const LoginPage = () => {
         <div className="w-full max-w-sm">
           {mode === 'login' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="mb-10">
+              <div className="mb-6">
                 <h2 className="text-4xl font-black text-[#1d1c1d] tracking-tight">Welcome back</h2>
-                <p className="mt-3 text-[#6b6a6b] font-medium text-lg">Sign in to continue chatting</p>
+                <p className="mt-2 text-[#6b6a6b] font-medium">Sign in to continue chatting</p>
               </div>
 
-              <form className="space-y-6" onSubmit={handleLogin}>
+              <form className="space-y-4" onSubmit={handleLogin}>
                 <Field
                   icon={<Mail size={18} />}
                   label="Email address"
@@ -193,6 +193,7 @@ const LoginPage = () => {
                   placeholder="name@work.com"
                   value={form.email}
                   error={errors.email}
+                  required
                   onChange={(v) => setForm(f => ({ ...f, email: v }))}
                 />
                 
@@ -204,6 +205,7 @@ const LoginPage = () => {
                     placeholder="Enter your password"
                     value={form.password}
                     error={errors.password}
+                    required
                     onChange={(v) => setForm(f => ({ ...f, password: v }))}
                   />
                   <div className="flex justify-end mt-2">
@@ -244,14 +246,14 @@ const LoginPage = () => {
                 <ArrowLeft size={16} /> Back to Sign In
               </button>
               
-              <div className="mb-8">
+              <div className="mb-6">
                 <h2 className="text-3xl font-black text-[#1d1c1d] tracking-tight">Reset password</h2>
-                <p className="mt-3 text-[#6b6a6b] font-medium leading-relaxed">
+                <p className="mt-2 text-[#6b6a6b] font-medium leading-relaxed">
                   Enter your email address and we'll send you a code to reset your password.
                 </p>
               </div>
 
-              <form className="space-y-6" onSubmit={handleSendResetOtp}>
+              <form className="space-y-4" onSubmit={handleSendResetOtp}>
                 <Field
                   icon={<Mail size={18} />}
                   label="Email address"
@@ -259,6 +261,7 @@ const LoginPage = () => {
                   placeholder="Enter your workspace email"
                   value={form.email}
                   error={errors.email}
+                  required
                   onChange={(v) => setForm(f => ({ ...f, email: v }))}
                 />
 
@@ -283,14 +286,14 @@ const LoginPage = () => {
                 <ArrowLeft size={16} /> Back
               </button>
 
-              <div className="mb-8">
+              <div className="mb-6">
                 <h2 className="text-3xl font-black text-[#1d1c1d] tracking-tight">Enter code</h2>
-                <p className="mt-3 text-[#6b6a6b] font-medium leading-relaxed">
+                <p className="mt-2 text-[#6b6a6b] font-medium leading-relaxed">
                   We've sent a 6-digit code to <span className="font-bold">{form.email}</span>
                 </p>
               </div>
 
-              <form className="space-y-6" onSubmit={handleVerifyOtp}>
+              <form className="space-y-4" onSubmit={handleVerifyOtp}>
                 <Field
                   icon={<KeyRound size={18} />}
                   label="Verification Code"
@@ -298,6 +301,7 @@ const LoginPage = () => {
                   maxLength={6}
                   value={form.otpCode}
                   error={errors.otpCode}
+                  required
                   onChange={(v) => setForm(f => ({ ...f, otpCode: v }))}
                 />
 
@@ -323,17 +327,17 @@ const LoginPage = () => {
 
           {mode === 'forgot-reset' && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="mb-8">
-                <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mb-6">
-                  <CheckCircle2 size={32} className="text-emerald-500" />
+              <div className="mb-6">
+                <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mb-5">
+                  <CheckCircle2 size={28} className="text-emerald-500" />
                 </div>
                 <h2 className="text-3xl font-black text-[#1d1c1d] tracking-tight">New password</h2>
-                <p className="mt-3 text-[#6b6a6b] font-medium">
+                <p className="mt-2 text-[#6b6a6b] font-medium">
                   Create a secure password for your account.
                 </p>
               </div>
 
-              <form className="space-y-6" onSubmit={handleResetPassword}>
+              <form className="space-y-4" onSubmit={handleResetPassword}>
                 <Field
                   icon={<LockKeyhole size={18} />}
                   label="New Password"
@@ -341,6 +345,7 @@ const LoginPage = () => {
                   placeholder="Enter new password"
                   value={form.newPassword}
                   error={errors.newPassword}
+                  required
                   onChange={(v) => setForm(f => ({ ...f, newPassword: v }))}
                 />
                 <Field
@@ -350,6 +355,7 @@ const LoginPage = () => {
                   placeholder="Repeat new password"
                   value={form.confirmPassword}
                   error={errors.confirmPassword}
+                  required
                   onChange={(v) => setForm(f => ({ ...f, confirmPassword: v }))}
                 />
 
@@ -398,15 +404,16 @@ const LoginPage = () => {
   );
 };
 
-const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error, maxLength }) => (
+const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error, maxLength, required }) => (
   <div className="w-full group">
-    <div className="flex justify-between items-center mb-2 px-1">
-      <span className="text-xs font-bold uppercase tracking-wider text-[#6b6a6b] group-focus-within:text-[#3f0e40] transition-colors">{label}</span>
-      {error && <span className="text-[10px] font-bold text-rose-500 animate-in fade-in slide-in-from-top-1">{error}</span>}
+    <div className="mb-2 px-1">
+      <span className="text-xs font-bold uppercase tracking-wider text-[#6b6a6b] group-focus-within:text-[#3f0e40] transition-colors">
+        {label} {required && <span className="text-rose-500 ml-0.5">**</span>}
+      </span>
     </div>
     <div className={`
       flex items-center gap-3 bg-[#f8f8f8] border-[1.5px] rounded-2xl px-5 transition-all duration-200
-      ${error ? 'border-rose-200 bg-rose-50/30' : 'border-transparent group-focus-within:border-[#3f0e40]/20 group-focus-within:bg-white group-focus-within:shadow-[0_0_0_4px_rgba(63,14,64,0.05)]'}
+      ${error ? 'border-rose-200 bg-rose-50/30' : 'border-transparent group-focus-within:border-[#3f0e40]/20 group-focus-within:bg-white'}
     `}>
       <span className={`${error ? 'text-rose-400' : 'text-[#6b6a6b] group-focus-within:text-[#3f0e40]'} transition-colors`}>{icon}</span>
       <input
@@ -418,6 +425,11 @@ const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error
         className="w-full h-14 bg-transparent outline-none text-[#1d1c1d] font-medium placeholder:text-[#6b6a6b]/40"
       />
     </div>
+    {error && (
+      <div className="mt-1.5 px-1 text-[10px] font-bold text-rose-500 animate-in fade-in slide-in-from-top-1">
+        {error}
+      </div>
+    )}
   </div>
 );
 
