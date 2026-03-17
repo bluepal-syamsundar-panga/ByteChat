@@ -2,6 +2,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState, useMemo } from 'react';
 import Sidebar from '../components/Sidebar/Sidebar';
 import AppRail from '../components/Sidebar/AppRail';
+import CreateChannelModal from '../components/Sidebar/CreateChannelModal';
 import Modal from '../components/Shared/Modal';
 import NotificationPanel from '../components/Common/NotificationPanel';
 import useAuthStore from '../store/authStore';
@@ -123,8 +124,8 @@ const MainLayout = () => {
   return (
     <div className="flex h-screen overflow-hidden bg-transparent text-[#1d1c1d]">
       <AppRail onCreateRoom={() => setShowCreateWorkspaceModal(true)} />
-
       <Sidebar onAcceptInvite={handleAcceptInvite} />
+      <CreateChannelModal />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="glass-panel flex h-16 items-center justify-between border-b border-black/5 px-5">

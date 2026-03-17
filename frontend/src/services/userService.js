@@ -35,6 +35,10 @@ const userService = {
     const response = await api.get('/users/shared');
     return response.data;
   },
+  async getUserById(userId) {
+    const response = await api.get(`/users/${userId}`);
+    return response.data;
+  },
 };
 
 export default userService;

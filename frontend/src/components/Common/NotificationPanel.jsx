@@ -7,6 +7,7 @@ import useChatStore from '../../store/chatStore';
 import chatService from '../../services/chatService';
 import userService from '../../services/userService';
 import { formatMessageTimestamp } from '../../utils/formatDate';
+import channelService from '../../services/channelService';
 import useToastStore from '../../store/toastStore';
 
 const NotificationPanel = ({ variant = 'light' }) => {
@@ -67,37 +68,42 @@ const NotificationPanel = ({ variant = 'light' }) => {
   };
 
   const handleAccept = async (notificationId) => {
-    const notification = notifications.find(n => n.id === notificationId);
     try {
       await notificationService.accept(notificationId);
       
       // Immediately remove from list locally
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
 
-      // Re-fetch rooms/workspaces and shared users if it was an invite
-      if (notification?.type === 'ROOM_INVITE' || notification?.type === 'CHANNEL_INVITE' || notification?.type === 'WORKSPACE_INVITE') {
-        try {
-            // Refresh workspaces
-            const workspacesRes = await chatService.getWorkspaces();
-            const workspaces = workspacesRes.data?.content || workspacesRes.data || (Array.isArray(workspacesRes) ? workspacesRes : []);
-            useChatStore.getState().setWorkspaces(workspaces);
+      try {
+        console.log('Refreshing data after invitation acceptance...');
+        // Re-fetch all data after accepting an invite
+        const [workspacesRes, usersRes] = await Promise.all([
+          chatService.getWorkspaces(),
+          userService.getSharedRoomUsers()
+        ]);
 
-            // Legacy support for rooms if needed
-            const roomsData = await chatService.getRooms();
-            const rooms = roomsData.data?.content || roomsData.content || roomsData.data || (Array.isArray(roomsData) ? roomsData : []);
-            useChatStore.getState().setRooms(rooms);
-
-            const usersRes = await userService.getSharedRoomUsers();
-            useChatStore.getState().setSharedUsers(usersRes.data || usersRes || []);
-            
-            useChatStore.getState().setNotifications(prev => prev.filter(n => n.id !== notificationId));
-            useToastStore.getState().addToast('Invite accepted successfully!', 'success');
-        } catch (fetchError) {
-            console.error('Failed to refresh data after accept', fetchError);
+        const workspaces = workspacesRes.data?.data || workspacesRes.data?.content || workspacesRes.data || [];
+        useChatStore.getState().setWorkspaces(Array.isArray(workspaces) ? workspaces : []);
+        useChatStore.getState().setSharedUsers(usersRes.data || usersRes || []);
+        
+        // Critical: Fetch channels for the active workspace to show new memberships immediately
+        const activeWorkspaceId = useChatStore.getState().activeWorkspaceId;
+        console.log('Current active workspace for refresh:', activeWorkspaceId);
+        
+        if (activeWorkspaceId) {
+            const channelsRes = await channelService.getWorkspaceChannels(activeWorkspaceId);
+            const channelsData = channelsRes.data?.data || channelsRes.data?.content || channelsRes.data || [];
+            console.log('Refreshed channels:', channelsData.length);
+            useChatStore.getState().setChannels(Array.isArray(channelsData) ? channelsData : []);
         }
+        
+        useToastStore.getState().addToast('Invite accepted successfully!', 'success');
+      } catch (fetchError) {
+        console.error('Failed to refresh data after accept', fetchError);
       }
     } catch (error) {
       console.error('Failed to accept notification', error);
+      useToastStore.getState().addToast('Failed to accept invitation', 'error');
     }
   };
 

@@ -13,6 +13,22 @@ const dmService = {
     const response = await api.post(`/dm/${userId}/read`);
     return response.data;
   },
+  async editMessage(dmId, content) {
+    const response = await api.put(`/dm/${dmId}`, { content });
+    return response.data;
+  },
+  async deleteMessage(dmId) {
+    const response = await api.delete(`/dm/${dmId}`);
+    return response.data;
+  },
+  async pinMessage(dmId) {
+    const response = await api.post(`/dm/${dmId}/pin`);
+    return response.data;
+  },
+  async reactToMessage(dmId, emoji) {
+    const response = await api.post(`/dm/${dmId}/react?emoji=${encodeURIComponent(emoji)}`);
+    return response.data;
+  },
 };
 
 export default dmService;

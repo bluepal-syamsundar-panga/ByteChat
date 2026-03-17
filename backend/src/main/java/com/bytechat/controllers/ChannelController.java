@@ -32,20 +32,37 @@ public class ChannelController {
             @PathVariable(name = "workspaceId") Long workspaceId,
             @RequestParam(name = "name") String name,
             @RequestParam(name = "description", required = false) String description,
+            @RequestParam(name = "isPrivate", defaultValue = "false") boolean isPrivate,
             @AuthenticationPrincipal User currentUser) {
         
-        log.info("Creating channel {} in workspace {}", name, workspaceId);
-        ChannelResponse channel = channelService.createChannel(workspaceId, name, description, false, currentUser);
+        log.info("Creating channel {} (private: {}) in workspace {}", name, isPrivate, workspaceId);
+        ChannelResponse channel = channelService.createChannel(workspaceId, name, description, isPrivate, false, currentUser);
         return ResponseEntity.ok(ApiResponse.success(channel, "Channel created successfully"));
     }
 
     @GetMapping("/workspace/{workspaceId}")
-    @Operation(summary = "Get workspace channels", description = "Retrieves all channels for a workspace.")
+    @Operation(summary = "Get workspace channels", description = "Retrieves all visible channels for a workspace.")
     public ResponseEntity<ApiResponse<List<ChannelResponse>>> getWorkspaceChannels(
-            @PathVariable(name = "workspaceId") Long workspaceId) {
-        
-        List<ChannelResponse> channels = channelService.getWorkspaceChannels(workspaceId);
+            @PathVariable(name = "workspaceId") Long workspaceId,
+            @AuthenticationPrincipal User currentUser) {
+        List<ChannelResponse> channels = channelService.getWorkspaceChannels(workspaceId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(channels, "Channels fetched successfully"));
+    }
+
+    @GetMapping("/workspace/{workspaceId}/archived")
+    @Operation(summary = "Get archived channels", description = "Fetches archived channels in a workspace.")
+    public ResponseEntity<ApiResponse<List<ChannelResponse>>> getArchivedChannels(
+            @PathVariable(name = "workspaceId") Long workspaceId,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(channelService.getArchivedChannels(workspaceId, currentUser)));
+    }
+
+    @GetMapping("/workspace/{workspaceId}/deleted")
+    @Operation(summary = "Get deleted channels (Trash)", description = "Fetches soft-deleted channels in a workspace.")
+    public ResponseEntity<ApiResponse<List<ChannelResponse>>> getDeletedChannels(
+            @PathVariable(name = "workspaceId") Long workspaceId,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(channelService.getDeletedChannels(workspaceId, currentUser)));
     }
 
     @GetMapping("/{channelId}/members")
@@ -77,5 +94,56 @@ public class ChannelController {
         log.info("Archiving channel {}", channelId);
         channelService.archiveChannel(channelId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Channel archived"));
+    }
+
+    @PostMapping("/{channelId}/restore")
+    @Operation(summary = "Restore channel", description = "Restores a channel from archive or trash.")
+    public ResponseEntity<ApiResponse<Void>> restoreChannel(
+            @PathVariable(name = "channelId") Long channelId,
+            @AuthenticationPrincipal User currentUser) {
+        log.info("Restoring channel {}", channelId);
+        channelService.restoreChannel(channelId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null, "Channel restored"));
+    }
+
+    @DeleteMapping("/{channelId}")
+    @Operation(summary = "Soft delete channel", description = "Moves channel to trash.")
+    public ResponseEntity<ApiResponse<Void>> deleteChannel(
+            @PathVariable(name = "channelId") Long channelId,
+            @AuthenticationPrincipal User currentUser) {
+        log.info("Soft deleting channel {}", channelId);
+        channelService.deleteChannel(channelId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null, "Channel moved to trash"));
+    }
+
+    @DeleteMapping("/{channelId}/permanent")
+    @Operation(summary = "Permanently delete channel", description = "Permanently deletes a channel from trash.")
+    public ResponseEntity<ApiResponse<Void>> permanentlyDeleteChannel(
+            @PathVariable(name = "channelId") Long channelId,
+            @AuthenticationPrincipal User currentUser) {
+        log.info("Permanently deleting channel {}", channelId);
+        channelService.permanentlyDeleteChannel(channelId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null, "Channel permanently deleted"));
+    }
+
+    @PostMapping("/{channelId}/leave")
+    @Operation(summary = "Leave channel", description = "Current user leaves the channel.")
+    public ResponseEntity<ApiResponse<Void>> leaveChannel(
+            @PathVariable(name = "channelId") Long channelId,
+            @AuthenticationPrincipal User currentUser) {
+        log.info("Leaving channel {}", channelId);
+        channelService.leaveChannel(channelId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null, "Left channel"));
+    }
+
+    @PostMapping("/{channelId}/transfer-ownership")
+    @Operation(summary = "Transfer channel ownership", description = "Transfers ownership to another member.")
+    public ResponseEntity<ApiResponse<Void>> transferOwnership(
+            @PathVariable(name = "channelId") Long channelId,
+            @RequestParam(name = "newOwnerId") Long newOwnerId,
+            @AuthenticationPrincipal User currentUser) {
+        log.info("Transferring ownership of channel {} to {}", channelId, newOwnerId);
+        channelService.transferOwnership(channelId, newOwnerId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null, "Ownership transferred"));
     }
 }

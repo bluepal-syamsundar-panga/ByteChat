@@ -13,8 +13,13 @@ const ChatPage = () => {
 
   const selectedWorkspace = useMemo(() => workspaces.find((ws) => String(ws.id) === id), [id, workspaces]);
   const selectedChannel = useMemo(() => channels.find((channel) => String(channel.id) === id), [id, channels]);
-  const { sharedUsers } = useChatStore();
-  const selectedUser = useMemo(() => sharedUsers.find((user) => String(user.id) === id), [id, sharedUsers]);
+  const { sharedUsers, setSharedUsers } = useChatStore();
+  const [targetUser, setTargetUser] = useState(null);
+  
+  const selectedUser = useMemo(() => 
+    targetUser || sharedUsers.find((user) => String(user.id) === id), 
+    [id, sharedUsers, targetUser]
+  );
 
   // Fetch channel data if not in store
   useEffect(() => {
@@ -41,6 +46,31 @@ const ChatPage = () => {
       fetchChannels();
     }
   }, [type, id, selectedChannel, workspaces, setChannels]);
+
+  // Fetch DM user if not in store
+  useEffect(() => {
+    if (type === 'dm' && id) {
+      const existing = sharedUsers.find(u => String(u.id) === id);
+      if (existing) {
+        setTargetUser(existing);
+      } else {
+        setLoading(true);
+        userService.getUserById(id)
+          .then(res => {
+            const userData = res.data?.data || res.data || res;
+            if (userData) {
+              setTargetUser(userData);
+              // Optionally add to shared users if they should persist in sidebar
+              // setSharedUsers([...sharedUsers, userData]);
+            }
+          })
+          .catch(err => console.error('Failed to fetch user for DM:', err))
+          .finally(() => setLoading(false));
+      }
+    } else {
+      setTargetUser(null);
+    }
+  }, [type, id, sharedUsers]);
 
   if (loading) {
     return (

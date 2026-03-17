@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,7 +26,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     @Transactional
-    public ChannelResponse createChannel(Long workspaceId, String name, String description, boolean isDefault, User creator) {
+    public ChannelResponse createChannel(Long workspaceId, String name, String description, boolean isPrivate, boolean isDefault, User creator) {
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() -> new RuntimeException("Workspace not found"));
         
@@ -35,25 +34,39 @@ public class ChannelServiceImpl implements ChannelService {
                 .name(name)
                 .description(description)
                 .workspace(workspace)
+                .isPrivate(isPrivate)
                 .isDefault(isDefault)
                 .createdBy(creator)
                 .build();
         
-        // Add creator to channel
+        // Add creator as member - fetch managed entity to be safe
         if (creator != null) {
-            channel.getMembers().add(creator);
+            User managedCreator = userRepository.findById(creator.getId())
+                    .orElseThrow(() -> new RuntimeException("Creator not found"));
+            channel.getMembers().add(managedCreator);
         }
         
-        // Add all workspace members to the new channel IF it's the default one
-        // Note: The user request says "if user create workspace then one default channel will create if user add any user into that workspace that person will also member of that default channel"
-        // This implies for OTHER channels, the owner adds members manually.
-        
-        return mapToResponse(channelRepository.save(channel));
+        Channel savedChannel = channelRepository.save(channel);
+        return mapToResponse(savedChannel);
     }
 
     @Override
-    public List<ChannelResponse> getWorkspaceChannels(Long workspaceId) {
-        return channelRepository.findByWorkspaceId(workspaceId).stream()
+    public List<ChannelResponse> getWorkspaceChannels(Long workspaceId, User currentUser) {
+        return channelRepository.findVisibleChannels(workspaceId, currentUser.getId()).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ChannelResponse> getArchivedChannels(Long workspaceId, User currentUser) {
+        return channelRepository.findArchivedChannels(workspaceId, currentUser.getId()).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ChannelResponse> getDeletedChannels(Long workspaceId, User currentUser) {
+        return channelRepository.findDeletedChannels(workspaceId, currentUser.getId()).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -68,7 +81,11 @@ public class ChannelServiceImpl implements ChannelService {
     @Transactional
     public void addMember(Long channelId, User user) {
         Channel channel = getChannel(channelId);
-        channel.getMembers().add(user);
+        
+        User managedUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+                
+        channel.getMembers().add(managedUser);
         channelRepository.save(channel);
 
         // Ensure membership in the parent workspace
@@ -166,6 +183,111 @@ public class ChannelServiceImpl implements ChannelService {
         channelRepository.save(channel);
     }
 
+    @Override
+    @Transactional
+    public void leaveChannel(Long channelId, User currentUser) {
+        Channel channel = getChannel(channelId);
+        if (channel.isDefault()) {
+            throw new RuntimeException("Cannot leave the default channel");
+        }
+        
+        if (channel.getCreatedBy().getId().equals(currentUser.getId())) {
+             // If creator leaves, they MUST transfer ownership first or if they are the only member, maybe delete?
+             // The user requested: "if creator want to leave, owner give ownership to another member"
+             if (channel.getMembers().size() > 1) {
+                 throw new RuntimeException("As the creator, you must transfer ownership to another member before leaving.");
+             }
+        }
+
+        User managedUser = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        channel.getMembers().remove(managedUser);
+        channelRepository.save(channel);
+    }
+
+    @Override
+    @Transactional
+    public void deleteChannel(Long channelId, User currentUser) {
+        Channel channel = getChannel(channelId);
+        
+        // Only workspace owner or channel creator can delete
+        boolean isOwner = workspaceMemberRepository.findByWorkspaceIdAndUserId(channel.getWorkspace().getId(), currentUser.getId())
+                .map(m -> WorkspaceRole.OWNER.equals(m.getRole()))
+                .orElse(false);
+        boolean isCreator = channel.getCreatedBy().getId().equals(currentUser.getId());
+
+        if (!isOwner && !isCreator) {
+            throw new RuntimeException("Only workspace owner or channel creator can delete this channel");
+        }
+
+        if (channel.isDefault()) {
+            throw new RuntimeException("Cannot delete the default channel");
+        }
+
+        // Soft delete
+        channel.setDeleted(true);
+        channelRepository.save(channel);
+    }
+
+    @Override
+    @Transactional
+    public void permanentlyDeleteChannel(Long channelId, User currentUser) {
+        Channel channel = getChannel(channelId);
+        
+        // ONLY the creator can permanently delete from Trash
+        if (!channel.getCreatedBy().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Only the channel creator can permanently delete this channel.");
+        }
+
+        if (!channel.isDeleted()) {
+            throw new RuntimeException("Channel must be in trash followed by soft-delete before permanent deletion.");
+        }
+
+        channelRepository.delete(channel);
+    }
+
+    @Override
+    @Transactional
+    public void restoreChannel(Long channelId, User currentUser) {
+        Channel channel = getChannel(channelId);
+        
+        // Only workspace owner or channel creator can restore
+        boolean isOwner = workspaceMemberRepository.findByWorkspaceIdAndUserId(channel.getWorkspace().getId(), currentUser.getId())
+                .map(m -> WorkspaceRole.OWNER.equals(m.getRole()))
+                .orElse(false);
+        boolean isCreator = channel.getCreatedBy().getId().equals(currentUser.getId());
+
+        if (!isOwner && !isCreator) {
+            throw new RuntimeException("Only workspace owner or channel creator can restore this channel");
+        }
+
+        channel.setDeleted(false);
+        channel.setArchived(false); // Restoring also un-archives for convenience
+        channelRepository.save(channel);
+    }
+
+    @Override
+    @Transactional
+    public void transferOwnership(Long channelId, Long newOwnerId, User currentUser) {
+        Channel channel = getChannel(channelId);
+        
+        if (!channel.getCreatedBy().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Only the current channel creator can transfer ownership.");
+        }
+
+        User newOwner = userRepository.findById(newOwnerId)
+                .orElseThrow(() -> new RuntimeException("New owner user not found"));
+        
+        // Ensure new owner is a member
+        if (!channel.getMembers().contains(newOwner)) {
+            channel.getMembers().add(newOwner);
+        }
+
+        channel.setCreatedBy(newOwner);
+        channelRepository.save(channel);
+    }
+
     private ChannelResponse mapToResponse(Channel channel) {
         return ChannelResponse.builder()
                 .id(channel.getId())
@@ -174,8 +296,10 @@ public class ChannelServiceImpl implements ChannelService {
                 .workspaceId(channel.getWorkspace() != null ? channel.getWorkspace().getId() : null)
                 .isPrivate(channel.isPrivate())
                 .isArchived(channel.isArchived())
+                .isDeleted(channel.isDeleted())
                 .createdAt(channel.getCreatedAt())
                 .memberCount(channel.getMembers() != null ? channel.getMembers().size() : 0)
+                .createdBy(channel.getCreatedBy() != null ? mapToUserResponse(channel.getCreatedBy()) : null)
                 .build();
     }
 }

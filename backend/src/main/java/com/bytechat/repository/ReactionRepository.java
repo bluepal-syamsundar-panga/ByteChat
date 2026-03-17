@@ -11,4 +11,6 @@ import java.util.Optional;
 public interface ReactionRepository extends JpaRepository<Reaction, Long> {
     List<Reaction> findByMessageId(Long messageId);
     Optional<Reaction> findByMessageIdAndUserIdAndEmoji(Long messageId, Long userId, String emoji);
+    List<Reaction> findByDirectMessageId(Long dmId);
+    Optional<Reaction> findByDirectMessageIdAndUserIdAndEmoji(Long dmId, Long userId, String emoji);
 }

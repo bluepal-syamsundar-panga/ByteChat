@@ -14,6 +14,10 @@ const useChatStore = create((set) => ({
   channelMessages: {},
   dmMessages: {},
   typingByWorkspace: {},
+  sidebarMode: 'channels', // 'channels', 'archive', 'trash'
+  setSidebarMode: (mode) => set({ sidebarMode: mode }),
+  isCreateChannelModalOpen: false,
+  setIsCreateChannelModalOpen: (isOpen) => set({ isCreateChannelModalOpen: isOpen }),
   setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id }),
   setWorkspaces: (workspaces) => set({ workspaces, rooms: workspaces }),
   setRooms: (rooms) => set({ rooms, workspaces: rooms }), // Legacy support

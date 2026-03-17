@@ -9,25 +9,32 @@ const MessageInput = ({
   onUploadFile,
   disabled,
   mentionSuggestions = [],
+  currentUserId,
 }) => {
   const [content, setContent] = useState('');
+  const [pendingFile, setPendingFile] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const fileInputRef = useRef(null);
   const emojiPickerRef = useRef(null);
 
-  const canSend = useMemo(() => content.trim().length > 0 && !disabled, [content, disabled]);
-  const mentionQuery = useMemo(() => {
-    const match = content.match(/@([A-Za-z0-9._-]*)$/);
-    return match ? match[1].toLowerCase() : '';
-  }, [content]);
+  const canSend = useMemo(() => (content.trim().length > 0 || pendingFile) && !disabled, [content, pendingFile, disabled]);
+  
   const filteredSuggestions = useMemo(() => {
-    if (!mentionQuery) {
-      return [];
+    const match = content.match(/@([A-Za-z0-9._-]*)$/);
+    if (!match || !Array.isArray(mentionSuggestions)) return [];
+    
+    const query = match[1].toLowerCase();
+    
+    const baseSuggestions = mentionSuggestions.filter(m => m && String(m.id) !== String(currentUserId));
+
+    if (!query) {
+      return baseSuggestions.slice(0, 5);
     }
-    return mentionSuggestions
-      .filter((member) => member.displayName?.toLowerCase().includes(mentionQuery))
+    
+    return baseSuggestions
+      .filter((member) => member.displayName?.toLowerCase().includes(query))
       .slice(0, 5);
-  }, [mentionQuery, mentionSuggestions]);
+  }, [content, mentionSuggestions, currentUserId]);
 
   // Close emoji picker when clicking outside
   useEffect(() => {
@@ -46,8 +53,15 @@ const MessageInput = ({
 
   function handleFileChange(event) {
     const file = event.target.files?.[0];
-    if (file && onUploadFile) {
-      onUploadFile(file);
+    if (file) {
+      const isImage = file.type.startsWith('image/');
+      const previewUrl = isImage ? URL.createObjectURL(file) : null;
+      setPendingFile({
+        file,
+        name: file.name,
+        isImage,
+        previewUrl
+      });
     }
     // reset input so the same file can be uploaded again if needed
     if (event.target) {
@@ -55,15 +69,40 @@ const MessageInput = ({
     }
   }
 
-  function handleSubmit(event) {
-    event.preventDefault();
+  function handleRemoveFile() {
+    if (pendingFile?.previewUrl) {
+      URL.revokeObjectURL(pendingFile.previewUrl);
+    }
+    setPendingFile(null);
+  }
+
+  async function handleSubmit(event) {
+    if (event) event.preventDefault();
     const value = content.trim();
-    if (!value) {
+    if (!value && !pendingFile) {
       return;
     }
-    onSendMessage(value);
-    setContent('');
-    onTyping?.(false);
+
+    try {
+      // Pass both content and the pending file to the parent handler
+      await onSendMessage(value, pendingFile?.file);
+      
+      // Clear state after successful send
+      setContent('');
+      if (pendingFile?.previewUrl) {
+        URL.revokeObjectURL(pendingFile.previewUrl);
+      }
+      setPendingFile(null);
+      onTyping?.(false);
+      
+      // Reset textarea height
+      const textarea = event.target.querySelector('textarea');
+      if (textarea) {
+        textarea.style.height = 'auto';
+      }
+    } catch (err) {
+      console.error('Submit error:', err);
+    }
   }
 
   function handleChange(event) {
@@ -78,6 +117,31 @@ const MessageInput = ({
   return (
     <div className="border-t border-black/5 bg-white px-4 py-4 md:px-5">
       <div className="relative">
+        {pendingFile && (
+          <div className="mb-2 flex items-center gap-3 border border-black/10 bg-[#fbfbfb] p-2">
+            {pendingFile.isImage && pendingFile.previewUrl ? (
+              <div className="h-10 w-10 shrink-0 border border-black/5">
+                <img src={pendingFile.previewUrl} alt="Preview" className="h-full w-full object-cover" />
+              </div>
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-black/5">
+                <Paperclip size={16} className="text-[#6b6a6b]" />
+              </div>
+            )}
+            <div className="flex-1 overflow-hidden">
+              <div className="truncate text-xs font-semibold text-[#1d1c1d]">{pendingFile.name}</div>
+              <div className="text-[10px] text-[#6b6a6b]">Ready to send</div>
+            </div>
+            <button 
+              type="button" 
+              onClick={handleRemoveFile}
+              className="p-1 text-[#6b6a6b] hover:bg-black/5 hover:text-[#e01e5a]"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         {filteredSuggestions.length > 0 && (
           <div className="absolute bottom-full left-0 mb-2 w-full max-w-sm border border-black/8 bg-white p-2 shadow-lg">
             {filteredSuggestions.map((member) => (

@@ -42,4 +42,7 @@ public class DirectMessage {
     private String type;
     @Builder.Default
     private boolean isDeleted = false;
+    @Builder.Default
+    private boolean isPinned = false;
+    private LocalDateTime editedAt;
 }

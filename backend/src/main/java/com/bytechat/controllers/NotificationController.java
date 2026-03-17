@@ -71,6 +71,14 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success(null, "Workspace notifications marked as read"));
     }
 
+    @PutMapping("/mark-room-read/{channelId}")
+    public ResponseEntity<ApiResponse<Void>> markRoomRead(
+            @PathVariable(name = "channelId") Long channelId,
+            @AuthenticationPrincipal User currentUser) {
+        notificationService.markChannelNotificationsAsRead(currentUser.getId(), channelId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Channel notifications marked as read"));
+    }
+
     @PutMapping("/mark-dm-read/{senderId}")
     public ResponseEntity<ApiResponse<Void>> markDMRead(
             @PathVariable(name = "senderId") Long senderId,

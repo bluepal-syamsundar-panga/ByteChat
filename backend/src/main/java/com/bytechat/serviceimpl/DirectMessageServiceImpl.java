@@ -8,8 +8,11 @@ import com.bytechat.entity.User;
 import com.bytechat.repository.DMRequestRepository;
 import com.bytechat.repository.DirectMessageRepository;
 import com.bytechat.repository.UserRepository;
+import com.bytechat.repository.ReactionRepository;
 import com.bytechat.services.DirectMessageService;
 import com.bytechat.services.NotificationService;
+import com.bytechat.entity.Reaction;
+import com.bytechat.dto.response.ReactionResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +30,7 @@ public class DirectMessageServiceImpl implements DirectMessageService {
     private final UserRepository userRepository;
     private final DMRequestRepository dmRequestRepository;
     private final NotificationService notificationService;
+    private final ReactionRepository reactionRepository;
 
     @Override
     @Transactional
@@ -55,8 +60,10 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                 
         dm = directMessageRepository.save(dm);
         
-        // Check if the message mentions the recipient
-        boolean mentionsRecipient = request.getContent().contains("@" + toUser.getDisplayName().replaceAll("\\s+", ""));
+        // Check if the message mentions the recipient (case-insensitive and space-normalized)
+        String content = request.getContent().toLowerCase();
+        String recipientMention = "@" + toUser.getDisplayName().replaceAll("\\s+", "").toLowerCase();
+        boolean mentionsRecipient = content.contains(recipientMention);
         
         notificationService.sendNotification(
                 toUser.getId(),
@@ -91,6 +98,70 @@ public class DirectMessageServiceImpl implements DirectMessageService {
         notificationService.markDMNotificationsAsRead(currentUser.getId(), otherUserId);
     }
 
+    @Override
+    @Transactional
+    public MessageResponse editMessage(Long dmId, String content, User currentUser) {
+        DirectMessage dm = directMessageRepository.findById(dmId)
+                .orElseThrow(() -> new RuntimeException("Direct message not found"));
+        if (!dm.getFromUser().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("You can only edit your own messages");
+        }
+        dm.setContent(content);
+        dm.setEditedAt(LocalDateTime.now());
+        return mapToResponse(directMessageRepository.save(dm));
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse deleteMessage(Long dmId, User currentUser) {
+        DirectMessage dm = directMessageRepository.findById(dmId)
+                .orElseThrow(() -> new RuntimeException("Direct message not found"));
+        if (!dm.getFromUser().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("You can only delete your own messages");
+        }
+        dm.setDeleted(true);
+        return mapToResponse(directMessageRepository.save(dm));
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse pinMessage(Long dmId, User currentUser) {
+        DirectMessage dm = directMessageRepository.findById(dmId)
+                .orElseThrow(() -> new RuntimeException("Direct message not found"));
+        // Either user in the conversation can pin
+        if (!dm.getFromUser().getId().equals(currentUser.getId()) && !dm.getToUser().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Unauthorized");
+        }
+        dm.setPinned(!dm.isPinned());
+        return mapToResponse(directMessageRepository.save(dm));
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse reactToMessage(Long dmId, String emoji, User currentUser) {
+        DirectMessage dm = directMessageRepository.findById(dmId)
+                .orElseThrow(() -> new RuntimeException("Direct message not found"));
+        
+        reactionRepository.findByDirectMessageIdAndUserIdAndEmoji(dmId, currentUser.getId(), emoji)
+                .ifPresentOrElse(
+                        reactionRepository::delete,
+                        () -> reactionRepository.save(Reaction.builder()
+                                .directMessage(dm)
+                                .user(currentUser)
+                                .emoji(emoji)
+                                .build())
+                );
+
+        notificationService.sendNotification(
+                dm.getFromUser().getId().equals(currentUser.getId()) ? dm.getToUser().getId() : dm.getFromUser().getId(),
+                "REACTION",
+                currentUser.getDisplayName() + " reacted to your message",
+                dm.getId()
+        );
+
+        return mapToResponse(dm);
+    }
+
     private MessageResponse mapToResponse(DirectMessage dm) {
         MessageResponse response = MessageResponse.builder()
                 .id(dm.getId())
@@ -98,12 +169,19 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                 .senderId(dm.getFromUser().getId())
                 .senderName(dm.getFromUser().getDisplayName())
                 .senderAvatar(dm.getFromUser().getAvatarUrl())
-                // Hide content if deleted
                 .content(dm.isDeleted() ? "This message was deleted." : dm.getContent())
                 .type(dm.getType())
                 .isDeleted(dm.isDeleted())
-                .isPinned(false) // DMs usually don't have pinned in simple slack clone
+                .isPinned(dm.isPinned())
                 .sentAt(dm.getSentAt())
+                .editedAt(dm.getEditedAt())
+                .reactions(reactionRepository.findByDirectMessageId(dm.getId()).stream()
+                        .map(r -> ReactionResponse.builder()
+                                .emoji(r.getEmoji())
+                                .userId(r.getUser().getId())
+                                .username(r.getUser().getDisplayName())
+                                .build())
+                        .collect(Collectors.toList()))
                 .build();
         
         response.setReadCount(dm.getReadAt() != null ? 1 : 0);

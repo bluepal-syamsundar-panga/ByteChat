@@ -1,4 +1,4 @@
-import { Bell, LogOut, MessageSquare, Plus, UserCircle, Home } from 'lucide-react';
+import { Bell, LogOut, MessageSquare, Plus, UserCircle, Home, Archive, Trash2 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
@@ -8,9 +8,10 @@ import DMPanel from '../Common/DMPanel';
 const AppRail = ({ onCreateRoom }) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { notifications, workspaces } = useChatStore();
+  const { notifications, workspaces, setIsCreateChannelModalOpen, sidebarMode, setSidebarMode } = useChatStore();
 
   const handleHomeClick = () => {
+    setSidebarMode('channels');
     if (workspaces && workspaces.length > 0) {
       navigate(`/chat/workspace/${workspaces[0].id}`);
     } else {
@@ -30,22 +31,40 @@ const AppRail = ({ onCreateRoom }) => {
       </div>
 
       <div className="flex flex-1 flex-col items-center gap-6">
-        {/* Home */}
+        {/* Home / Channels */}
         <button
           onClick={handleHomeClick}
-          className="flex h-10 w-10 items-center justify-center text-white/70 transition hover:bg-white/10 hover:text-white"
-          title="Home - First Workspace"
+          className={`flex h-10 w-10 items-center justify-center transition hover:bg-white/10 ${sidebarMode === 'channels' ? 'bg-white/20 text-white' : 'text-white/70'}`}
+          title="Channels"
         >
           <Home size={22} />
         </button>
 
-        {/* Create Workspace */}
+        {/* Create Channel */}
         <button
-          onClick={onCreateRoom}
-          className="flex h-10 w-10 items-center justify-center transition hover:bg-white/10"
-          title="Create Workspace"
+          onClick={() => setIsCreateChannelModalOpen(true)}
+          className="flex h-10 w-10 items-center justify-center transition hover:bg-white/10 text-white/70 hover:text-white"
+          title="Create Channel"
         >
           <Plus size={22} />
+        </button>
+
+        {/* Archive */}
+        <button
+          onClick={() => setSidebarMode('archive')}
+          className={`flex h-10 w-10 items-center justify-center transition hover:bg-white/10 ${sidebarMode === 'archive' ? 'bg-white/20 text-white' : 'text-white/70'}`}
+          title="Archived Channels"
+        >
+          <Archive size={22} />
+        </button>
+
+        {/* Trash */}
+        <button
+          onClick={() => setSidebarMode('trash')}
+          className={`flex h-10 w-10 items-center justify-center transition hover:bg-white/10 ${sidebarMode === 'trash' ? 'bg-white/20 text-white' : 'text-white/70'}`}
+          title="Trash / Deleted Channels"
+        >
+          <Trash2 size={22} />
         </button>
 
         {/* Notifications */}

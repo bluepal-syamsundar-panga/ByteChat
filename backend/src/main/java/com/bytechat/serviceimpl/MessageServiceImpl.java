@@ -5,6 +5,7 @@ import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.dto.response.ReactionResponse;
 import com.bytechat.entity.Channel;
 import com.bytechat.entity.Message;
+import com.bytechat.entity.Reaction;
 import com.bytechat.entity.WorkspaceMember;
 import com.bytechat.entity.User;
 import com.bytechat.entity.MessageRead;
@@ -160,6 +161,24 @@ public class MessageServiceImpl implements MessageService {
          
          message.setPinned(!message.isPinned()); // Toggle
          return mapToResponse(messageRepository.save(message));
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse reactToMessage(Long messageId, String emoji, User currentUser) {
+        Message message = getMessageOrThrow(messageId);
+        
+        reactionRepository.findByMessageIdAndUserIdAndEmoji(messageId, currentUser.getId(), emoji)
+                .ifPresentOrElse(
+                        reactionRepository::delete,
+                        () -> reactionRepository.save(Reaction.builder()
+                                .message(message)
+                                .user(currentUser)
+                                .emoji(emoji)
+                                .build())
+                );
+        
+        return mapToResponse(message);
     }
 
     private Message getMessageOrThrow(Long id) {

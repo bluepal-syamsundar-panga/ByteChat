@@ -11,5 +11,6 @@ public interface MessageService {
     MessageResponse editMessage(Long messageId, MessageRequest request, User currentUser);
     MessageResponse deleteMessage(Long messageId, User currentUser);
     MessageResponse pinMessage(Long messageId, User currentUser);
+    MessageResponse reactToMessage(Long messageId, String emoji, User currentUser);
     void markAsRead(Long messageId, User currentUser);
 }

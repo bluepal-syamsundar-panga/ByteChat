@@ -1,4 +1,4 @@
-import { Hash, Pin, Users, MoreVertical, SmilePlus, Pencil, Trash2 } from 'lucide-react';
+import { Hash, Lock, Pin, Users, MoreVertical, SmilePlus, Pencil, Trash2, LogOut } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +18,7 @@ import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
 import notificationService from '../../services/notificationService';
 import Modal from '../Shared/Modal';
+import ChannelInviteModal from './ChannelInviteModal';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import TypingIndicator from './TypingIndicator';
@@ -45,6 +46,8 @@ const ChatWindow = ({ room, channel }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [newOwnerId, setNewOwnerId] = useState(null);
   
   const scrollRef = useRef(null);
   const messageContainerRef = useRef(null);
@@ -114,6 +117,7 @@ const ChatWindow = ({ room, channel }) => {
 
     async function loadData() {
       try {
+        setMembers([]); // Clear previous members
         if (entityType !== 'channel') {
            setLoading(false);
            return;
@@ -131,8 +135,9 @@ const ChatWindow = ({ room, channel }) => {
         // Fetch members separately — failure here must NOT block message display
         try {
           const membersResponse = await userService.getChannelMembers(entityId);
-          // userService returns ApiResponse { data: UserResponse[] }; so .data = array
-          const membersList = Array.isArray(membersResponse?.data) ? membersResponse.data : [];
+          const membersData = membersResponse?.data?.data || membersResponse?.data || membersResponse;
+          const membersList = Array.isArray(membersData) ? membersData : (Array.isArray(membersData?.content) ? membersData.content : []);
+          console.log('Loaded', membersList.length, 'members for channel', entityId);
           setMembers(membersList);
         } catch (memberErr) {
           console.warn('Could not load channel members:', memberErr?.response?.status);
@@ -216,39 +221,40 @@ const ChatWindow = ({ room, channel }) => {
       .map(([, name]) => name);
   }, [currentUser?.id, workspaceId, typingByWorkspace]);
 
-  async function handleSend(content) {
+  async function handleSend(content, file) {
     try {
-      const payload = { content, type: 'TEXT' };
-      // Send via REST — backend also broadcasts this via WebSocket to all subscribers.
-      // We immediately append the response so the sender sees their own message right away.
-      // dedupe() in the store prevents duplicates when the WebSocket echo arrives.
-      const apiResponse = await chatService.sendChannelMessage(entityId, payload);
-      // chatService returns response.data (ApiResponse). The message is in apiResponse.data
-      const sentMessage = apiResponse?.data ?? apiResponse;
-      if (sentMessage?.id) {
-        appendChannelMessage(entityId, sentMessage);
+      let fileUrl = null;
+      
+      // 1. Upload file if present
+      if (file) {
+        const resp = await chatService.uploadFile(file);
+        fileUrl = resp?.data?.fileUrl || resp?.fileUrl;
       }
+
+      // 2. Send file message if file was uploaded
+      if (fileUrl) {
+        const filePayload = { content: fileUrl, type: 'FILE' };
+        const fileApiResponse = await chatService.sendChannelMessage(entityId, filePayload);
+        const sentFileMessage = fileApiResponse?.data ?? fileApiResponse;
+        if (sentFileMessage?.id) {
+          appendChannelMessage(entityId, sentFileMessage);
+        }
+      }
+
+      // 3. Send text message if content is present
+      if (content && content.trim()) {
+        const textPayload = { content, type: 'TEXT' };
+        const textApiResponse = await chatService.sendChannelMessage(entityId, textPayload);
+        const sentTextMessage = textApiResponse?.data ?? textApiResponse;
+        if (sentTextMessage?.id) {
+          appendChannelMessage(entityId, sentTextMessage);
+        }
+      }
+
       setTimeout(() => scrollToBottom('smooth'), 50);
     } catch (error) {
       console.error('Failed to send message:', error);
       alert('Failed to send message. Please check your connection.');
-    }
-  }
-
-  async function handleUpload(file) {
-    try {
-      const resp = await chatService.uploadFile(file);
-      if (resp && resp.data && resp.data.fileUrl) {
-        const payload = { content: resp.data.fileUrl, type: 'FILE' };
-        const sentOverWebSocket = publishChannelMessage(entityId, payload);
-        if (!sentOverWebSocket) {
-          const response = await chatService.sendChannelMessage(entityId, payload);
-          appendChannelMessage(entityId, response.data);
-        }
-      }
-    } catch (e) {
-      console.error('File upload failed', e);
-      alert('Failed to upload file.');
     }
   }
 
@@ -322,16 +328,64 @@ const ChatWindow = ({ room, channel }) => {
   };
 
   const handleArchive = async () => {
-    if (!window.confirm(`Are you sure you want to archive #${name}?`)) return;
+    if (!window.confirm(`Are you sure you want to archive #${channel?.name}?`)) return;
     try {
-      await chatService.archiveChannel(channelId);
+      await channelService.archiveChannel(channelId);
       window.alert('Channel archived successfully');
-      // Update local state isArchived
-      const updatedChannel = { ...channel, isArchived: true };
-      const { setChannels, channels } = useChatStore.getState();
-      setChannels(channels.map(c => c.id === channelId ? updatedChannel : c));
+      window.location.reload();
     } catch (e) {
       window.alert('Failed to archive channel');
+    }
+  };
+
+  const handleLeaveChannel = async () => {
+    if (!channel) return;
+    
+    // Check if creator
+    const isCreator = channel.createdBy?.id === currentUser?.id || channel.isCreator;
+    
+    if (isCreator && members.length > 1) {
+      if (window.confirm('As the creator, you must transfer ownership before leaving. Open transfer menu?')) {
+        setShowTransferModal(true);
+      }
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to leave #${channel?.name}?`)) return;
+    try {
+      await channelService.leaveChannel(channelId);
+      navigate(`/chat/workspace/${workspaceId}`);
+    } catch (error) {
+      console.error('Failed to leave channel:', error);
+      alert(error.response?.data?.message || 'Failed to leave channel.');
+    }
+  };
+
+  const handleTransferOwnership = async () => {
+    if (!newOwnerId) return;
+    try {
+      await channelService.transferOwnership(channelId, newOwnerId);
+      alert('Ownership transferred successfully. You can now leave the channel.');
+      setShowTransferModal(false);
+      // Optional: immediately leave after transfer? User suggested "then he can leave"
+      if (window.confirm('Ownership transferred. Leave channel now?')) {
+        await channelService.leaveChannel(channelId);
+        navigate(`/chat/workspace/${workspaceId}`);
+      }
+    } catch (error) {
+      alert('Failed to transfer ownership.');
+    }
+  };
+
+  const handleDeleteChannel = async () => {
+    if (!window.confirm(`Move #${channel?.name} to Trash? You can restore it later from the Trash Bin.`)) return;
+    try {
+      await channelService.deleteChannel(channelId);
+      alert('Channel moved to trash.');
+      navigate(`/chat/workspace/${workspaceId}`);
+    } catch (error) {
+      console.error('Failed to delete channel:', error);
+      alert(error.response?.data?.message || 'Only the creator or workspace owner can delete this channel.');
     }
   };
 
@@ -410,9 +464,62 @@ const ChatWindow = ({ room, channel }) => {
   return (
     <section className="flex h-full min-h-0 flex-col">
       <header className="flex items-center justify-between border-b border-black/5 px-5 py-4">
+        {/* Transfer Ownership Modal */}
+        {showTransferModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md bg-white p-8 border border-black/10 shadow-2xl rounded-lg">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-[#1d1c1d]">Transfer Ownership</h2>
+                <button onClick={() => setShowTransferModal(false)} className="text-[#6b6a6b] hover:text-black">
+                  <X size={24} />
+                </button>
+              </div>
+              <p className="text-sm text-[#6b6a6b] mb-4">
+                Select a member to become the new owner of <strong>#{channel?.name}</strong> before you leave.
+              </p>
+              <div className="max-h-60 overflow-y-auto border border-black/10 rounded mb-4">
+                {members.filter(m => m.id !== currentUser?.id).map(member => (
+                  <button
+                    key={member.id}
+                    onClick={() => setNewOwnerId(member.id)}
+                    className={`flex w-full items-center gap-3 p-3 transition hover:bg-black/5 ${newOwnerId === member.id ? 'bg-black/5 border-l-4 border-[#3f0e40]' : 'border-l-4 border-transparent'}`}
+                  >
+                    <div className="h-8 w-8 rounded bg-[#3f0e40] flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      {member.displayName?.[0]?.toUpperCase() ?? 'U'}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="text-sm font-semibold text-[#1d1c1d]">{member.displayName}</div>
+                      <div className="text-xs text-[#6b6a6b]">{member.email}</div>
+                    </div>
+                    {newOwnerId === member.id && <Check size={16} className="text-[#3f0e40]" />}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowTransferModal(false)}
+                  className="flex-1 px-4 py-2 border border-black/10 rounded text-[#1d1c1d] hover:bg-black/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleTransferOwnership}
+                  disabled={!newOwnerId}
+                  className="flex-1 px-4 py-2 bg-[#3f0e40] text-white rounded font-semibold hover:bg-[#350d36] disabled:opacity-50"
+                >
+                  Transfer & Leave
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div>
           <div className="flex items-center gap-2 text-lg font-semibold">
-            <Hash size={18} className="text-[#6b6a6b]" />
+            {(channel?.isPrivate || channel?.private) ? (
+              <Lock size={18} className="text-[#6b6a6b]" />
+            ) : (
+              <Hash size={18} className="text-[#6b6a6b]" />
+            )}
             {name}
           </div>
           <div className="mt-1 text-sm text-[#6b6a6b]">
@@ -437,98 +544,148 @@ const ChatWindow = ({ room, channel }) => {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowMenu(!showMenu)}
-              disabled={!selectedMessage}
               className={`p-1.5 border border-black/5 transition flex items-center justify-center ${
-                showMenu ? 'bg-black/10 text-black' : 
-                selectedMessage ? 'hover:bg-black/5 text-[#6b6a6b] cursor-pointer' : 
-                'text-[#6b6a6b]/30 cursor-not-allowed'
+                showMenu ? 'bg-black/10 text-black' : 'hover:bg-black/5 text-[#6b6a6b] cursor-pointer'
               }`}
             >
               <MoreVertical size={20} />
             </button>
             
-            {showMenu && selectedMessage && (
-              <div className="absolute right-0 top-full mt-2 w-48 border border-black/10 bg-white shadow-xl z-50 py-1 flex flex-col overflow-hidden">
-                <div className="relative" ref={emojiPickerRef}>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowEmojiPicker(!showEmojiPicker);
-                    }}
-                    className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
-                  >
-                    <SmilePlus size={16} className="text-[#6b6a6b]" /> React
-                  </button>
-                  {showEmojiPicker && (
-                    <div className="absolute right-full top-0 mr-2 z-50">
-                      <EmojiPicker 
-                        onEmojiClick={(emojiData) => {
-                          handleReact(selectedMessage, emojiData.emoji);
-                          setShowEmojiPicker(false);
-                          setShowMenu(false);
-                          setSelectedMessageId(null);
-                        }}
-                        autoFocusSearch={false}
-                        theme="light"
-                      />
-                    </div>
-                  )}
-                </div>
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-2 w-64 border border-black/10 bg-white shadow-xl z-50 py-1 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
                 
-                <button 
-                  onClick={() => {
-                    handlePin(selectedMessage);
-                    setShowMenu(false);
-                    setSelectedMessageId(null);
-                  }}
-                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
-                >
-                  <Pin size={16} className="text-[#6b6a6b]" /> 
-                  {selectedMessage.isPinned ? 'Unpin' : 'Pin'}
-                </button>
-
-                {selectedMessage.senderId === currentUser?.id && !selectedMessage.isDeleted && (
+                {/* --- MESSAGE OPTIONS --- */}
+                {selectedMessage ? (
                   <>
+                    <div className="px-4 py-2 border-b border-black/5">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#6b6a6b] mb-2">Reactions</div>
+                      <div className="flex items-center justify-between">
+                        {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
+                          <button
+                            key={emoji}
+                            onClick={() => {
+                              handleReact(selectedMessage, emoji);
+                              setShowMenu(false);
+                              setSelectedMessageId(null);
+                            }}
+                            className="bg-black/5 hover:bg-black/10 w-8 h-8 flex items-center justify-center rounded-full transition-all hover:scale-110"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="relative" ref={emojiPickerRef}>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowEmojiPicker(!showEmojiPicker);
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
+                      >
+                        <SmilePlus size={16} className="text-[#6b6a6b]" /> More Reactions
+                      </button>
+                      {showEmojiPicker && (
+                        <div className="absolute right-full top-0 mr-2 z-50">
+                          <EmojiPicker 
+                            onEmojiClick={(emojiData) => {
+                              handleReact(selectedMessage, emojiData.emoji);
+                              setShowEmojiPicker(false);
+                              setShowMenu(false);
+                              setSelectedMessageId(null);
+                            }}
+                            autoFocusSearch={false}
+                            theme="light"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
                     <button 
                       onClick={() => {
-                        handleEdit(selectedMessage);
+                        handlePin(selectedMessage);
                         setShowMenu(false);
                         setSelectedMessageId(null);
                       }}
                       className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
                     >
-                      <Pencil size={16} className="text-[#6b6a6b]" /> Edit
+                      <Pin size={16} className="text-[#6b6a6b]" /> 
+                      {selectedMessage.isPinned ? 'Unpin' : 'Pin'}
                     </button>
+
+                    {selectedMessage.senderId === currentUser?.id && !selectedMessage.isDeleted && (
+                      <>
+                        <button 
+                          onClick={() => {
+                            handleEdit(selectedMessage);
+                            setShowMenu(false);
+                            setSelectedMessageId(null);
+                          }}
+                          className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
+                        >
+                          <Pencil size={16} className="text-[#6b6a6b]" /> Edit
+                        </button>
+                        <button 
+                          onClick={() => {
+                            handleDelete(selectedMessage);
+                            setShowMenu(false);
+                            setSelectedMessageId(null);
+                          }}
+                          className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10"
+                        >
+                          <Trash2 size={16} className="text-[#e01e5a]" /> Delete
+                        </button>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  /* --- CHANNEL OPTIONS --- */
+                  <>
+                    <div className="px-4 py-1.5 border-b border-black/5">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#6b6a6b]">Channel Management</div>
+                    </div>
+                    
+                    {!channel?.isArchived && (
+                      <button 
+                        onClick={() => {
+                          handleArchive();
+                          setShowMenu(false);
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
+                      >
+                        <Trash2 size={16} className="text-[#6b6a6b]" /> Archive Channel
+                      </button>
+                    )}
+
                     <button 
                       onClick={() => {
-                        handleDelete(selectedMessage);
+                        handleLeaveChannel();
                         setShowMenu(false);
-                        setSelectedMessageId(null);
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
+                    >
+                      <LogOut size={16} className="text-[#6b6a6b]" /> Leave Channel
+                    </button>
+
+                    <button 
+                      onClick={() => {
+                        handleDeleteChannel();
+                        setShowMenu(false);
                       }}
                       className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10"
                     >
-                      <Trash2 size={16} className="text-[#e01e5a]" /> Delete
+                      <Trash2 size={16} className="text-[#e01e5a]" /> Delete Channel
                     </button>
                   </>
                 )}
 
-                {entityType === 'channel' && !channel?.isArchived && (
-                  <button 
-                    onClick={() => {
-                      handleArchive();
-                      setShowMenu(false);
-                    }}
-                    className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10 border-t border-black/5"
-                  >
-                    <Trash2 size={16} className="text-[#e01e5a]" /> Archive Channel
-                  </button>
-                )}
                 <button 
                   onClick={() => {
                     setShowInviteModal(true);
                     setShowMenu(false);
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5 lg:hidden"
+                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5 lg:hidden border-t border-black/5"
                 >
                   <Users size={16} className="text-[#6b6a6b]" /> Invite member
                 </button>
@@ -540,20 +697,26 @@ const ChatWindow = ({ room, channel }) => {
 
       <div ref={messageContainerRef} className="scrollbar-thin flex-1 overflow-y-auto">
         {pinnedMessages.length > 0 && (
-          <div className="sticky top-0 z-10 flex items-center justify-between bg-[#fff7d6] px-5 py-2 border-b border-black/5">
-            <div className="flex items-center gap-2 text-sm font-medium text-[#8c5b00]">
-              <Pin size={14} />
-              <span>{pinnedMessages.length} pinned {pinnedMessages.length === 1 ? 'message' : 'messages'}</span>
+          <div className="sticky top-0 z-10 flex items-center justify-between bg-white/80 backdrop-blur-sm px-5 py-3 border-b border-black/5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff7d6] text-[#8c5b00]">
+                <Pin size={16} />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-[#1d1c1d]">
+                  {pinnedMessages.length} pinned {pinnedMessages.length === 1 ? 'message' : 'messages'}
+                </div>
+                <div className="text-xs text-[#6b6a6b]">Visible to everyone in this channel</div>
+              </div>
             </div>
             <button 
               onClick={() => {
                 const lastPinned = pinnedMessages[pinnedMessages.length - 1];
                 setSelectedMessageId(lastPinned.id);
-                // Scroll to it would be nice, but for now we just select it
               }}
-              className="text-xs font-semibold text-[#1164a3] hover:underline"
+              className="text-sm font-bold text-[#1164a3] hover:underline"
             >
-              View latest
+              View all
             </button>
           </div>
         )}
@@ -597,45 +760,17 @@ const ChatWindow = ({ room, channel }) => {
         placeholder={channel?.isArchived ? "This channel is archived" : `Message #${name}`}
         onSendMessage={handleSend}
         onTyping={handleTyping}
-        onUploadFile={handleUpload}
         disabled={channel?.isArchived}
         mentionSuggestions={members}
+        currentUserId={currentUser.id}
       />
-      <Modal 
+      <ChannelInviteModal 
         isOpen={showInviteModal} 
-        onClose={() => setShowInviteModal(false)} 
-        title={`Invite to #${name}`}
-      >
-        <form onSubmit={handleInviteSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#6b6a6b]">Email Address</label>
-            <input 
-              type="email" 
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              className="mt-1 w-full border border-black/10 bg-[#f8f8f8] px-4 py-2 text-sm focus:border-[#3f0e40] focus:ring-1 focus:ring-[#3f0e40] outline-none"
-              placeholder="name@example.com"
-              autoFocus
-              required
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button 
-              type="button" 
-              onClick={() => setShowInviteModal(false)}
-              className="px-4 py-2 text-sm font-semibold text-[#6b6a6b] hover:bg-black/5"
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit"
-              className="bg-[#3f0e40] px-4 py-2 text-sm font-semibold text-white hover:bg-[#350d36]"
-            >
-              Send Invitation
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onClose={() => setShowInviteModal(false)}
+        channelId={channelId}
+        workspaceId={workspaceId}
+        channelName={name}
+      />
     </section>
   );
 };

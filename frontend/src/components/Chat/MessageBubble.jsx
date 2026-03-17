@@ -42,14 +42,25 @@ const MessageBubble = ({ message, isSelected, onClick }) => {
   const renderMessageContent = () => {
     if (message.isDeleted) return <div className="italic text-[#6b6a6b]">{message.content}</div>;
 
-    if (message.type === 'FILE' && message.content.startsWith('/uploads/')) {
-      const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(message.content);
-      const url = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') + message.content : `http://localhost:8080${message.content}`;
+    if (message.type === 'FILE' && message.content && message.content.startsWith('/uploads/')) {
+      const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(message.content);
+      const baseUrl = import.meta.env.VITE_API_URL 
+        ? import.meta.env.VITE_API_URL.split('/api')[0] 
+        : 'http://localhost:8080';
+      const url = `${baseUrl}${message.content}`;
       
       if (isImage) {
         return (
-          <div className="mt-2 text-[#1d1c1d]">
-            <img src={url} alt="Attachment" className="max-h-[300px] max-w-full border border-black/10 object-contain shadow-sm" />
+          <div className="mt-2 overflow-hidden border border-black/10 shadow-sm bg-white/50">
+            <img 
+              src={url} 
+              alt="Attachment" 
+              className="max-h-[300px] max-w-full object-contain" 
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.parentNode.innerHTML = '<div class="p-4 text-xs text-red-500 italic">Failed to load image</div>';
+              }}
+            />
           </div>
         );
       }

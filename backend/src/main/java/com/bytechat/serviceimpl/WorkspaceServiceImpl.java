@@ -54,7 +54,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         workspaceMemberRepository.save(member);
 
         // Create default #general channel
-        channelService.createChannel(workspace.getId(), "general", "Default channel for " + workspace.getName(), true, currentUser);
+        channelService.createChannel(workspace.getId(), "general", "Default channel for " + workspace.getName(), false, true, currentUser);
         
         return mapToResponse(workspace);
     }

@@ -37,7 +37,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         // Push via WebSocket to the requested recipient using DTO to avoid LazyInitializationException
         NotificationResponse responseDto = NotificationResponse.fromEntity(savedNotification);
-        messagingTemplate.convertAndSend("/topic/user." + recipientId + ".notifications", responseDto);
+        messagingTemplate.convertAndSend("/topic/user/" + recipientId + "/notifications", responseDto);
 
         return savedNotification;
     }
@@ -67,6 +67,14 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void markWorkspaceNotificationsAsRead(Long userId, Long workspaceId) {
         List<Notification> notifications = notificationRepository.findUnreadMentionsByWorkspace(userId, workspaceId);
+        notifications.forEach(n -> n.setRead(true));
+        notificationRepository.saveAll(notifications);
+    }
+
+    @Override
+    @Transactional
+    public void markChannelNotificationsAsRead(Long userId, Long channelId) {
+        List<Notification> notifications = notificationRepository.findUnreadMentionsByChannel(userId, channelId);
         notifications.forEach(n -> n.setRead(true));
         notificationRepository.saveAll(notifications);
     }

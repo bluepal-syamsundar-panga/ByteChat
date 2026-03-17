@@ -31,15 +31,23 @@ public class Channel {
 
     @Builder.Default
     @Column(nullable = false)
+    @com.fasterxml.jackson.annotation.JsonProperty("isPrivate")
     private boolean isPrivate = false;
 
     @Builder.Default
     @Column(nullable = false)
+    @com.fasterxml.jackson.annotation.JsonProperty("isDefault")
     private boolean isDefault = false;
 
     @Builder.Default
     @Column(nullable = false)
+    @com.fasterxml.jackson.annotation.JsonProperty("isArchived")
     private boolean isArchived = false;
+
+    @Builder.Default
+    @Column(nullable = false)
+    @com.fasterxml.jackson.annotation.JsonProperty("isDeleted")
+    private boolean isDeleted = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)

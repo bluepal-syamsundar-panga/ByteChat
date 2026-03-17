@@ -10,6 +10,7 @@ public interface NotificationService {
     List<Notification> getUnreadNotifications(Long userId);
     void markAsRead(Long notificationId);
     void markWorkspaceNotificationsAsRead(Long userId, Long workspaceId);
+    void markChannelNotificationsAsRead(Long userId, Long channelId);
     void markDMNotificationsAsRead(Long userId, Long senderId);
     Notification getNotification(Long notificationId);
 }
