@@ -21,4 +21,5 @@ public interface WorkspaceService {
     void inviteUser(Long workspaceId, InviteUserRequest request, User currentUser);
     void acceptInvite(Long notificationId, User currentUser);
     List<UserResponse> getWorkspaceMembers(Long workspaceId, User currentUser);
+    void removeMember(Long workspaceId, Long userId, User currentUser);
 }

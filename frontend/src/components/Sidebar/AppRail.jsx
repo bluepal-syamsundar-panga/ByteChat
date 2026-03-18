@@ -6,7 +6,7 @@ import NotificationPanel from '../Common/NotificationPanel';
 import DMPanel from '../Common/DMPanel';
 import logo3 from '../../assets/logo3.png';
 
-const AppRail = ({ onCreateRoom }) => {
+const AppRail = ({ onCreateRoom, onProfileClick }) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { notifications, workspaces, setIsCreateChannelModalOpen, sidebarMode, setSidebarMode } = useChatStore();
@@ -16,7 +16,7 @@ const AppRail = ({ onCreateRoom }) => {
     if (workspaces && workspaces.length > 0) {
       navigate(`/chat/workspace/${workspaces[0].id}`);
     } else {
-      navigate('/profile');
+      navigate('/');
     }
   };
 
@@ -84,11 +84,9 @@ const AppRail = ({ onCreateRoom }) => {
 
       {/* Bottom Section: Profile & Logout */}
       <div className="mt-auto flex flex-col items-center gap-3 pb-6">
-        <NavLink
-          to="/profile"
-          className={({ isActive }) =>
-            `relative flex h-12 w-12 items-center justify-center rounded-full transition-smooth hover:scale-110 shadow-sm`
-          }
+        <button
+          onClick={onProfileClick}
+          className="relative flex h-12 w-12 items-center justify-center rounded-full transition-smooth hover:scale-110 shadow-sm outline-none border-0"
           title="Profile Settings"
         >
           {user?.avatarUrl ? (
@@ -99,7 +97,7 @@ const AppRail = ({ onCreateRoom }) => {
             </div>
           )}
           <span className="absolute bottom-1 right-1 h-3 w-3 rounded-full bg-[#2bac76] border-2 border-[#2c0b2e] z-10 presence-dot" />
-        </NavLink>
+        </button>
 
         <button
           onClick={() => {

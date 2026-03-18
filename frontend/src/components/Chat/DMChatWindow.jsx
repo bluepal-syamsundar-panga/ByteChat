@@ -9,6 +9,8 @@ import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import TypingIndicator from './TypingIndicator';
 import { connectWebSocket, subscribeToDM, subscribeToTyping, publishTyping } from '../../services/websocket';
+import Modal from '../Shared/Modal';
+import useToastStore from '../../store/toastStore';
 
 const DMChatWindow = ({ user }) => {
   const currentUser = useAuthStore((state) => state.user);
@@ -17,6 +19,12 @@ const DMChatWindow = ({ user }) => {
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const { addToast } = useToastStore();
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editContent, setEditContent] = useState('');
   
   const scrollRef = useRef(null);
   const messageContainerRef = useRef(null);
@@ -181,31 +189,54 @@ const DMChatWindow = ({ user }) => {
       setTimeout(() => scrollToBottom('smooth'), 50);
     } catch (error) {
       console.error('Failed to send DM:', error);
-      alert('Failed to send message. Please try again.');
+      addToast('Failed to send message. Please try again.', 'error');
     }
   }
 
   async function handleEdit(message) {
-    const nextContent = window.prompt('Edit message', message.content);
-    if (!nextContent || nextContent === message.content) return;
+    setEditTarget(message);
+    setEditContent(message.content);
+    setShowEditModal(true);
+  }
+
+  const confirmEditMessage = async () => {
+    if (!editTarget || !editContent.trim() || editContent === editTarget.content) {
+      setShowEditModal(false);
+      return;
+    }
 
     try {
-      const response = await dmService.editMessage(message.id, nextContent);
+      const response = await dmService.editMessage(editTarget.id, editContent);
       upsertDmMessage(user.id, response.data || response);
+      addToast('Message updated', 'success');
     } catch (err) {
       console.error('Failed to edit DM', err);
+      addToast('Failed to edit message', 'error');
+    } finally {
+      setShowEditModal(false);
+      setEditTarget(null);
     }
-  }
+  };
 
   async function handleDelete(message) {
-    if (!window.confirm('Delete this message?')) return;
+    setDeleteTarget(message);
+    setShowDeleteConfirmModal(true);
+  }
+
+  const confirmDeleteMessage = async () => {
+    if (!deleteTarget) return;
     try {
-      const response = await dmService.deleteMessage(message.id);
+      const response = await dmService.deleteMessage(deleteTarget.id);
       upsertDmMessage(user.id, response.data || response);
+      addToast('Message deleted', 'success');
     } catch (err) {
       console.error('Failed to delete DM', err);
+      addToast('Failed to delete message', 'error');
+    } finally {
+      setShowDeleteConfirmModal(false);
+      setDeleteTarget(null);
     }
-  }
+  };
 
   async function handlePin(message) {
     try {
@@ -273,8 +304,12 @@ const DMChatWindow = ({ user }) => {
           </div>
         )}
         <div className="flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#611f69] to-[#3f0e40] text-white font-extrabold text-lg shadow-md shadow-purple-900/10">
-            {user.displayName?.[0]?.toUpperCase() ?? 'U'}
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#611f69] to-[#3f0e40] text-white font-extrabold text-lg shadow-md shadow-purple-900/10 overflow-hidden">
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt={user.displayName} className="h-full w-full object-cover" />
+            ) : (
+              user.displayName?.[0]?.toUpperCase() ?? 'U'
+            )}
           </div>
           <div>
             <div className="text-lg font-black tracking-tight text-gray-900 leading-none">{user.displayName}</div>
@@ -465,6 +500,65 @@ const DMChatWindow = ({ user }) => {
         mentionSuggestions={[user]}
         currentUserId={currentUser.id}
       />
+
+      {/* Delete Message Confirmation */}
+      <Modal
+        isOpen={showDeleteConfirmModal}
+        onClose={() => setShowDeleteConfirmModal(false)}
+        title="Delete Message"
+        rounded="rounded-none"
+      >
+        <div className="p-1">
+          <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+            Are you sure you want to delete this message? This action cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowDeleteConfirmModal(false)}
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-none text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDeleteMessage}
+              className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-none font-bold text-sm hover:bg-red-700 transition-all shadow-md active:scale-95"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Message Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Message"
+        rounded="rounded-none"
+      >
+        <div className="p-1">
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="w-full min-h-[100px] bg-[#fafafa] border border-black/5 rounded-none px-4 py-3 text-sm font-bold text-[#1d1c1d] outline-none focus:bg-white focus:border-[#2c0b2e]/30 transition-all mb-6"
+            placeholder="Edit your message..."
+          />
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-none text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmEditMessage}
+              className="flex-1 px-4 py-2.5 bg-[#3f0e40] text-white rounded-none font-bold text-sm hover:bg-[#350d36] transition-all shadow-md active:scale-95"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 };

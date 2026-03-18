@@ -31,4 +31,5 @@ public class ChannelResponse {
     private int memberCount;
     private UserResponse createdBy;
     private long unreadCount;
+    private String role; // Current user's role in channel
 }

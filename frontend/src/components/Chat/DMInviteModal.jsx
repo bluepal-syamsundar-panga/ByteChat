@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 import userService from '../../services/userService';
 import dmRequestService from '../../services/dmRequestService';
 import Modal from '../Shared/Modal';
+import useToastStore from '../../store/toastStore';
 
 const DMInviteModal = ({ isOpen, onClose }) => {
   const [query, setQuery] = useState('');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState({});
+  const { addToast } = useToastStore();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -37,16 +39,16 @@ const DMInviteModal = ({ isOpen, onClose }) => {
     setSending({ ...sending, [userId]: true });
     try {
       await dmRequestService.sendRequest(userId);
-      alert('Invitation sent successfully!');
+      addToast('Invitation sent successfully!', 'success');
     } catch (e) {
-      alert(e.response?.data?.message || 'Failed to send invitation');
+      addToast(e.response?.data?.message || 'Failed to send invitation', 'error');
     } finally {
       setSending({ ...sending, [userId]: false });
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Start a Direct Message">
+    <Modal isOpen={isOpen} onClose={onClose} title="Start a Direct Message" rounded="rounded-none">
       <div className="space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-2.5 text-[#6b6a6b]" size={18} />

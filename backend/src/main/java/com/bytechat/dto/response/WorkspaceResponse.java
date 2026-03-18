@@ -19,4 +19,5 @@ public class WorkspaceResponse {
     private boolean isArchived;
     private Long createdById;
     private LocalDateTime createdAt;
+    private String role; // Current user's role in workspace
 }

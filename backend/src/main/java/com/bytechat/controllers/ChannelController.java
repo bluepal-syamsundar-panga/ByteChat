@@ -136,6 +136,17 @@ public class ChannelController {
         return ResponseEntity.ok(ApiResponse.success(null, "Left channel"));
     }
 
+    @DeleteMapping("/{channelId}/members/{userId}")
+    @Operation(summary = "Remove member from channel", description = "Removes a user from the channel. If from default channel by owner, removes from workspace.")
+    public ResponseEntity<ApiResponse<Void>> removeMember(
+            @PathVariable(name = "channelId") Long channelId,
+            @PathVariable(name = "userId") Long userId,
+            @AuthenticationPrincipal User currentUser) {
+        log.info("Removing user {} from channel {}", userId, channelId);
+        channelService.removeMember(channelId, userId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null, "Member removed successfully"));
+    }
+
     @PostMapping("/{channelId}/transfer-ownership")
     @Operation(summary = "Transfer channel ownership", description = "Transfers ownership to another member.")
     public ResponseEntity<ApiResponse<Void>> transferOwnership(

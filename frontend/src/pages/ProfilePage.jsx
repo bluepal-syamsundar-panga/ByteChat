@@ -4,10 +4,12 @@ import notificationService from '../services/notificationService';
 import userService from '../services/userService';
 import useAuthStore from '../store/authStore';
 import useChatStore from '../store/chatStore';
+import useToastStore from '../store/toastStore';
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuthStore();
   const { onlineUsers, setOnlineUsers, notifications, setNotifications } = useChatStore();
+  const { addToast } = useToastStore();
   const [form, setForm] = useState({
     displayName: user?.displayName ?? '',
     avatarUrl: user?.avatarUrl ?? '',
@@ -37,8 +39,9 @@ const ProfilePage = () => {
       setSaving(true);
       const response = await userService.updateCurrentUser(form);
       updateUser(response.data);
+      addToast('Profile updated successfully', 'success');
     } catch (error) {
-      window.alert(error.response?.data?.message ?? 'Unable to update profile');
+      addToast(error.response?.data?.message ?? 'Unable to update profile', 'error');
     } finally {
       setSaving(false);
     }
@@ -53,8 +56,9 @@ const ProfilePage = () => {
       const response = await userService.updateAvatar(file);
       updateUser(response.data);
       setForm((prev) => ({ ...prev, avatarUrl: response.data.avatarUrl }));
+      addToast('Avatar updated', 'success');
     } catch (error) {
-      window.alert(error.response?.data?.message ?? 'Logo upload failed');
+      addToast(error.response?.data?.message ?? 'Logo upload failed', 'error');
     } finally {
       setUploading(false);
     }

@@ -1,0 +1,209 @@
+import { X, UserMinus, Shield, User, Info, Calendar, Hash, Lock, MoreVertical, Trash2 } from 'lucide-react';
+import useAuthStore from '../../store/authStore';
+import channelService from '../../services/channelService';
+import { useState, useRef, useEffect } from 'react';
+import useToastStore from '../../store/toastStore';
+import Modal from '../Shared/Modal';
+
+const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved, isWorkspaceOwner }) => {
+  const currentUser = useAuthStore((state) => state.user);
+  const [activeMenu, setActiveMenu] = useState(null);
+  const { addToast } = useToastStore();
+  const menuRef = useRef(null);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setActiveMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  if (!isOpen) return null;
+
+  const isAdmin = channel?.role === 'ADMIN' || isWorkspaceOwner;
+
+  const handleRemove = async (userId, displayName) => {
+    const isDefault = channel?.isDefault || channel?.name === 'general';
+    let msg = `Are you sure you want to remove ${displayName} from #${channel?.name}?`;
+    
+    if (isDefault && isWorkspaceOwner) {
+      msg = `CRITICAL: Removing a member from the default channel (#${channel?.name}) will also remove them from the entire WORKSPACE. Proceed removing ${displayName}?`;
+    }
+
+    setRemoveTarget({ userId, displayName, msg });
+    setShowRemoveConfirm(true);
+  };
+
+  const confirmRemove = async () => {
+    if (!removeTarget) return;
+    const { userId } = removeTarget;
+    try {
+      await channelService.removeMember(channel.id, userId);
+      onMemberRemoved(userId);
+      addToast('Member removed', 'success');
+    } catch (error) {
+      console.error('Failed to remove member:', error);
+      addToast(error.response?.data?.message || 'Failed to remove member', 'error');
+    } finally {
+      setShowRemoveConfirm(false);
+      setRemoveTarget(null);
+    }
+  };
+
+  return (
+    <div className={`fixed inset-y-0 right-0 z-50 w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out border-l border-gray-100 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className="flex h-full flex-col">
+        {/* Header */}
+        <header className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
+          <h2 className="text-lg font-black text-gray-900 tracking-tight">Channel Info</h2>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-900"
+          >
+            <X size={20} />
+          </button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto scrollbar-thin">
+          {/* Channel Hero Section */}
+          <div className="p-6 text-center border-b border-gray-50 bg-gray-50/30">
+            <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl ${(channel?.isPrivate || channel?.private) ? 'bg-indigo-100 text-indigo-600' : 'bg-blue-100 text-blue-600'} shadow-inner`}>
+              {(channel?.isPrivate || channel?.private) ? (
+                <Lock size={32} strokeWidth={2.5} />
+              ) : (
+                <Hash size={32} strokeWidth={2.5} />
+              )}
+            </div>
+            <h3 className="text-xl font-black text-gray-900 truncate">#{channel?.name}</h3>
+            {channel?.description && (
+              <p className="mt-2 text-sm text-gray-500 font-medium leading-relaxed italic px-2">
+                "{channel.description}"
+              </p>
+            )}
+          </div>
+
+          {/* Details */}
+          <div className="px-6 py-6 space-y-4">
+             <div className="flex items-center gap-3 text-sm">
+                <Calendar size={16} className="text-gray-400" />
+                <span className="text-gray-500">Created on {new Date(channel?.createdAt).toLocaleDateString()}</span>
+             </div>
+             <div className="flex items-center gap-3 text-sm text-gray-500">
+                <User size={16} className="text-gray-400" />
+                <span>Created by <span className="font-bold text-gray-700">{channel?.createdBy?.displayName || 'Unknown'}</span></span>
+             </div>
+          </div>
+
+          {/* Members List */}
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Members • {members.length}</span>
+            </div>
+            
+            <div className="space-y-3">
+              {members.map((member) => (
+                <div key={member.id} className="flex items-center justify-between group">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-50 to-blue-50 border border-black/5 flex items-center justify-center overflow-hidden shrink-0">
+                          {member.avatarUrl ? (
+                            <img src={member.avatarUrl} alt={member.displayName} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-indigo-400 font-black text-sm">{member.displayName?.[0] || 'U'}</span>
+                          )}
+                        </div>
+                        {member.online && (
+                          <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-[#2bac76] border-2 border-white" />
+                        )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-gray-900 truncate max-w-[120px]">{member.displayName}</span>
+                        {member.role === 'ADMIN' && (
+                          <Shield size={10} className="text-amber-500 fill-amber-500/20" />
+                        )}
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-bold truncate">{member.email}</div>
+                    </div>
+                  </div>
+
+                  <div className="relative flex items-center gap-2">
+                    {member.id === currentUser?.id && (
+                      <span className="text-[10px] font-black text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full">YOU</span>
+                    )}
+                    
+                    {isAdmin && member.id !== currentUser?.id && (
+                      <div className="relative">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenu(activeMenu === member.id ? null : member.id);
+                          }}
+                          className={`p-2 rounded-lg transition-all ${activeMenu === member.id ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+                        
+                        {activeMenu === member.id && (
+                          <div 
+                            ref={menuRef}
+                            className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-black/5 z-[60] py-1.5 animate-in fade-in zoom-in-95 duration-200"
+                          >
+                            <button
+                              onClick={() => {
+                                handleRemove(member.id, member.displayName);
+                                setActiveMenu(null);
+                              }}
+                              className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
+                            >
+                              <UserMinus size={16} />
+                              Remove Member
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+        </div>
+      </div>
+    </div>
+      {/* Remove Member Confirmation Modal */}
+      <Modal
+        isOpen={showRemoveConfirm}
+        onClose={() => setShowRemoveConfirm(false)}
+        title="Remove Member"
+        rounded="rounded-none"
+      >
+        <div className="p-1">
+          <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+            {removeTarget?.msg}
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowRemoveConfirm(false)}
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-none text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmRemove}
+              className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-none font-bold text-sm hover:bg-red-700 transition-all shadow-md active:scale-95"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </Modal>
+      </div>
+    </div>
+  );
+};
+
+export default ChannelInfoDrawer;

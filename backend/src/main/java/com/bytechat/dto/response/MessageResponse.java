@@ -17,6 +17,7 @@ public class MessageResponse {
     private Long roomId;
     private Long channelId;
     private Long senderId;
+    private Long recipientId;
     private String senderName;
     private String senderAvatar;
     private String content;

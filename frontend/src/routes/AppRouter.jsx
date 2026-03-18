@@ -40,17 +40,6 @@ const AppRouter = () => (
       />
 
       <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<ProfilePage />} />
-      </Route>
-
-      <Route
         path="/chat"
         element={
           <ProtectedRoute>
@@ -58,7 +47,7 @@ const AppRouter = () => (
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/profile" replace />} />
+        <Route index element={<Navigate to="/" replace />} />
         <Route path=":type/:id" element={<ChatPage />} />
       </Route>
     </Routes>

@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import useChatStore from '../../store/chatStore';
 import channelService from '../../services/channelService';
+import useToastStore from '../../store/toastStore';
 
 const CreateChannelModal = () => {
     const { 
         isCreateChannelModalOpen, 
         setIsCreateChannelModalOpen, 
         activeWorkspaceId, 
-        channels, 
         setChannels 
     } = useChatStore();
+    const { addToast } = useToastStore();
     
     const [newChannelName, setNewChannelName] = useState('');
     const [newChannelDesc, setNewChannelDesc] = useState('');
@@ -33,7 +34,7 @@ const CreateChannelModal = () => {
             setIsPrivate(false);
         } catch (err) {
             console.error('Failed to create channel', err);
-            alert('Failed to create channel. Please try again.');
+            addToast('Failed to create channel.', 'error');
         } finally {
             setLoading(false);
         }
@@ -41,7 +42,7 @@ const CreateChannelModal = () => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-[#3f0e40] p-8 border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-full max-w-md bg-[#3f0e40] p-8 border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200 rounded-none text-white">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-white">Create a channel</h2>
                     <button 

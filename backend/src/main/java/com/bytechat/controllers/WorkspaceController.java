@@ -9,7 +9,6 @@ import com.bytechat.dto.response.WorkspaceCreationResponse;
 import com.bytechat.entity.User;
 import com.bytechat.services.OtpService;
 import com.bytechat.services.WorkspaceService;
-import com.bytechat.services.MessageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,7 +30,6 @@ public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
     private final OtpService otpService;
-    private final MessageService messageService;
 
     @PostMapping("/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendOtp(@RequestParam(name = "email") String email) {
@@ -110,5 +108,18 @@ public class WorkspaceController {
             return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
         }
         return ResponseEntity.ok(ApiResponse.success(workspaceService.getWorkspaceMembers(workspaceId, currentUser), "Workspace members fetched"));
+    }
+
+    @DeleteMapping("/{workspaceId}/members/{userId}")
+    @Operation(summary = "Remove member from workspace", description = "Only owner can remove members.")
+    public ResponseEntity<ApiResponse<Void>> removeMember(
+            @PathVariable(name = "workspaceId") Long workspaceId,
+            @PathVariable(name = "userId") Long userId,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+        }
+        workspaceService.removeMember(workspaceId, userId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null, "Member removed from workspace"));
     }
 }

@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Sidebar from '../components/Sidebar/Sidebar';
 import AppRail from '../components/Sidebar/AppRail';
 import CreateChannelModal from '../components/Sidebar/CreateChannelModal';
+import ProfileDrawer from '../components/Profile/ProfileDrawer';
 import Modal from '../components/Shared/Modal';
 import NotificationPanel from '../components/Common/NotificationPanel';
 import useAuthStore from '../store/authStore';
@@ -11,7 +12,8 @@ import chatService from '../services/chatService';
 import workspaceService from '../services/workspaceService';
 import notificationService from '../services/notificationService';
 import userService from '../services/userService';
-import { connectWebSocket, disconnectWebSocket, subscribeToNotifications } from '../services/websocket';
+import { connectWebSocket, disconnectWebSocket, subscribeToNotifications, subscribeToDM } from '../services/websocket';
+import useToastStore from '../store/toastStore';
 
 const MainLayout = () => {
   const navigate = useNavigate();
@@ -24,6 +26,7 @@ const MainLayout = () => {
     workspaces,
     activeWorkspaceId,
   } = useChatStore();
+  const { addToast } = useToastStore();
   const location = useLocation();
 
   const activeWorkspace = useMemo(() => {
@@ -48,12 +51,34 @@ const MainLayout = () => {
 
     connectWebSocket((stompClient) => {
       subscribeToNotifications(user.id, (notification) => {
+        if (notification.type === 'CHANNEL_MESSAGE') {
+          // Trigger unread count increment in sidebar globally
+          const state = useChatStore.getState();
+          const isCurrent = state.activeThread?.type === 'channel' && state.activeThread?.id === notification.relatedEntityId;
+          
+          if (!isCurrent) {
+            state.incrementChannelUnread(notification.relatedEntityId);
+          }
+          return; // Skip adding to the generic notifications panel
+        }
         setNotifications((prev) => [notification, ...prev]);
+      });
+
+      // Global message listener for DMs for real-time unread counts
+      subscribeToDM(user.id, (message) => {
+        const state = useChatStore.getState();
+        // Determine the other user in the DM to update their unread count in sidebar
+        const otherUserId = message.senderId === user.id ? message.recipientId : message.senderId;
+        if (otherUserId) {
+          state.appendDmMessage(otherUserId, message);
+        }
       });
     });
     loadAppContent();
     return () => disconnectWebSocket();
   }, [user?.id]);
+
+  const [showProfile, setShowProfile] = useState(false);
 
   async function loadAppContent() {
     try {
@@ -117,15 +142,19 @@ const MainLayout = () => {
       setNotifications((prev) => prev.filter((item) => item.id !== notificationId));
       await loadAppContent();
     } catch (error) {
-      window.alert(error.response?.data?.message ?? 'Unable to accept invite');
+      addToast(error.response?.data?.message ?? 'Unable to accept invite', 'error');
     }
   }
 
   return (
     <div className="flex h-screen overflow-hidden bg-transparent text-[#1d1c1d]">
-      <AppRail onCreateRoom={() => setShowCreateWorkspaceModal(true)} />
+      <AppRail 
+        onCreateRoom={() => setShowCreateWorkspaceModal(true)} 
+        onProfileClick={() => setShowProfile(true)}
+      />
       <Sidebar onAcceptInvite={handleAcceptInvite} />
       <CreateChannelModal />
+      <ProfileDrawer isOpen={showProfile} onClose={() => setShowProfile(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col">
 

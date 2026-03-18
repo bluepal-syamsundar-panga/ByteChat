@@ -30,6 +30,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final NotificationRepository notificationRepository;
     private final ChannelService channelService;
     private final ChannelRepository channelRepository;
+    private final ChannelMemberRepository channelMemberRepository;
     private final com.bytechat.services.OtpService otpService;
     private final com.bytechat.config.JwtService jwtService;
 
@@ -56,7 +57,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         // Create default #general channel
         channelService.createChannel(workspace.getId(), "general", "Default channel for " + workspace.getName(), false, true, currentUser);
         
-        return mapToResponse(workspace);
+        return mapToResponse(workspace, currentUser);
     }
 
     @Override
@@ -107,7 +108,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional(readOnly = true)
     public Page<WorkspaceResponse> getUserWorkspaces(User currentUser, int page, int size) {
         return workspaceRepository.findJoinedWorkspaces(currentUser.getId(), PageRequest.of(page, size))
-                .map(this::mapToResponse);
+                .map(ws -> mapToResponse(ws, currentUser));
     }
 
     @Override
@@ -135,8 +136,14 @@ public class WorkspaceServiceImpl implements WorkspaceService {
             List<Channel> channels = channelRepository.findByWorkspaceId(workspaceId);
             for (Channel channel : channels) {
                 if (channel.isDefault()) {
-                    channel.getMembers().add(currentUser);
-                    channelRepository.save(channel);
+                    if (!channelMemberRepository.existsByChannelIdAndUserId(channel.getId(), currentUser.getId())) {
+                        ChannelMember cm = ChannelMember.builder()
+                                .channel(channel)
+                                .user(currentUser)
+                                .role(ChannelRole.MEMBER)
+                                .build();
+                        channelMemberRepository.save(cm);
+                    }
                 }
             }
         }
@@ -145,7 +152,74 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public void leaveWorkspace(Long workspaceId, User currentUser) {
-        workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, currentUser.getId())
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, currentUser.getId())
+                .orElseThrow(() -> new RuntimeException("Not a member of this workspace"));
+        
+        if (WorkspaceRole.OWNER.equals(member.getRole())) {
+            throw new RuntimeException("Workspace Owner cannot leave. Transfer ownership or delete the workspace.");
+        }
+
+        removeUserFromWorkspaceInternally(workspaceId, currentUser);
+    }
+
+    @Override
+    @Transactional
+    public void removeMember(Long workspaceId, Long userId, User currentUser) {
+        Workspace workspace = getWorkspaceOrThrow(workspaceId);
+        
+        // Only owner or admin can remove members? Prompt said Owner.
+        if (!workspace.getOwner().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Only the workspace owner can remove members.");
+        }
+
+        if (workspace.getOwner().getId().equals(userId)) {
+            throw new RuntimeException("Owner cannot be removed from their own workspace.");
+        }
+
+        User userToRemove = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        removeUserFromWorkspaceInternally(workspaceId, userToRemove);
+    }
+
+    private void removeUserFromWorkspaceInternally(Long workspaceId, User user) {
+        Workspace workspace = getWorkspaceOrThrow(workspaceId);
+        User owner = workspace.getOwner();
+
+        // 1. Reassign Admin roles for all channels where this user was Admin
+        List<ChannelMember> memberships = channelMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId());
+        for (ChannelMember cm : memberships) {
+            if (ChannelRole.ADMIN.equals(cm.getRole())) {
+                // Check if there are other admins in this channel
+                List<ChannelMember> otherAdmins = channelMemberRepository.findByChannelId(cm.getChannel().getId()).stream()
+                        .filter(other -> !other.getUser().getId().equals(user.getId()) && ChannelRole.ADMIN.equals(other.getRole()))
+                        .toList();
+                
+                if (otherAdmins.isEmpty()) {
+                    // Transfer to Workspace Owner
+                    if (!channelMemberRepository.existsByChannelIdAndUserId(cm.getChannel().getId(), owner.getId())) {
+                         ChannelMember ownerNewCm = ChannelMember.builder()
+                                 .channel(cm.getChannel())
+                                 .user(owner)
+                                 .role(ChannelRole.ADMIN)
+                                 .build();
+                         channelMemberRepository.save(ownerNewCm);
+                    } else {
+                        ChannelMember ownerCm = channelMemberRepository.findByChannelIdAndUserId(cm.getChannel().getId(), owner.getId()).get();
+                        ownerCm.setRole(ChannelRole.ADMIN);
+                        channelMemberRepository.save(ownerCm);
+                    }
+                }
+            }
+        }
+
+        // 2. Remove from all channel memberships
+        for (ChannelMember cm : memberships) {
+            channelMemberRepository.delete(cm);
+        }
+
+        // 3. Remove from workspace
+        workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
                 .ifPresent(workspaceMemberRepository::delete);
     }
 
@@ -153,11 +227,9 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public void archiveWorkspace(Long workspaceId, User currentUser) {
         Workspace workspace = getWorkspaceOrThrow(workspaceId);
-        
         if (!workspace.getOwner().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Only owner can archive the workspace");
         }
-        
         workspace.setArchived(true);
         workspaceRepository.save(workspace);
     }
@@ -166,7 +238,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public void inviteUser(Long workspaceId, String email, User currentUser) {
         Workspace workspace = getWorkspaceOrThrow(workspaceId);
-
         User invitedUser = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
 
@@ -207,23 +278,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
             throw new RuntimeException("Invite notification is missing workspace information");
         }
 
-        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, currentUser.getId())) {
-            Workspace workspace = getWorkspaceOrThrow(workspaceId);
-            workspaceMemberRepository.save(WorkspaceMember.builder()
-                    .workspace(workspace)
-                    .user(currentUser)
-                    .role(WorkspaceRole.MEMBER)
-                    .build());
-
-            // Add to default channel
-            List<Channel> channels = channelRepository.findByWorkspaceId(workspaceId);
-            for (Channel channel : channels) {
-                if (channel.isDefault()) {
-                    channel.getMembers().add(currentUser);
-                    channelRepository.save(channel);
-                }
-            }
-        }
+        joinWorkspace(workspaceId, currentUser);
 
         notification.setRead(true);
         notificationRepository.save(notification);
@@ -257,6 +312,27 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 .isArchived(workspace.isArchived())
                 .createdById(workspace.getOwner() != null ? workspace.getOwner().getId() : null)
                 .createdAt(workspace.getCreatedAt())
+                .build();
+    }
+
+    private WorkspaceResponse mapToResponse(Workspace workspace, User currentUser) {
+        if (workspace == null) return null;
+        String role = "MEMBER";
+        if (currentUser != null) {
+            role = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspace.getId(), currentUser.getId())
+                    .map(m -> m.getRole().name())
+                    .orElse("MEMBER");
+        }
+        
+        return WorkspaceResponse.builder()
+                .id(workspace.getId())
+                .name(workspace.getName())
+                .description(workspace.getDescription())
+                .isPrivate(workspace.isPrivate())
+                .isArchived(workspace.isArchived())
+                .createdById(workspace.getOwner() != null ? workspace.getOwner().getId() : null)
+                .createdAt(workspace.getCreatedAt())
+                .role(role)
                 .build();
     }
 

@@ -16,6 +16,9 @@ import com.bytechat.repository.ReactionRepository;
 import com.bytechat.repository.WorkspaceMemberRepository;
 import com.bytechat.services.MessageService;
 import com.bytechat.services.NotificationService;
+import com.bytechat.repository.ChannelMemberRepository;
+import com.bytechat.dto.response.NotificationResponse;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.util.stream.Collectors;
@@ -39,9 +42,11 @@ public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepository;
     private final ChannelRepository channelRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final ChannelMemberRepository channelMemberRepository;
     private final ReactionRepository reactionRepository;
     private final NotificationService notificationService;
     private final MessageReadRepository messageReadRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private static final Pattern MENTION_PATTERN = Pattern.compile("@([A-Za-z0-9._-]+)");
 
@@ -52,9 +57,8 @@ public class MessageServiceImpl implements MessageService {
         Channel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new RuntimeException("Channel not found"));
         
-        if (channel.isArchived()) {
-            throw new RuntimeException("Cannot send message to an archived channel");
-        }
+        // Archiving is now per-user preference, so we don't block global message sending
+        // unless we want to block it for the ARCHIVER specifically, but usually it's just a UI hide.
         
         Long workspaceId = channel.getWorkspace().getId();
                 
@@ -84,7 +88,12 @@ public class MessageServiceImpl implements MessageService {
             log.error("Failed to process mentions for message {}: {}", message.getId(), e.getMessage());
         }
         
-        return mapToResponse(message);
+        MessageResponse response = mapToResponse(message);
+        
+        // Notify all channel members about the new message for real-time unread counts
+        notifyChannelMembers(channelId, sender.getId(), response);
+        
+        return response;
     }
 
     @Override
@@ -148,6 +157,28 @@ public class MessageServiceImpl implements MessageService {
                     .build();
             messageReadRepository.save(messageRead);
         }
+    }
+
+    @Override
+    @Transactional
+    public void markChannelAsRead(Long channelId, User currentUser) {
+        // Find all messages in the channel that this user hasn't read yet
+        List<Message> unreadMessages = messageRepository.findUnreadMessagesInChannel(channelId, currentUser.getId());
+        
+        List<MessageRead> reads = unreadMessages.stream()
+                .map(m -> MessageRead.builder()
+                        .message(m)
+                        .user(currentUser)
+                        .build())
+                .collect(Collectors.toList());
+        
+        if (!reads.isEmpty()) {
+            messageReadRepository.saveAll(reads);
+            log.info("Marked {} messages as read in channel {} for user {}", reads.size(), channelId, currentUser.getEmail());
+        }
+
+        // Also mark channel notifications (mentions, etc.) as read
+        notificationService.markChannelNotificationsAsRead(currentUser.getId(), channelId);
     }
 
     @Override
@@ -245,6 +276,30 @@ public class MessageServiceImpl implements MessageService {
         }
         
         return mentionedUserIds;
+    }
+
+    private void notifyChannelMembers(Long channelId, Long senderId, MessageResponse response) {
+        try {
+            List<com.bytechat.entity.ChannelMember> members = channelMemberRepository.findByChannelId(channelId);
+            for (com.bytechat.entity.ChannelMember member : members) {
+                // Don't notify the sender
+                if (member.getUser().getId().equals(senderId)) continue;
+                
+                // Send a lightweight notification to trigger unread count increment in frontend
+                NotificationResponse notification = NotificationResponse.builder()
+                        .type("CHANNEL_MESSAGE")
+                        .content("NEW_MESSAGE")
+                        .relatedEntityId(channelId)
+                        .recipientId(member.getUser().getId())
+                        .createdAt(LocalDateTime.now())
+                        .isRead(false)
+                        .build();
+                
+                messagingTemplate.convertAndSend("/topic/user/" + member.getUser().getId() + "/notifications", notification);
+            }
+        } catch (Exception e) {
+            log.error("Failed to notify channel members for channel {}: {}", channelId, e.getMessage());
+        }
     }
 
     private String normalize(String value) {

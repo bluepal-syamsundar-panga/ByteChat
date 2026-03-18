@@ -168,6 +168,7 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                 .id(dm.getId())
                 .roomId(dm.getWorkspace() != null ? dm.getWorkspace().getId() : null)
                 .senderId(dm.getFromUser().getId())
+                .recipientId(dm.getToUser().getId())
                 .senderName(dm.getFromUser().getDisplayName())
                 .senderAvatar(dm.getFromUser().getAvatarUrl())
                 .content(dm.isDeleted() ? "This message was deleted." : dm.getContent())

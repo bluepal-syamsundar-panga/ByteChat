@@ -83,7 +83,7 @@ const MessageBubble = ({ message, isSelected, onClick, onReact }) => {
   return (
     <div 
       onClick={onClick}
-      className={`group flex flex-col gap-1 px-8 py-1 transition-smooth cursor-pointer border-l-4 animate-message ${isSelected ? 'bg-purple-50/20 border-[#2c0b2e]' : 'hover:bg-gray-50/30 border-transparent'} ${message.isPinned && !isSelected ? 'bg-amber-50/20 border-amber-300' : ''} ${isMentioned && !isSelected ? 'border-blue-400 bg-blue-50/10' : ''} ${isMine ? 'items-end' : 'items-start'}`}
+      className={`group flex flex-col gap-1 px-8 py-1 transition-smooth cursor-pointer border-l-4 animate-message ${isSelected ? 'bg-[#3f0e40]/5 border-[#3f0e40]' : 'hover:bg-gray-50/30 border-transparent'} ${message.isPinned && !isSelected ? 'bg-amber-50/20 border-amber-300' : ''} ${isMentioned && !isSelected ? 'border-blue-400 bg-blue-50/10' : ''} ${isMine ? 'items-end' : 'items-start'}`}
     >
       <div className={`flex max-w-[85%] gap-3 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
         <div className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#611f69] to-[#3f0e40] font-extrabold text-white transition-smooth group-hover:scale-105 overflow-hidden`}>

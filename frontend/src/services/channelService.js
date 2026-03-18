@@ -17,6 +17,7 @@ const channelService = {
   transferOwnership: (channelId, newOwnerId) => api.post(`/channels/${channelId}/transfer-ownership`, null, {
     params: { newOwnerId }
   }),
+  removeMember: (channelId, userId) => api.delete(`/channels/${channelId}/members/${userId}`),
 };
 
 export default channelService;

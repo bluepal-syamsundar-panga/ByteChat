@@ -63,6 +63,10 @@ const chatService = {
     const response = await api.post(`/messages/${messageId}/read`);
     return response.data;
   },
+  async markChannelAsRead(channelId) {
+    const response = await api.post(`/messages/channel/${channelId}/read`);
+    return response.data;
+  },
 };
 
 export default chatService;

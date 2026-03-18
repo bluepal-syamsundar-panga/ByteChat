@@ -14,6 +14,7 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(of = "id")
 public class Channel {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,13 +42,13 @@ public class Channel {
 
     @Builder.Default
     @Column(nullable = false)
-    @com.fasterxml.jackson.annotation.JsonProperty("isArchived")
-    private boolean isArchived = false;
+    @com.fasterxml.jackson.annotation.JsonProperty("isDeleted")
+    private boolean isDeleted = false;
 
     @Builder.Default
     @Column(nullable = false)
-    @com.fasterxml.jackson.annotation.JsonProperty("isDeleted")
-    private boolean isDeleted = false;
+    @com.fasterxml.jackson.annotation.JsonProperty("isArchived")
+    private boolean isArchived = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
@@ -57,12 +58,7 @@ public class Channel {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @ManyToMany(cascade = {CascadeType.MERGE}, fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "channel_members",
-        joinColumns = @JoinColumn(name = "channel_id"),
-        inverseJoinColumns = @JoinColumn(name = "user_id")
-    )
+    @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
-    private Set<User> members = new HashSet<>();
+    private Set<ChannelMember> memberships = new HashSet<>();
 }

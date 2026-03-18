@@ -23,4 +23,5 @@ public interface ChannelService {
     void permanentlyDeleteChannel(Long channelId, User currentUser);
     void restoreChannel(Long channelId, User currentUser);
     void transferOwnership(Long channelId, Long newOwnerId, User currentUser);
+    void removeMember(Long channelId, Long userId, User currentUser);
 }

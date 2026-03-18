@@ -13,4 +13,5 @@ public interface MessageService {
     MessageResponse pinMessage(Long messageId, User currentUser);
     MessageResponse reactToMessage(Long messageId, String emoji, User currentUser);
     void markAsRead(Long messageId, User currentUser);
+    void markChannelAsRead(Long channelId, User currentUser);
 }

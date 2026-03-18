@@ -22,6 +22,8 @@ const useChatStore = create((set) => ({
   setWorkspaces: (workspaces) => set({ workspaces, rooms: workspaces }),
   setRooms: (rooms) => set({ rooms, workspaces: rooms }), // Legacy support
   setChannels: (channels) => set({ channels }),
+  sidebarChannels: [],
+  setSidebarChannels: (channels) => set({ sidebarChannels: channels }),
   setUsers: (users) => set({ users }),
   setOnlineUsers: (onlineUsers) => set({ onlineUsers }),
   setSharedUsers: (sharedUsers) => set({ sharedUsers }),
@@ -53,7 +55,10 @@ const useChatStore = create((set) => ({
         },
         channels: isCurrent 
           ? state.channels 
-          : state.channels.map(c => c.id === channelId ? { ...c, unreadCount: (c.unreadCount || 0) + 1 } : c)
+          : state.channels.map(c => c.id === channelId ? { ...c, unreadCount: (c.unreadCount || 0) + 1 } : c),
+        sidebarChannels: isCurrent
+          ? state.sidebarChannels
+          : (state.sidebarChannels || []).map(c => c.id === channelId ? { ...c, unreadCount: (c.unreadCount || 0) + 1 } : c)
       };
     }),
   upsertRoomMessage: (roomId, message) =>
@@ -96,6 +101,18 @@ const useChatStore = create((set) => ({
     set((state) => ({
       channels: state.channels.map((c) =>
         c.id === channelId ? { ...c, unreadCount: 0 } : c
+      ),
+      sidebarChannels: (state.sidebarChannels || []).map((c) =>
+        c.id === channelId ? { ...c, unreadCount: 0 } : c
+      ),
+    })),
+  incrementChannelUnread: (channelId) =>
+    set((state) => ({
+      channels: state.channels.map((c) =>
+        c.id === channelId ? { ...c, unreadCount: (c.unreadCount || 0) + 1 } : c
+      ),
+      sidebarChannels: (state.sidebarChannels || []).map((c) =>
+        c.id === channelId ? { ...c, unreadCount: (c.unreadCount || 0) + 1 } : c
       ),
     })),
   clearDmUnread: (userId) =>

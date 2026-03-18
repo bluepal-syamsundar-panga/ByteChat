@@ -19,12 +19,16 @@ import useChatStore from '../../store/chatStore';
 import notificationService from '../../services/notificationService';
 import TypingIndicator from './TypingIndicator';
 import Modal from '../Shared/Modal';
+import useToastStore from '../../store/toastStore';
 import ChannelInviteModal from './ChannelInviteModal';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
+import ChannelInfoDrawer from './ChannelInfoDrawer';
+import { Check } from 'lucide-react';
 
 const ChatWindow = ({ room, channel }) => {
   const navigate = useNavigate();
+  const addToast = useToastStore((state) => state.addToast);
   const currentUser = useAuthStore((state) => state.user);
   const {
     roomMessages,
@@ -50,12 +54,17 @@ const ChatWindow = ({ room, channel }) => {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [newOwnerId, setNewOwnerId] = useState(null);
   const [showMembersList, setShowMembersList] = useState(false);
+  const [showChannelInfo, setShowChannelInfo] = useState(false);
   
   const scrollRef = useRef(null);
   const messageContainerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const menuRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showArchiveConfirmModal, setShowArchiveConfirmModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   
   useEffect(() => {
     if (room && !channel) {
@@ -212,7 +221,10 @@ const ChatWindow = ({ room, channel }) => {
 
     if (entityId) {
       setActiveThread({ type: entityType, id: entityId });
-      if (entityType === 'channel') clearChannelUnread(entityId);
+      if (entityType === 'channel') {
+        clearChannelUnread(entityId);
+        chatService.markChannelAsRead(entityId).catch(err => console.error('Failed to mark channel as read', err));
+      }
     }
 
     loadData();
@@ -271,7 +283,7 @@ const ChatWindow = ({ room, channel }) => {
       setTimeout(() => scrollToBottom('smooth'), 50);
     } catch (error) {
       console.error('Failed to send message:', error);
-      alert('Failed to send message. Please check your connection.');
+      addToast('Failed to send message.', 'error');
     }
   }
 
@@ -302,31 +314,42 @@ const ChatWindow = ({ room, channel }) => {
     if (!inviteEmail.trim()) return;
     try {
       await chatService.inviteUser(roomId, inviteEmail.trim());
-      window.alert('Invite sent');
+      addToast('Invite sent', 'success');
       setShowInviteModal(false);
       setInviteEmail('');
     } catch (error) {
-      window.alert(error.response?.data?.message ?? 'Unable to send invite');
+      addToast(error.response?.data?.message ?? 'Unable to send invite', 'error');
     }
   }
 
   async function handleDelete(message) {
-    if (!window.confirm('Delete this message?')) {
-      return;
-    }
-
-    await chatService.deleteMessage(message.id);
-    const deletedMsg = {
-      ...message,
-      content: 'This message was deleted.',
-      isDeleted: true,
-    };
-    if (entityType === 'channel') {
-      upsertChannelMessage(entityId, deletedMsg);
-    } else {
-      upsertRoomMessage(entityId, deletedMsg);
-    }
+    setDeleteTarget(message);
+    setShowDeleteConfirmModal(true);
   }
+
+  const confirmDeleteMessage = async () => {
+    if (!deleteTarget) return;
+    const message = deleteTarget;
+    try {
+      await chatService.deleteMessage(message.id);
+      const deletedMsg = {
+        ...message,
+        content: 'This message was deleted.',
+        isDeleted: true,
+      };
+      if (entityType === 'channel') {
+        upsertChannelMessage(entityId, deletedMsg);
+      } else {
+        upsertRoomMessage(entityId, deletedMsg);
+      }
+      addToast('Message deleted', 'success');
+    } catch (error) {
+      addToast('Failed to delete message', 'error');
+    } finally {
+      setShowDeleteConfirmModal(false);
+      setDeleteTarget(null);
+    }
+  };
 
   const handlePin = async (message) => {
     const apiResponse = await chatService.pinMessage(message.id);
@@ -345,36 +368,50 @@ const ChatWindow = ({ room, channel }) => {
   };
 
   const handleArchive = async () => {
-    if (!window.confirm(`Are you sure you want to archive #${channel?.name}?`)) return;
+    setShowArchiveConfirmModal(true);
+  };
+
+  const confirmArchive = async () => {
     try {
       await channelService.archiveChannel(channelId);
-      window.alert('Channel archived successfully');
-      window.location.reload();
+      // Update store so sidebar reflects change immediately
+      const { channels, setChannels } = useChatStore.getState();
+      setChannels(channels.map(c => c.id === channelId ? { ...c, isArchived: true } : c));
+      
+      setShowArchiveConfirmModal(false);
+      addToast('Channel archived successfuly', 'success');
+      navigate(`/chat/workspace/${workspaceId}`);
     } catch (e) {
-      window.alert('Failed to archive channel');
+      console.error('Failed to archive channel', e);
+      addToast('Failed to archive channel', 'error');
     }
   };
 
   const handleLeaveChannel = async () => {
     if (!channel) return;
     
-    // Check if creator
-    const isCreator = channel.createdBy?.id === currentUser?.id || channel.isCreator;
-    
-    if (isCreator && members.length > 1) {
-      if (window.confirm('As the creator, you must transfer ownership before leaving. Open transfer menu?')) {
-        setShowTransferModal(true);
-      }
+    // Check if user is ADMIN in this channel
+    const isAdmin = channel.role === 'ADMIN';
+    const isOnlyMember = members.length === 1;
+
+    if (isAdmin && !isOnlyMember) {
+      // If Admin and not only member, forced transfer
+      setNewOwnerId(null);
+      setShowTransferModal(true);
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to leave #${channel?.name}?`)) return;
+    setShowLeaveModal(true);
+  };
+
+  const confirmLeaveChannel = async () => {
     try {
       await channelService.leaveChannel(channelId);
+      setShowLeaveModal(false);
       navigate(`/chat/workspace/${workspaceId}`);
     } catch (error) {
       console.error('Failed to leave channel:', error);
-      alert(error.response?.data?.message || 'Failed to leave channel.');
+      addToast(error.response?.data?.message || 'Failed to leave channel.', 'error');
     }
   };
 
@@ -382,27 +419,33 @@ const ChatWindow = ({ room, channel }) => {
     if (!newOwnerId) return;
     try {
       await channelService.transferOwnership(channelId, newOwnerId);
-      alert('Ownership transferred successfully. You can now leave the channel.');
+      await channelService.leaveChannel(channelId);
       setShowTransferModal(false);
-      // Optional: immediately leave after transfer? User suggested "then he can leave"
-      if (window.confirm('Ownership transferred. Leave channel now?')) {
-        await channelService.leaveChannel(channelId);
-        navigate(`/chat/workspace/${workspaceId}`);
-      }
+      addToast('Ownership transferred and channel left', 'success');
+      navigate(`/chat/workspace/${workspaceId}`);
     } catch (error) {
-      alert('Failed to transfer ownership.');
+      console.error('Failed to transfer and leave:', error);
+      addToast(error.response?.data?.message || 'Failed to transfer ownership.', 'error');
     }
   };
 
   const handleDeleteChannel = async () => {
-    if (!window.confirm(`Move #${channel?.name} to Trash? You can restore it later from the Trash Bin.`)) return;
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmDeleteChannel = async () => {
     try {
       await channelService.deleteChannel(channelId);
-      alert('Channel moved to trash.');
+      // Update store
+      const { channels, setChannels } = useChatStore.getState();
+      setChannels(channels.map(c => c.id === channelId ? { ...c, isDeleted: true } : c));
+      
+      setShowDeleteConfirmModal(false);
+      addToast('Channel moved to trash', 'success');
       navigate(`/chat/workspace/${workspaceId}`);
     } catch (error) {
       console.error('Failed to delete channel:', error);
-      alert(error.response?.data?.message || 'Only the creator or workspace owner can delete this channel.');
+      addToast(error.response?.data?.message || 'Only the creator or workspace owner can delete this channel.', 'error');
     }
   };
 
@@ -505,58 +548,121 @@ const ChatWindow = ({ room, channel }) => {
           </div>
         )}
         {/* Transfer Ownership Modal */}
-        {showTransferModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-white p-8 border border-black/10 shadow-2xl rounded-lg">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-[#1d1c1d]">Transfer Ownership</h2>
-                <button onClick={() => setShowTransferModal(false)} className="text-[#6b6a6b] hover:text-black">
-                  <X size={24} />
-                </button>
-              </div>
-              <p className="text-sm text-[#6b6a6b] mb-4">
-                Select a member to become the new owner of <strong>#{channel?.name}</strong> before you leave.
-              </p>
-              <div className="max-h-60 overflow-y-auto border border-black/10 rounded mb-4">
-                {members.filter(m => m.id !== currentUser?.id).map(member => (
-                  <button
-                    key={member.id}
-                    onClick={() => setNewOwnerId(member.id)}
-                    className={`flex w-full items-center gap-3 p-3 transition hover:bg-black/5 ${newOwnerId === member.id ? 'bg-black/5 border-l-4 border-[#3f0e40]' : 'border-l-4 border-transparent'}`}
-                  >
-                    <div className="h-8 w-8 rounded bg-[#3f0e40] flex items-center justify-center text-white text-xs font-bold shrink-0">
-                      {member.displayName?.[0]?.toUpperCase() ?? 'U'}
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="text-sm font-semibold text-[#1d1c1d]">{member.displayName}</div>
-                      <div className="text-xs text-[#6b6a6b]">{member.email}</div>
-                    </div>
-                    {newOwnerId === member.id && <Check size={16} className="text-[#3f0e40]" />}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-3">
+        <Modal
+          isOpen={showTransferModal}
+          onClose={() => setShowTransferModal(false)}
+          title="Transfer Channel Admin"
+          rounded="rounded-none"
+        >
+          <div className="p-1">
+            <p className="text-sm text-[#6b6a6b] mb-6">
+              As the only admin, you must transfer your admin role to another member before you can leave <strong>#{channel?.name}</strong>.
+            </p>
+            <div className="max-h-60 overflow-y-auto border border-black/5 rounded-xl mb-6 scrollbar-thin">
+              {members.filter(m => m.id !== currentUser?.id).map(member => (
                 <button
-                  onClick={() => setShowTransferModal(false)}
-                  className="flex-1 px-4 py-2 border border-black/10 rounded text-[#1d1c1d] hover:bg-black/5"
+                  key={member.id}
+                  onClick={() => setNewOwnerId(member.id)}
+                  className={`flex w-full items-center gap-3 p-3 transition-all hover:bg-black/5 ${newOwnerId === member.id ? 'bg-[#3f0e40]/5 border-l-4 border-[#3f0e40]' : 'border-l-4 border-transparent'}`}
                 >
-                  Cancel
+                  <div className="h-10 w-10 rounded-full bg-[#3f0e40] flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm">
+                    {member.displayName?.[0]?.toUpperCase() ?? 'U'}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="text-sm font-bold text-[#1d1c1d]">{member.displayName}</div>
+                    <div className="text-[10px] text-gray-400 font-bold">{member.email}</div>
+                  </div>
+                  {newOwnerId === member.id && (
+                    <div className="h-5 w-5 rounded-full bg-[#3f0e40] flex items-center justify-center">
+                      <Check size={12} className="text-white" />
+                    </div>
+                  )}
                 </button>
-                <button
-                  onClick={handleTransferOwnership}
-                  disabled={!newOwnerId}
-                  className="flex-1 px-4 py-2 bg-[#3f0e40] text-white rounded font-semibold hover:bg-[#350d36] disabled:opacity-50"
-                >
-                  Transfer & Leave
-                </button>
-              </div>
+              ))}
+              {members.filter(m => m.id !== currentUser?.id).length === 0 && (
+                <div className="p-8 text-center text-gray-400 text-sm">
+                  No other members in this channel.
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowTransferModal(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-[#1d1c1d] font-bold text-sm hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTransferOwnership}
+                disabled={!newOwnerId}
+                className="flex-1 px-4 py-2.5 bg-[#3f0e40] text-white rounded-xl font-bold text-sm hover:bg-[#350d36] disabled:opacity-50 transition-all shadow-md active:scale-95"
+              >
+                Transfer & Leave
+              </button>
             </div>
           </div>
-        )}
-        <div className="flex flex-col">
+        </Modal>
+
+        {/* Generic Leave Confirmation Modal */}
+        <Modal
+          isOpen={showLeaveModal}
+          onClose={() => setShowLeaveModal(false)}
+          title="Leave Channel"
+          rounded="rounded-none"
+        >
+          <div className="p-1">
+            <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+              Are you sure you want to leave <strong>#{channel?.name}</strong>? 
+              {channel?.isPrivate ? " Since this is a private channel, you'll need an invite to join again." : " You can rejoin this public channel anytime."}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLeaveModal(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+              >
+                Keep Channel
+              </button>
+              <button
+                onClick={confirmLeaveChannel}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all shadow-md active:scale-95"
+              >
+                Leave Channel
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Delete Message Confirmation Modal */}
+        <Modal
+          isOpen={showDeleteConfirmModal}
+          onClose={() => setShowDeleteConfirmModal(false)}
+          title="Delete Message"
+          rounded="rounded-none"
+        >
+          <div className="p-1">
+            <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+              Are you sure you want to delete this message? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirmModal(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-none text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteMessage}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-none font-bold text-sm hover:bg-red-700 transition-all shadow-md active:scale-95"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </Modal>
+
           <div 
             className="flex items-center gap-3 cursor-pointer group/title select-none"
-            onClick={() => {}}
+            onClick={() => setShowChannelInfo(true)}
           >
             <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${(channel?.isPrivate || channel?.private) ? 'bg-indigo-50 text-indigo-600' : 'bg-blue-50 text-blue-600'} transition-smooth group-hover/title:scale-110`}>
               {(channel?.isPrivate || channel?.private) ? (
@@ -570,8 +676,7 @@ const ChatWindow = ({ room, channel }) => {
                 {name}
               </div>
               <div className="mt-1 text-[10px] font-bold text-[#3f0e40] animate-in fade-in slide-in-from-left-2 duration-300">
-                {members.map(m => m.displayName || 'Unknown').join(', ')}
-              </div>
+                {members.length} members • Click for info
             </div>
           </div>
         </div>
@@ -580,7 +685,7 @@ const ChatWindow = ({ room, channel }) => {
           <button
             type="button"
             onClick={() => setShowInviteModal(true)}
-            className="hidden sm:flex items-center gap-2 bg-[#3f0e40] text-white px-5 py-1 !rounded-full font-bold text-sm transition-smooth hover:bg-[#350d36] hover:scale-[1.02] active:scale-[0.98] shadow-md shadow-purple-900/10 h-7"
+            className="hidden sm:flex items-center gap-2 bg-[#3f0e40] text-white px-5 py-1 !rounded-none font-bold text-sm transition-smooth hover:bg-[#350d36] hover:scale-[1.02] active:scale-[0.98] shadow-md shadow-purple-900/10 h-7"
           >
             <Users size={16} />
             <span>Invite</span>
@@ -657,6 +762,7 @@ const ChatWindow = ({ room, channel }) => {
                           setShowMenu(false);
                         }}
                         className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
+                        title="Archive this channel only for yourself"
                       >
                         <Trash2 size={16} className="text-[#6b6a6b]" /> Archive Channel
                       </button>
@@ -672,15 +778,17 @@ const ChatWindow = ({ room, channel }) => {
                       <LogOut size={16} className="text-[#6b6a6b]" /> Leave Channel
                     </button>
 
-                    <button 
-                      onClick={() => {
-                        handleDeleteChannel();
-                        setShowMenu(false);
-                      }}
-                      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10"
-                    >
-                      <Trash2 size={16} className="text-[#e01e5a]" /> Delete Channel
-                    </button>
+                    {(channel?.role === 'ADMIN' || currentUser?.id === room?.ownerId) && (
+                      <button 
+                        onClick={() => {
+                          handleDeleteChannel();
+                          setShowMenu(false);
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10"
+                      >
+                        <Trash2 size={16} className="text-[#e01e5a]" /> Delete Channel
+                      </button>
+                    )}
                   </>
                 )}
 
@@ -698,6 +806,17 @@ const ChatWindow = ({ room, channel }) => {
           </div>
         </div>
       </header>
+
+      <ChannelInfoDrawer 
+        isOpen={showChannelInfo}
+        onClose={() => setShowChannelInfo(false)}
+        channel={channel}
+        members={members}
+        isWorkspaceOwner={room?.ownerId === currentUser?.id}
+        onMemberRemoved={(userId) => {
+          setMembers(prev => prev.filter(m => m.id !== userId));
+        }}
+      />
 
       <div ref={messageContainerRef} className="scrollbar-thin flex-1 overflow-y-auto">
         {pinnedMessages.length > 0 && (
@@ -748,7 +867,7 @@ const ChatWindow = ({ room, channel }) => {
             </div>
             <button 
               onClick={() => handleSend(`Hey ${currentUser?.displayName?.split(' ')[0] || 'there'}! 👋`)}
-              className="mt-8 bg-[#2c0b2e] text-white px-6 py-3 rounded-2xl font-bold transition-smooth hover:bg-[#1a061b] hover:scale-110 active:scale-95 shadow-lg shadow-[#2c0b2e]/20"
+              className="mt-8 bg-[#2c0b2d] text-white px-6 py-3 rounded-2xl font-bold transition-smooth hover:bg-[#1a061b] hover:scale-110 active:scale-95 shadow-lg shadow-[#2c0b2e]/20"
             >
               Say Hello! 👋
             </button>
@@ -825,6 +944,62 @@ const ChatWindow = ({ room, channel }) => {
         workspaceId={workspaceId}
         channelName={name}
       />
+
+      {/* Confirmation Modals for Archive and Delete */}
+      <Modal
+        isOpen={showArchiveConfirmModal}
+        onClose={() => setShowArchiveConfirmModal(false)}
+        title="Archive Channel"
+      >
+        <div className="p-1">
+          <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+            Are you sure you want to archive <strong>#{channel?.name}</strong>? 
+            Archiving will move it to your personal archive. You can still view it in the Archived Channels view.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowArchiveConfirmModal(false)}
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmArchive}
+              className="flex-1 px-4 py-2.5 bg-[#3f0e40] text-white rounded-xl font-bold text-sm hover:bg-[#350d36] transition-all shadow-md active:scale-95"
+            >
+              Archive Channel
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirmModal}
+        onClose={() => setShowDeleteConfirmModal(false)}
+        title="Move to Trash"
+      >
+        <div className="p-1">
+          <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+            Move <strong>#{channel?.name}</strong> to Trash? 
+            This channel will be hidden for everyone, but can be restored by the workspace owner or creator from the Trash Bin.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowDeleteConfirmModal(false)}
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDeleteChannel}
+              className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all shadow-md active:scale-95"
+            >
+              Move to Trash
+            </button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 };

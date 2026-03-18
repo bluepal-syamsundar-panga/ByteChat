@@ -113,4 +113,13 @@ public class MessageController {
         
         return ResponseEntity.ok(ApiResponse.success(response, "Message pin toggled"));
     }
+    @PostMapping("/channel/{channelId}/read")
+    @Operation(summary = "Mark channel as read", description = "Marks all messages in a channel as read for the current user.")
+    public ResponseEntity<ApiResponse<Void>> markChannelAsRead(
+            @PathVariable(name = "channelId") Long channelId,
+            @AuthenticationPrincipal User currentUser) {
+        log.info("Marking channel ID {} as read for user {}", channelId, currentUser.getEmail());
+        messageService.markChannelAsRead(channelId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null, "Channel marked as read"));
+    }
 }
