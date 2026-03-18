@@ -23,6 +23,8 @@ const Sidebar = ({ onAcceptInvite }) => {
     setSharedUsers,
     setActiveWorkspaceId: setStoreActiveWorkspaceId,
     setIsCreateChannelModalOpen,
+    clearChannelUnread,
+    clearDmUnread,
     sidebarMode,
     setSidebarMode
   } = useChatStore();
@@ -36,19 +38,18 @@ const Sidebar = ({ onAcceptInvite }) => {
   useEffect(() => {
     const workspaceIdMatch = location.pathname.match(/\/chat\/workspace\/(\d+)/);
     const channelIdMatch = location.pathname.match(/\/chat\/channel\/(\d+)/);
+    const dmIdMatch = location.pathname.match(/\/chat\/dm\/(\d+)/);
 
     if (channelIdMatch) {
       const channelId = parseInt(channelIdMatch[1]);
       setActiveChannelId(channelId);
-
-      // Find workspace for this channel from channels list
-      const channel = channels.find(c => c.id === channelId);
-      if (channel && channel.workspaceId) {
-        setActiveWorkspaceId(channel.workspaceId);
-        setStoreActiveWorkspaceId(channel.workspaceId);
-      }
+      clearChannelUnread(channelId);
     } else {
       setActiveChannelId(null);
+    }
+
+    if (dmIdMatch) {
+      clearDmUnread(parseInt(dmIdMatch[1]));
     }
 
     if (workspaceIdMatch) {
@@ -56,7 +57,23 @@ const Sidebar = ({ onAcceptInvite }) => {
       setActiveWorkspaceId(wsId);
       setStoreActiveWorkspaceId(wsId);
     }
-  }, [location.pathname, channels]);
+  }, [location.pathname, clearChannelUnread, clearDmUnread, setStoreActiveWorkspaceId]);
+
+  useEffect(() => {
+    const channelIdMatch = location.pathname.match(/\/chat\/channel\/(\d+)/);
+    if (!channelIdMatch) return;
+
+    const channelId = parseInt(channelIdMatch[1]);
+    const channel = channels.find((item) => item.id === channelId);
+    if (!channel?.workspaceId) return;
+
+    if (activeWorkspaceId !== channel.workspaceId) {
+      setActiveWorkspaceId(channel.workspaceId);
+    }
+    if (useChatStore.getState().activeWorkspaceId !== channel.workspaceId) {
+      setStoreActiveWorkspaceId(channel.workspaceId);
+    }
+  }, [location.pathname, channels, activeWorkspaceId, setStoreActiveWorkspaceId]);
 
   useEffect(() => {
     if (activeWorkspaceId) {
@@ -198,6 +215,15 @@ const Sidebar = ({ onAcceptInvite }) => {
                   {sidebarMode === 'archive' ? 'Archived' : sidebarMode === 'trash' ? 'Deleted' : (activeWorkspace?.name || 'ByteChat')}
                 </div>
               </div>
+              {sidebarMode === 'channels' && (
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="flex items-center justify-center p-1 text-white/40 hover:text-white transition-smooth hover:scale-110"
+                  title="Invite Members"
+                >
+                  <Plus size={20} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -304,17 +330,7 @@ const Sidebar = ({ onAcceptInvite }) => {
             </section>
           )}
 
-          <div className="mt-auto px-4 pb-6">
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white/60 transition-smooth hover:bg-white/10 hover:text-white group border border-white/5"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 transition-smooth group-hover:bg-white/10 group-hover:scale-105">
-                <Users2 size={15} />
-              </div>
-              Invite Members
-            </button>
-          </div>
+
         </div>
       </aside>
 

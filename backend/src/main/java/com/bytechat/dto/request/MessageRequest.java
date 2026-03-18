@@ -17,4 +17,6 @@ public class MessageRequest {
     // Optional: TEXT by default, can be FILE
     @Builder.Default
     private String type = "TEXT";
+
+    private Long replyToMessageId;
 }

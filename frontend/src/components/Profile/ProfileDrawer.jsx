@@ -71,7 +71,7 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
   }
 
   return (
-    <div className={`fixed inset-y-0 right-0 z-50 w-96 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out border-l border-gray-100 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+    <div className={`fixed inset-y-0 right-0 z-50 w-80 bg-white shadow-2xl transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) border-l border-gray-100 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
       <div className="flex h-full flex-col">
         {/* Header */}
         <header className="flex items-center justify-between px-6 py-5 border-b border-gray-50 bg-white">
@@ -93,7 +93,7 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
           {/* Avatar Section */}
           <div className="flex flex-col items-center">
             <div className="relative group">
-              <div className="flex h-32 w-32 items-center justify-center bg-gradient-to-br from-[#2c0b2e] to-[#1a061b] text-4xl font-black text-white overflow-hidden shadow-2xl rounded-[2rem] transition-transform duration-500 group-hover:scale-105 ring-4 ring-white">
+              <div className="flex h-32 w-32 items-center justify-center bg-gradient-to-br from-[#2c0b2e] to-[#1a061b] text-4xl font-black text-white overflow-hidden shadow-2xl rounded-full transition-transform duration-500 group-hover:scale-105 ring-4 ring-white">
                 {form.avatarUrl ? (
                   <img src={form.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
                 ) : (
@@ -101,7 +101,7 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
                 )}
               </div>
               <label 
-                className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-[2rem] opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer backdrop-blur-sm"
+                className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer backdrop-blur-sm"
               >
                 <input
                   type="file"

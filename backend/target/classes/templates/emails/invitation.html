@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>You've Been Invited</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f9; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 20px auto; background: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #2d3748; margin: 0; font-size: 24px; }
+        .content { color: #4a5568; line-height: 1.6; }
+        .invite-box { background-color: #ebf8ff; padding: 20px; border-radius: 6px; margin: 25px 0; border-left: 4px solid #4299e1; }
+        .inviter { font-weight: bold; color: #2b6cb0; }
+        .entity-name { font-weight: bold; color: #2b6cb0; }
+        .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #a0aec0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ByteChat</h1>
+        </div>
+        <div class="content">
+            <p>Hello,</p>
+            <p th:if="${type == 'WORKSPACE'}">
+                <span class="inviter" th:text="${inviterName}"> Someone</span> has invited you to join the workspace 
+                <span class="entity-name" th:text="${entityName}">Workspace Name</span> on ByteChat.
+            </p>
+            <p th:if="${type == 'CHANNEL'}">
+                <span class="inviter" th:text="${inviterName}"> Someone</span> has invited you to join the channel 
+                <span class="entity-name" th:text="${entityName}">Channel Name</span> in <span th:text="${workspaceName}">Workspace</span>.
+            </p>
+            <div class="invite-box">
+                Accept this invitation from your ByteChat notifications panel to start collaborating.
+            </div>
+            <p>Best regards,<br/>The ByteChat Team</p>
+        </div>
+        <div class="footer">
+            &copy; 2024 ByteChat. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>

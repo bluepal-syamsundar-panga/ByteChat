@@ -54,7 +54,7 @@ const MainLayout = () => {
         if (notification.type === 'CHANNEL_MESSAGE') {
           // Trigger unread count increment in sidebar globally
           const state = useChatStore.getState();
-          const isCurrent = state.activeThread?.type === 'channel' && state.activeThread?.id === notification.relatedEntityId;
+          const isCurrent = state.activeThread?.type === 'channel' && String(state.activeThread?.id) === String(notification.relatedEntityId);
           
           if (!isCurrent) {
             state.incrementChannelUnread(notification.relatedEntityId);

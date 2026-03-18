@@ -83,7 +83,7 @@ const DMPanel = () => {
       >
         <MessageSquare size={22} />
         {(dmNotifications.length + pendingRequests.length) > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center bg-[#e01e5a] text-[10px] font-bold text-white pointer-events-none">
+          <span className="absolute -top-1 -right-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#e01e5a] px-1.5 text-[10px] font-bold text-white pointer-events-none shadow-md shadow-[#e01e5a]/30">
             {(dmNotifications.length + pendingRequests.length) > 9 ? '9+' : (dmNotifications.length + pendingRequests.length)}
           </span>
         )}

@@ -1,6 +1,7 @@
 package com.bytechat.serviceimpl;
 
 import com.bytechat.dto.request.MessageRequest;
+import com.bytechat.dto.response.MessageReadUserResponse;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.dto.response.ReactionResponse;
 import com.bytechat.entity.Channel;
@@ -9,6 +10,8 @@ import com.bytechat.entity.Reaction;
 import com.bytechat.entity.WorkspaceMember;
 import com.bytechat.entity.User;
 import com.bytechat.entity.MessageRead;
+import com.bytechat.exception.ResourceNotFoundException;
+import com.bytechat.exception.UnauthorizedException;
 import com.bytechat.repository.ChannelRepository;
 import com.bytechat.repository.MessageReadRepository;
 import com.bytechat.repository.MessageRepository;
@@ -23,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,19 +57,16 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional
     public MessageResponse sendMessage(Long channelId, MessageRequest request, User sender) {
-        log.info("Attempting to send message to channel {} by user {}", channelId, sender.getEmail());
+        log.info("Sending message to channel {} by user {}", channelId, sender.getEmail());
         Channel channel = channelRepository.findById(channelId)
-                .orElseThrow(() -> new RuntimeException("Channel not found"));
-        
-        // Archiving is now per-user preference, so we don't block global message sending
-        // unless we want to block it for the ARCHIVER specifically, but usually it's just a UI hide.
+                .orElseThrow(() -> new ResourceNotFoundException("Channel not found with ID: " + channelId));
         
         Long workspaceId = channel.getWorkspace().getId();
                 
         // Ensure user is member of the workspace
         if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, sender.getId())) {
-            log.warn("User {} is not a member of workspace {}", sender.getEmail(), workspaceId);
-            throw new RuntimeException("User is not a member of this workspace");
+            log.warn("Access denied: User {} is not a member of workspace {}", sender.getEmail(), workspaceId);
+            throw new UnauthorizedException("User is not a member of this workspace");
         }
 
         Message message = Message.builder()
@@ -73,24 +74,29 @@ public class MessageServiceImpl implements MessageService {
                 .sender(sender)
                 .content(request.getContent())
                 .type(request.getType() != null ? request.getType() : "TEXT")
+                .replyToMessageId(request.getReplyToMessageId())
                 .mentionedUserIds(new ArrayList<>())
                 .build();
+
+        if (request.getReplyToMessageId() != null) {
+            Message replyTarget = getMessageOrThrow(request.getReplyToMessageId());
+            message.setReplyToContent(replyTarget.isDeleted() ? "This message was deleted." : replyTarget.getContent());
+            message.setReplyToSenderName(replyTarget.getSender().getDisplayName());
+        }
                 
         message = messageRepository.save(message);
-        log.info("Message saved initial ID: {}", message.getId());
+        log.info("Message saved with ID: {}", message.getId());
 
         try {
             List<Long> mentionedIds = notifyMentionedUsers(message, sender);
             message.setMentionedUserIds(mentionedIds);
             message = messageRepository.save(message);
-            log.info("Message {} updated with {} mentions", message.getId(), mentionedIds.size());
+            log.debug("Mentions processed for message {}: {}", message.getId(), mentionedIds);
         } catch (Exception e) {
-            log.error("Failed to process mentions for message {}: {}", message.getId(), e.getMessage());
+            log.error("Mentions processing failed for message {}: {}", message.getId(), e.getMessage());
         }
         
         MessageResponse response = mapToResponse(message);
-        
-        // Notify all channel members about the new message for real-time unread counts
         notifyChannelMembers(channelId, sender.getId(), response);
         
         return response;
@@ -98,29 +104,45 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public Page<MessageResponse> getRoomMessages(Long channelId, int page, int size, User currentUser) {
+        log.info("Fetching messages for channel {} (page: {}, size: {})", channelId, page, size);
         Channel channel = channelRepository.findById(channelId)
-                .orElseThrow(() -> new RuntimeException("Channel not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Channel not found"));
         
         Long workspaceId = channel.getWorkspace().getId();
         
-        // Ensure joined workspace
         if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, currentUser.getId())) {
-             throw new RuntimeException("User is not a member of this workspace");
+             log.warn("Access denied: User {} tried to access messages for channel {}", currentUser.getEmail(), channelId);
+             throw new UnauthorizedException("User is not a member of this workspace");
         }
         
-        Page<MessageResponse> messages = messageRepository.findByChannelIdOrderBySentAtDesc(channelId, PageRequest.of(page, size))
-                .map(this::mapToResponse);
-        log.info("Fetched {} messages for channel {}", messages.getNumberOfElements(), channelId);
+        Page<Message> pageResult = messageRepository.findByChannelIdOrderBySentAtDesc(channelId, PageRequest.of(page, size));
+        List<MessageResponse> visibleMessages = pageResult.getContent().stream()
+                .filter(message -> !message.getHiddenForUserIds().contains(currentUser.getId()))
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+        Page<MessageResponse> messages = new PageImpl<>(visibleMessages, pageResult.getPageable(), visibleMessages.size());
+        log.debug("Returned {} messages for channel {}", messages.getNumberOfElements(), channelId);
         return messages;
+    }
+
+    @Override
+    public MessageResponse getMessageResponse(Long messageId, User currentUser) {
+        Message message = getMessageOrThrow(messageId);
+        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(message.getChannel().getWorkspace().getId(), currentUser.getId())) {
+            throw new UnauthorizedException("User is not a member of this workspace");
+        }
+        return mapToResponse(message);
     }
 
     @Override
     @Transactional
     public MessageResponse editMessage(Long messageId, MessageRequest request, User currentUser) {
+        log.info("User {} editing message {}", currentUser.getEmail(), messageId);
         Message message = getMessageOrThrow(messageId);
         
         if (!message.getSender().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You can only edit your own messages");
+            log.warn("Edit denied: User {} is not the sender of message {}", currentUser.getEmail(), messageId);
+            throw new UnauthorizedException("You can only edit your own messages");
         }
         
         message.setContent(request.getContent());
@@ -129,20 +151,34 @@ public class MessageServiceImpl implements MessageService {
         List<Long> mentionedIds = notifyMentionedUsers(message, currentUser);
         message.setMentionedUserIds(mentionedIds);
         Message savedMessage = messageRepository.save(message);
+        log.info("Message {} successfully edited", messageId);
         return mapToResponse(savedMessage);
     }
 
     @Override
     @Transactional
-    public MessageResponse deleteMessage(Long messageId, User currentUser) {
+    public MessageResponse deleteMessage(Long messageId, String scope, User currentUser) {
+        log.info("User {} deleting message {}", currentUser.getEmail(), messageId);
         Message message = getMessageOrThrow(messageId);
-        
+
+        if ("self".equalsIgnoreCase(scope)) {
+            if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(message.getChannel().getWorkspace().getId(), currentUser.getId())) {
+                throw new UnauthorizedException("Must be a member of the workspace to hide messages");
+            }
+            if (!message.getHiddenForUserIds().contains(currentUser.getId())) {
+                message.getHiddenForUserIds().add(currentUser.getId());
+            }
+            return mapToResponse(messageRepository.save(message));
+        }
+
         if (!message.getSender().getId().equals(currentUser.getId())) {
-             throw new RuntimeException("You can only delete your own messages");
+            log.warn("Delete denied: User {} is not the sender of message {}", currentUser.getEmail(), messageId);
+            throw new UnauthorizedException("You can only delete your own messages");
         }
         
         message.setDeleted(true);
         Message savedMessage = messageRepository.save(message);
+        log.info("Message {} marked as deleted", messageId);
         return mapToResponse(savedMessage);
     }
 
@@ -150,6 +186,7 @@ public class MessageServiceImpl implements MessageService {
     @Transactional
     public void markAsRead(Long messageId, User currentUser) {
         if (!messageReadRepository.existsByMessageIdAndUserId(messageId, currentUser.getId())) {
+            log.debug("Marking message {} as read for user {}", messageId, currentUser.getEmail());
             Message message = getMessageOrThrow(messageId);
             MessageRead messageRead = MessageRead.builder()
                     .message(message)
@@ -162,7 +199,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional
     public void markChannelAsRead(Long channelId, User currentUser) {
-        // Find all messages in the channel that this user hasn't read yet
+        log.info("Marking all messages in channel {} as read for user {}", channelId, currentUser.getEmail());
         List<Message> unreadMessages = messageRepository.findUnreadMessagesInChannel(channelId, currentUser.getId());
         
         List<MessageRead> reads = unreadMessages.stream()
@@ -184,29 +221,47 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional
     public MessageResponse pinMessage(Long messageId, User currentUser) {
+         log.info("User {} toggling pin for message {}", currentUser.getEmail(), messageId);
          Message message = getMessageOrThrow(messageId);
-         // Any member can pin a message
+         
          if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(message.getChannel().getWorkspace().getId(), currentUser.getId())) {
-             throw new RuntimeException("Must be a member of the workspace to pin messages");
+             log.warn("Pin denied: User {} is not a member of workspace {}", currentUser.getEmail(), message.getChannel().getWorkspace().getId());
+             throw new UnauthorizedException("Must be a member of the workspace to pin messages");
          }
          
-         message.setPinned(!message.isPinned()); // Toggle
-         return mapToResponse(messageRepository.save(message));
+         message.setPinned(!message.isPinned());
+         if (message.isPinned()) {
+             message.setPinnedByUserId(currentUser.getId());
+             message.setPinnedByName(currentUser.getDisplayName());
+         } else {
+             message.setPinnedByUserId(null);
+             message.setPinnedByName(null);
+         }
+         Message saved = messageRepository.save(message);
+         log.info("Message {} pin status: {}", messageId, saved.isPinned());
+         return mapToResponse(saved);
     }
 
     @Override
     @Transactional
     public MessageResponse reactToMessage(Long messageId, String emoji, User currentUser) {
+        log.debug("User {} reacting with {} to message {}", currentUser.getEmail(), emoji, messageId);
         Message message = getMessageOrThrow(messageId);
         
         reactionRepository.findByMessageIdAndUserIdAndEmoji(messageId, currentUser.getId(), emoji)
                 .ifPresentOrElse(
-                        reactionRepository::delete,
-                        () -> reactionRepository.save(Reaction.builder()
+                        r -> {
+                            reactionRepository.delete(r);
+                            log.debug("Removed reaction {} from message {}", emoji, messageId);
+                        },
+                        () -> {
+                            reactionRepository.save(Reaction.builder()
                                 .message(message)
                                 .user(currentUser)
                                 .emoji(emoji)
-                                .build())
+                                .build());
+                            log.debug("Added reaction {} to message {}", emoji, messageId);
+                        }
                 );
         reactionRepository.flush();
         
@@ -215,7 +270,7 @@ public class MessageServiceImpl implements MessageService {
 
     private Message getMessageOrThrow(Long id) {
         return messageRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Message not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Message not found with ID: " + id));
     }
 
     private MessageResponse mapToResponse(Message message) {
@@ -231,6 +286,8 @@ public class MessageServiceImpl implements MessageService {
                 .type(message.getType())
                 .isDeleted(message.isDeleted())
                 .isPinned(message.isPinned())
+                .pinnedByUserId(message.getPinnedByUserId())
+                .pinnedByName(message.getPinnedByName())
                 .editedAt(message.getEditedAt())
                 .sentAt(message.getSentAt())
                 .mentionedUserIds(message.getMentionedUserIds())
@@ -241,9 +298,22 @@ public class MessageServiceImpl implements MessageService {
                                 .username(r.getUser().getDisplayName())
                                 .build())
                         .collect(Collectors.toList()))
+                .readBy(messageReadRepository.findByMessageId(message.getId()).stream()
+                        .filter(mr -> !mr.getUser().getId().equals(message.getSender().getId()))
+                        .map(mr -> MessageReadUserResponse.builder()
+                                .id(mr.getUser().getId())
+                                .displayName(mr.getUser().getDisplayName())
+                                .avatarUrl(mr.getUser().getAvatarUrl())
+                                .build())
+                        .distinct()
+                        .collect(Collectors.toList()))
+                .replyToMessageId(message.getReplyToMessageId())
+                .replyToContent(message.getReplyToContent())
+                .replyToSenderName(message.getReplyToSenderName())
                 .build();
         
         response.setReadCount((int) messageReadRepository.findByMessageId(message.getId()).stream()
+                .filter(mr -> !mr.getUser().getId().equals(message.getSender().getId()))
                 .map(mr -> mr.getUser().getDisplayName())
                 .distinct()
                 .count());

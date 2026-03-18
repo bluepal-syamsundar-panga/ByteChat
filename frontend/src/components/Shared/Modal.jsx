@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const Modal = ({ isOpen, onClose, title, children, rounded = 'rounded-2xl' }) => {
   useEffect(() => {
@@ -12,7 +13,7 @@ const Modal = ({ isOpen, onClose, title, children, rounded = 'rounded-2xl' }) =>
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 sm:p-6 pointer-events-none">
       <div 
         className="fixed inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity pointer-events-auto" 
@@ -32,7 +33,8 @@ const Modal = ({ isOpen, onClose, title, children, rounded = 'rounded-2xl' }) =>
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

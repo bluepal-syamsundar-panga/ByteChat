@@ -2,28 +2,34 @@ package com.bytechat.serviceimpl;
 
 import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.MessageResponse;
+import com.bytechat.dto.response.ReactionResponse;
 import com.bytechat.entity.DMRequestStatus;
 import com.bytechat.entity.DirectMessage;
+import com.bytechat.entity.Reaction;
 import com.bytechat.entity.User;
+import com.bytechat.exception.ResourceNotFoundException;
+import com.bytechat.exception.UnauthorizedException;
 import com.bytechat.repository.DMRequestRepository;
 import com.bytechat.repository.DirectMessageRepository;
-import com.bytechat.repository.UserRepository;
 import com.bytechat.repository.ReactionRepository;
+import com.bytechat.repository.UserRepository;
 import com.bytechat.services.DirectMessageService;
 import com.bytechat.services.NotificationService;
-import com.bytechat.entity.Reaction;
-import com.bytechat.dto.response.ReactionResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DirectMessageServiceImpl implements DirectMessageService {
 
     private final DirectMessageRepository directMessageRepository;
@@ -35,8 +41,9 @@ public class DirectMessageServiceImpl implements DirectMessageService {
     @Override
     @Transactional
     public MessageResponse sendDirectMessage(Long toUserId, MessageRequest request, User sender) {
+        log.info("Sending direct message from {} to user ID {}", sender.getEmail(), toUserId);
         User toUser = userRepository.findById(toUserId)
-                .orElseThrow(() -> new RuntimeException("Recipient not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Recipient user not found with ID: " + toUserId));
 
         // Check permission: Shared room OR accepted DM request
         boolean sharesRoom = userRepository.findUsersSharingRoomWith(sender.getId(), DMRequestStatus.ACCEPTED).stream()
@@ -47,7 +54,8 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                                          dmRequestRepository.existsBySenderAndReceiverAndStatus(toUser, sender, DMRequestStatus.ACCEPTED);
             
             if (!hasAcceptedRequest) {
-                throw new RuntimeException("You do not have permission to send direct messages to this user. They must share a room with you or accept your DM invitation.");
+                log.warn("DM denied: User {} and {} do not share a room or have an accepted DM request", sender.getEmail(), toUser.getEmail());
+                throw new UnauthorizedException("You do not have permission to send direct messages to this user.");
             }
         }
 
@@ -56,11 +64,20 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                 .toUser(toUser)
                 .content(request.getContent())
                 .type(request.getType() != null ? request.getType() : "TEXT")
+                .replyToMessageId(request.getReplyToMessageId())
                 .build();
+
+        if (request.getReplyToMessageId() != null) {
+            DirectMessage replyTarget = directMessageRepository.findById(request.getReplyToMessageId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Direct message not found"));
+            dm.setReplyToContent(replyTarget.isDeleted() ? "This message was deleted." : replyTarget.getContent());
+            dm.setReplyToSenderName(replyTarget.getFromUser().getDisplayName());
+        }
                 
         dm = directMessageRepository.save(dm);
+        log.info("Direct message saved with ID: {}", dm.getId());
         
-        // Check if the message mentions the recipient (case-insensitive and space-normalized)
+        // Check if the message mentions the recipient
         String content = request.getContent().toLowerCase();
         String recipientMention = "@" + toUser.getDisplayName().replaceAll("\\s+", "").toLowerCase();
         boolean mentionsRecipient = content.contains(recipientMention);
@@ -78,14 +95,19 @@ public class DirectMessageServiceImpl implements DirectMessageService {
 
     @Override
     public Page<MessageResponse> getDirectMessages(Long otherUserId, int page, int size, User currentUser) {
-        return directMessageRepository.findConversation(currentUser.getId(), otherUserId, PageRequest.of(page, size))
-                .map(this::mapToResponse);
+        log.info("Fetching DM conversation between {} and user ID {} (page: {}, size: {})", currentUser.getEmail(), otherUserId, page, size);
+        Page<DirectMessage> pageResult = directMessageRepository.findConversation(currentUser.getId(), otherUserId, PageRequest.of(page, size));
+        List<MessageResponse> visibleMessages = pageResult.getContent().stream()
+                .filter(dm -> !dm.getHiddenForUserIds().contains(currentUser.getId()))
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(visibleMessages, pageResult.getPageable(), visibleMessages.size());
     }
 
     @Override
     @Transactional
     public void markAsRead(Long otherUserId, User currentUser) {
-        // Mark messages as read
+        log.info("Marking DMs from user ID {} as read for user {}", otherUserId, currentUser.getEmail());
         directMessageRepository.findConversation(currentUser.getId(), otherUserId, PageRequest.of(0, 1000))
                 .forEach(dm -> {
                     if (dm.getToUser().getId().equals(currentUser.getId()) && dm.getReadAt() == null) {
@@ -94,62 +116,102 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                     }
                 });
         
-        // Mark DM notifications as read
         notificationService.markDMNotificationsAsRead(currentUser.getId(), otherUserId);
     }
 
     @Override
     @Transactional
     public MessageResponse editMessage(Long dmId, String content, User currentUser) {
+        log.info("User {} editing DM {}", currentUser.getEmail(), dmId);
         DirectMessage dm = directMessageRepository.findById(dmId)
-                .orElseThrow(() -> new RuntimeException("Direct message not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Direct message not found"));
+        
         if (!dm.getFromUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You can only edit your own messages");
+            log.warn("Edit denied: User {} is not the sender of DM {}", currentUser.getEmail(), dmId);
+            throw new UnauthorizedException("You can only edit your own messages");
         }
+        
         dm.setContent(content);
         dm.setEditedAt(LocalDateTime.now());
-        return mapToResponse(directMessageRepository.save(dm));
+        DirectMessage saved = directMessageRepository.save(dm);
+        log.info("DM {} successfully edited", dmId);
+        return mapToResponse(saved);
     }
 
     @Override
     @Transactional
-    public MessageResponse deleteMessage(Long dmId, User currentUser) {
+    public MessageResponse deleteMessage(Long dmId, String scope, User currentUser) {
+        log.info("User {} deleting DM {}", currentUser.getEmail(), dmId);
         DirectMessage dm = directMessageRepository.findById(dmId)
-                .orElseThrow(() -> new RuntimeException("Direct message not found"));
-        if (!dm.getFromUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You can only delete your own messages");
+                .orElseThrow(() -> new ResourceNotFoundException("Direct message not found"));
+
+        if ("self".equalsIgnoreCase(scope)) {
+            if (!dm.getFromUser().getId().equals(currentUser.getId()) && !dm.getToUser().getId().equals(currentUser.getId())) {
+                throw new UnauthorizedException("Unauthorized to hide this message");
+            }
+            if (!dm.getHiddenForUserIds().contains(currentUser.getId())) {
+                dm.getHiddenForUserIds().add(currentUser.getId());
+            }
+            return mapToResponse(directMessageRepository.save(dm));
         }
+
+        if (!dm.getFromUser().getId().equals(currentUser.getId())) {
+            log.warn("Delete denied: User {} is not the sender of DM {}", currentUser.getEmail(), dmId);
+            throw new UnauthorizedException("You can only delete your own messages");
+        }
+        
         dm.setDeleted(true);
-        return mapToResponse(directMessageRepository.save(dm));
+        DirectMessage saved = directMessageRepository.save(dm);
+        log.info("DM {} marked as deleted", dmId);
+        return mapToResponse(saved);
     }
 
     @Override
     @Transactional
     public MessageResponse pinMessage(Long dmId, User currentUser) {
+        log.info("User {} toggling pin for DM {}", currentUser.getEmail(), dmId);
         DirectMessage dm = directMessageRepository.findById(dmId)
-                .orElseThrow(() -> new RuntimeException("Direct message not found"));
-        // Either user in the conversation can pin
+                .orElseThrow(() -> new ResourceNotFoundException("Direct message not found"));
+        
         if (!dm.getFromUser().getId().equals(currentUser.getId()) && !dm.getToUser().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Unauthorized");
+            log.warn("Pin denied: User {} is not part of DM {}", currentUser.getEmail(), dmId);
+            throw new UnauthorizedException("Unauthorized to pin this message");
         }
+        
         dm.setPinned(!dm.isPinned());
-        return mapToResponse(directMessageRepository.save(dm));
+        if (dm.isPinned()) {
+            dm.setPinnedByUserId(currentUser.getId());
+            dm.setPinnedByName(currentUser.getDisplayName());
+        } else {
+            dm.setPinnedByUserId(null);
+            dm.setPinnedByName(null);
+        }
+        DirectMessage saved = directMessageRepository.save(dm);
+        log.info("DM {} pin status: {}", dmId, saved.isPinned());
+        return mapToResponse(saved);
     }
 
     @Override
     @Transactional
     public MessageResponse reactToMessage(Long dmId, String emoji, User currentUser) {
+        log.debug("User {} reacting with {} to DM {}", currentUser.getEmail(), emoji, dmId);
         DirectMessage dm = directMessageRepository.findById(dmId)
-                .orElseThrow(() -> new RuntimeException("Direct message not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Direct message not found"));
         
         reactionRepository.findByDirectMessageIdAndUserIdAndEmoji(dmId, currentUser.getId(), emoji)
                 .ifPresentOrElse(
-                        reactionRepository::delete,
-                        () -> reactionRepository.save(Reaction.builder()
+                        r -> {
+                            reactionRepository.delete(r);
+                            log.debug("Removed reaction {} from DM {}", emoji, dmId);
+                        },
+                        () -> {
+                            reactionRepository.save(Reaction.builder()
                                 .directMessage(dm)
                                 .user(currentUser)
                                 .emoji(emoji)
-                                .build())
+                                .build());
+                            log.debug("Added reaction {} to DM {}", emoji, dmId);
+                        }
                 );
         reactionRepository.flush();
 
@@ -175,6 +237,8 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                 .type(dm.getType())
                 .isDeleted(dm.isDeleted())
                 .isPinned(dm.isPinned())
+                .pinnedByUserId(dm.getPinnedByUserId())
+                .pinnedByName(dm.getPinnedByName())
                 .sentAt(dm.getSentAt())
                 .editedAt(dm.getEditedAt())
                 .reactions(reactionRepository.findByDirectMessageId(dm.getId()).stream()
@@ -184,6 +248,9 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                                 .username(r.getUser().getDisplayName())
                                 .build())
                         .collect(Collectors.toList()))
+                .replyToMessageId(dm.getReplyToMessageId())
+                .replyToContent(dm.getReplyToContent())
+                .replyToSenderName(dm.getReplyToSenderName())
                 .build();
         
         response.setReadCount(dm.getReadAt() != null ? 1 : 0);

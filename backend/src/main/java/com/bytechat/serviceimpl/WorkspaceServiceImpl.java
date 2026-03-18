@@ -16,11 +16,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import com.bytechat.services.EmailService;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WorkspaceServiceImpl implements WorkspaceService {
 
     private final WorkspaceRepository workspaceRepository;
@@ -33,6 +36,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final ChannelMemberRepository channelMemberRepository;
     private final com.bytechat.services.OtpService otpService;
     private final com.bytechat.config.JwtService jwtService;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -57,6 +61,13 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         // Create default #general channel
         channelService.createChannel(workspace.getId(), "general", "Default channel for " + workspace.getName(), false, true, currentUser);
         
+        // Send workspace success email
+        try {
+            emailService.sendWorkspaceSuccess(currentUser.getEmail(), workspace.getName(), workspace.getDescription());
+        } catch (Exception e) {
+            log.error("Failed to send workspace creation success email: {}", e.getMessage());
+        }
+
         return mapToResponse(workspace, currentUser);
     }
 
@@ -114,13 +125,16 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public void joinWorkspace(Long workspaceId, User currentUser) {
+        log.info("User {} joining workspace {}", currentUser.getEmail(), workspaceId);
         Workspace workspace = getWorkspaceOrThrow(workspaceId);
         
         if (workspace.isArchived()) {
+            log.warn("Join failed: Workspace {} is archived", workspaceId);
             throw new RuntimeException("Cannot join archived workspace");
         }
         
         if (workspace.isPrivate() && !workspace.getOwner().getId().equals(currentUser.getId())) {
+             log.warn("Join failed: Workspace {} is private and user {} is not owner", workspaceId, currentUser.getEmail());
             throw new RuntimeException("Cannot join private workspace without invite");
         }
         
@@ -131,6 +145,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                     .role(WorkspaceRole.MEMBER)
                     .build();
             workspaceMemberRepository.save(member);
+            log.info("User {} added as member to workspace {}", currentUser.getEmail(), workspaceId);
             
             // Add to default channel
             List<Channel> channels = channelRepository.findByWorkspaceId(workspaceId);
@@ -143,6 +158,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                                 .role(ChannelRole.MEMBER)
                                 .build();
                         channelMemberRepository.save(cm);
+                        log.info("User {} added to default channel {} in workspace {}", currentUser.getEmail(), channel.getName(), workspaceId);
                     }
                 }
             }
@@ -152,34 +168,40 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public void leaveWorkspace(Long workspaceId, User currentUser) {
+        log.info("User {} leaving workspace {}", currentUser.getEmail(), workspaceId);
         WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Not a member of this workspace"));
+                .orElseThrow(() -> new com.bytechat.exception.ResourceNotFoundException("Not a member of this workspace"));
         
         if (WorkspaceRole.OWNER.equals(member.getRole())) {
+            log.warn("Leave failed: Owner {} cannot leave workspace {}", currentUser.getEmail(), workspaceId);
             throw new RuntimeException("Workspace Owner cannot leave. Transfer ownership or delete the workspace.");
         }
 
         removeUserFromWorkspaceInternally(workspaceId, currentUser);
+        log.info("User {} successfully left workspace {}", currentUser.getEmail(), workspaceId);
     }
 
     @Override
     @Transactional
     public void removeMember(Long workspaceId, Long userId, User currentUser) {
+        log.info("Removing member {} from workspace {} by user {}", userId, workspaceId, currentUser.getEmail());
         Workspace workspace = getWorkspaceOrThrow(workspaceId);
         
-        // Only owner or admin can remove members? Prompt said Owner.
         if (!workspace.getOwner().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Only the workspace owner can remove members.");
+            log.warn("Remove failed: User {} is not the owner of workspace {}", currentUser.getEmail(), workspaceId);
+            throw new com.bytechat.exception.UnauthorizedException("Only the workspace owner can remove members.");
         }
 
         if (workspace.getOwner().getId().equals(userId)) {
+            log.warn("Remove failed: Owner cannot remove themselves from workspace {}", workspaceId);
             throw new RuntimeException("Owner cannot be removed from their own workspace.");
         }
 
         User userToRemove = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new com.bytechat.exception.ResourceNotFoundException("User not found"));
 
         removeUserFromWorkspaceInternally(workspaceId, userToRemove);
+        log.info("Member {} removed from workspace {}", userId, workspaceId);
     }
 
     private void removeUserFromWorkspaceInternally(Long workspaceId, User user) {
@@ -190,13 +212,11 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         List<ChannelMember> memberships = channelMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId());
         for (ChannelMember cm : memberships) {
             if (ChannelRole.ADMIN.equals(cm.getRole())) {
-                // Check if there are other admins in this channel
                 List<ChannelMember> otherAdmins = channelMemberRepository.findByChannelId(cm.getChannel().getId()).stream()
                         .filter(other -> !other.getUser().getId().equals(user.getId()) && ChannelRole.ADMIN.equals(other.getRole()))
                         .toList();
                 
                 if (otherAdmins.isEmpty()) {
-                    // Transfer to Workspace Owner
                     if (!channelMemberRepository.existsByChannelIdAndUserId(cm.getChannel().getId(), owner.getId())) {
                          ChannelMember ownerNewCm = ChannelMember.builder()
                                  .channel(cm.getChannel())
@@ -204,10 +224,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                                  .role(ChannelRole.ADMIN)
                                  .build();
                          channelMemberRepository.save(ownerNewCm);
+                         log.info("Transferred Channel ADMIN from {} to Workspace Owner {} for channel {}", user.getEmail(), owner.getEmail(), cm.getChannel().getName());
                     } else {
                         ChannelMember ownerCm = channelMemberRepository.findByChannelIdAndUserId(cm.getChannel().getId(), owner.getId()).get();
                         ownerCm.setRole(ChannelRole.ADMIN);
                         channelMemberRepository.save(ownerCm);
+                        log.info("Promoted Workspace Owner {} to Channel ADMIN for channel {}", owner.getEmail(), cm.getChannel().getName());
                     }
                 }
             }
@@ -226,23 +248,28 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public void archiveWorkspace(Long workspaceId, User currentUser) {
+        log.info("Archiving workspace {} by user {}", workspaceId, currentUser.getEmail());
         Workspace workspace = getWorkspaceOrThrow(workspaceId);
         if (!workspace.getOwner().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Only owner can archive the workspace");
+             log.warn("Archive failed: User {} is not the owner of workspace {}", currentUser.getEmail(), workspaceId);
+            throw new com.bytechat.exception.UnauthorizedException("Only owner can archive the workspace");
         }
         workspace.setArchived(true);
         workspaceRepository.save(workspace);
+        log.info("Workspace {} archived successfully", workspaceId);
     }
 
     @Override
     @Transactional
     public void inviteUser(Long workspaceId, String email, User currentUser) {
+        log.info("Inviting user {} to workspace {} by user {}", email, workspaceId, currentUser.getEmail());
         Workspace workspace = getWorkspaceOrThrow(workspaceId);
         User invitedUser = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
+                .orElseThrow(() -> new com.bytechat.exception.ResourceNotFoundException("User not found with email: " + email));
 
         if (workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, invitedUser.getId())) {
-            throw new IllegalArgumentException("User is already in this workspace");
+            log.warn("Invitation failed: User {} is already in workspace {}", email, workspaceId);
+            throw new com.bytechat.exception.ConflictException("User is already in this workspace");
         }
 
         notificationService.sendNotification(
@@ -251,6 +278,14 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 currentUser.getDisplayName() + " invited you to join workspace " + workspace.getName(),
                 workspace.getId()
         );
+
+        // Send invitation email
+        try {
+            emailService.sendInvitation(email, currentUser.getDisplayName(), workspace.getName(), workspace.getName(), "WORKSPACE");
+            log.info("Invitation email sent to {} for workspace {}", email, workspace.getName());
+        } catch (Exception e) {
+            log.error("Failed to send workspace invitation email to {}: {}", email, e.getMessage());
+        }
     }
 
     @Override
@@ -262,19 +297,23 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public void acceptInvite(Long notificationId, User currentUser) {
+        log.info("User {} accepting invite from notification {}", currentUser.getEmail(), notificationId);
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("Notification not found"));
+                .orElseThrow(() -> new com.bytechat.exception.ResourceNotFoundException("Notification not found"));
 
         if (!notification.getRecipient().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Cannot accept another user's invite");
+            log.warn("Invite accept failed: Notification {} does not belong to user {}", notificationId, currentUser.getEmail());
+            throw new com.bytechat.exception.UnauthorizedException("Cannot accept another user's invite");
         }
 
         if (!"WORKSPACE_INVITE".equals(notification.getType())) {
+            log.warn("Invite accept failed: Notification {} is not a workspace invite", notificationId);
             throw new RuntimeException("Notification is not a workspace invite");
         }
 
         Long workspaceId = notification.getRelatedEntityId();
         if (workspaceId == null) {
+            log.error("Invite accept failed: Notification {} missing workspace ID", notificationId);
             throw new RuntimeException("Invite notification is missing workspace information");
         }
 
@@ -282,6 +321,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
         notification.setRead(true);
         notificationRepository.save(notification);
+        log.info("User {} successfully accepted invite to workspace {}", currentUser.getEmail(), workspaceId);
     }
 
     @Override

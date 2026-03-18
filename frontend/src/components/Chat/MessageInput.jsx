@@ -10,16 +10,33 @@ const MessageInput = ({
   disabled,
   mentionSuggestions = [],
   currentUserId,
+  editMode = false,
+  editValue = '',
+  onCancelEdit,
+  editLabel,
+  submitLabel = 'Save',
+  replyTarget = null,
+  onCancelReply,
 }) => {
+  const currentUserLabel = replyTarget && String(replyTarget.senderId) === String(currentUserId) ? 'You' : replyTarget?.senderName;
   const [content, setContent] = useState('');
   const [pendingFile, setPendingFile] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const attachMenuRef = useRef(null);
 
   const canSend = useMemo(() => (content.trim().length > 0 || pendingFile) && !disabled, [content, pendingFile, disabled]);
+
+  useEffect(() => {
+    if (editMode) {
+      setContent(editValue ?? '');
+      return;
+    }
+    setContent('');
+  }, [editMode, editValue]);
   
   const filteredSuggestions = useMemo(() => {
     const match = content.match(/@([A-Za-z0-9._-]*)$/);
@@ -67,6 +84,9 @@ const MessageInput = ({
         isImage,
         previewUrl
       });
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
     }
     // reset input so the same file can be uploaded again if needed
     if (event.target) {
@@ -101,9 +121,8 @@ const MessageInput = ({
       onTyping?.(false);
       
       // Reset textarea height
-      const textarea = event.target.querySelector('textarea');
-      if (textarea) {
-        textarea.style.height = 'auto';
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
       }
     } catch (err) {
       console.error('Submit error:', err);
@@ -167,6 +186,38 @@ const MessageInput = ({
         </div>
 
         <div className="flex-1 flex flex-col min-w-0">
+          {editMode && (
+            <div className="mb-2 flex items-center justify-between gap-3 rounded-2xl border border-[#d9f0dd] bg-[#edf9ef] px-4 py-3">
+              <div className="min-w-0">
+                <div className="text-xs font-bold uppercase tracking-wide text-[#1f7a3d]">Editing message</div>
+                <div className="truncate text-sm text-[#2f4f35]">{editLabel || 'Update your message'}</div>
+              </div>
+              <button
+                type="button"
+                onClick={onCancelEdit}
+                className="rounded-full p-1.5 text-[#2f4f35] transition hover:bg-white/80"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
+          {replyTarget && !editMode && (
+            <div className="mb-2 flex items-center justify-between gap-3 rounded-2xl border border-[#d8e8ff] bg-[#f4f8ff] px-4 py-3">
+              <div className="min-w-0">
+                <div className="text-xs font-bold uppercase tracking-wide text-[#1164a3]">Replying to {currentUserLabel}</div>
+                <div className="truncate text-sm text-[#334155]">{replyTarget.content?.trim() || 'Attachment'}</div>
+              </div>
+              <button
+                type="button"
+                onClick={onCancelReply}
+                className="rounded-full p-1.5 text-[#334155] transition hover:bg-white/80"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
           {pendingFile && (
             <div className="mb-2 flex items-center gap-3 border border-gray-100 bg-gray-50 p-2 rounded-xl shadow-sm animate-in slide-in-from-bottom-2 duration-300 overflow-hidden">
               {pendingFile.isImage && pendingFile.previewUrl ? (
@@ -212,8 +263,16 @@ const MessageInput = ({
               </div>
             )}
             
-            <form onSubmit={handleSubmit} className="flex items-center border border-gray-200 bg-gray-50/50 pl-5 pr-2 rounded-full transition-smooth ring-2 ring-transparent focus-within:ring-[#3f0e40]/10 focus-within:border-[#3f0e40] focus-within:bg-white group/input">
+            <form
+              onSubmit={handleSubmit}
+              className={`flex items-center border pl-5 pr-2 transition-smooth ring-2 ring-transparent focus-within:bg-white group/input ${
+                editMode
+                  ? 'rounded-3xl border-[#25d366]/40 bg-[#f6fff8] focus-within:border-[#25d366] focus-within:ring-[#25d366]/10'
+                  : 'rounded-full border-gray-200 bg-gray-50/50 focus-within:border-[#3f0e40] focus-within:ring-[#3f0e40]/10'
+              }`}
+            >
               <textarea
+                ref={textareaRef}
                 rows={1}
                 value={content}
                 onChange={handleChange}
@@ -224,7 +283,7 @@ const MessageInput = ({
                   }
                 }}
                 disabled={disabled}
-                placeholder={placeholder}
+                placeholder={editMode ? 'Edit your message' : placeholder}
                 className="scrollbar-thin py-2 w-full resize-none bg-transparent text-[14px] font-medium text-gray-800 outline-none placeholder:text-gray-400 tracking-tight leading-normal"
                 style={{
                   height: '36px',
@@ -268,23 +327,46 @@ const MessageInput = ({
                     </div>
                   )}
                 </div>
+                {editMode && (
+                  <button
+                    type="button"
+                    onClick={onCancelEdit}
+                    className="ml-1 mr-1 rounded-full px-3 py-2 text-sm font-bold text-gray-500 transition hover:bg-white hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             </form>
           </div>
         </div>
 
         {/* Send button - RIGHT side OUTSIDE */}
-        <button
-          onClick={handleSubmit}
-          type="submit"
-          disabled={!canSend}
-          className={`mb-1 flex h-10 w-10 shrink-0 items-center justify-center transition-smooth rounded-full ${
-            canSend ? 'text-[#3f0e40] hover:scale-110 active:scale-95' : 'text-gray-200 cursor-not-allowed'
-          }`}
-          title="Send message"
-        >
-          <SendHorizonal size={20} className={canSend ? 'ml-0.5' : ''} />
-        </button>
+        {editMode ? (
+          <button
+            onClick={handleSubmit}
+            type="submit"
+            disabled={!canSend}
+            className={`mb-1 flex h-10 shrink-0 items-center justify-center rounded-full px-5 text-sm font-bold text-white transition-smooth ${
+              canSend ? 'bg-[#25d366] hover:scale-105 active:scale-95 shadow-lg shadow-[#25d366]/20' : 'bg-gray-200 cursor-not-allowed'
+            }`}
+            title="Save changes"
+          >
+            {submitLabel}
+          </button>
+        ) : (
+          <button
+            onClick={handleSubmit}
+            type="submit"
+            disabled={!canSend}
+            className={`mb-1 flex h-10 w-10 shrink-0 items-center justify-center transition-smooth rounded-full ${
+              canSend ? 'text-[#3f0e40] hover:scale-110 active:scale-95' : 'text-gray-200 cursor-not-allowed'
+            }`}
+            title="Send message"
+          >
+            <SendHorizonal size={20} className={canSend ? 'ml-0.5' : ''} />
+          </button>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "direct_messages")
@@ -32,6 +34,13 @@ public class DirectMessage {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
+    private Long replyToMessageId;
+
+    @Column(columnDefinition = "TEXT")
+    private String replyToContent;
+
+    private String replyToSenderName;
+
     private LocalDateTime readAt;
 
     @Column(nullable = false, updatable = false)
@@ -44,5 +53,15 @@ public class DirectMessage {
     private boolean isDeleted = false;
     @Builder.Default
     private boolean isPinned = false;
+
+    private Long pinnedByUserId;
+
+    private String pinnedByName;
     private LocalDateTime editedAt;
+
+    @ElementCollection
+    @CollectionTable(name = "direct_message_hidden_users", joinColumns = @JoinColumn(name = "direct_message_id"))
+    @Column(name = "user_id")
+    @Builder.Default
+    private List<Long> hiddenForUserIds = new ArrayList<>();
 }

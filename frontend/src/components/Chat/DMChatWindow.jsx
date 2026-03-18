@@ -1,4 +1,4 @@
-import { MessageSquareShare, Sparkles, MoreVertical, SmilePlus, Pencil, Trash2, Pin, Paperclip, X, Users2 } from 'lucide-react';
+import { MessageSquareShare, Sparkles, MoreVertical, SmilePlus, Pencil, Trash2, Pin, Paperclip, X, Users2, Reply } from 'lucide-react';
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import dmService from '../../services/dmService';
@@ -14,7 +14,7 @@ import useToastStore from '../../store/toastStore';
 
 const DMChatWindow = ({ user }) => {
   const currentUser = useAuthStore((state) => state.user);
-  const { dmMessages, setDmMessages, appendDmMessage, upsertDmMessage, sharedUsers, setActiveThread, clearDmUnread } = useChatStore();
+  const { dmMessages, setDmMessages, appendDmMessage, upsertDmMessage, removeDmMessage, sharedUsers, setActiveThread, clearDmUnread } = useChatStore();
   const [loading, setLoading] = useState(true);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
@@ -22,9 +22,10 @@ const DMChatWindow = ({ user }) => {
   const { addToast } = useToastStore();
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [editContent, setEditContent] = useState('');
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [showPinnedDetails, setShowPinnedDetails] = useState(false);
   
   const scrollRef = useRef(null);
   const messageContainerRef = useRef(null);
@@ -36,15 +37,29 @@ const DMChatWindow = ({ user }) => {
   const [typingUser, setTypingUser] = useState(null);
   const typingTimeoutRef = useRef(null);
 
-  const selectedMessage = useMemo(() => 
-    thread.find(m => m.id === selectedMessageId), 
-    [thread, selectedMessageId]
-  );
+  const selectedMessage = useMemo(() => {
+    const match = thread.find(m => m.id === selectedMessageId);
+    return match && !match.isDeleted ? match : null;
+  }, [thread, selectedMessageId]);
 
   const pinnedMessages = useMemo(() => 
     thread.filter(m => m.isPinned),
     [thread]
   );
+  const latestPinnedMessage = pinnedMessages[pinnedMessages.length - 1] ?? null;
+  const additionalPinnedMessages = useMemo(
+    () => pinnedMessages.filter((message) => message.id !== latestPinnedMessage?.id),
+    [pinnedMessages, latestPinnedMessage?.id]
+  );
+
+  useEffect(() => {
+    if (!selectedMessageId) return;
+    const current = thread.find((m) => m.id === selectedMessageId);
+    if (!current || current.isDeleted) {
+      setSelectedMessageId(null);
+      setShowMenu(false);
+    }
+  }, [thread, selectedMessageId]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -165,12 +180,13 @@ const DMChatWindow = ({ user }) => {
       // 1. Upload file if present (using chatService as it has the upload logic)
       if (file) {
         const resp = await chatService.uploadFile(file);
-        fileUrl = resp?.data?.fileUrl || resp?.fileUrl;
+        const attachment = resp?.data ?? resp;
+        fileUrl = attachment?.fileUrl ?? attachment?.url ?? null;
       }
 
       // 2. Send file message if file was uploaded
       if (fileUrl) {
-        const fileApiResponse = await dmService.sendDirectMessage(user.id, fileUrl);
+        const fileApiResponse = await dmService.sendDirectMessage(user.id, { content: fileUrl, type: 'FILE', replyToMessageId: replyTarget?.id ?? null });
         const sentFileMessage = fileApiResponse?.data ?? fileApiResponse;
         if (sentFileMessage?.id) {
           appendDmMessage(user.id, sentFileMessage);
@@ -179,7 +195,7 @@ const DMChatWindow = ({ user }) => {
 
       // 3. Send text message if content is present
       if (content && content.trim()) {
-        const textApiResponse = await dmService.sendDirectMessage(user.id, content);
+        const textApiResponse = await dmService.sendDirectMessage(user.id, { content, type: 'TEXT', replyToMessageId: replyTarget?.id ?? null });
         const sentTextMessage = textApiResponse?.data ?? textApiResponse;
         if (sentTextMessage?.id) {
           appendDmMessage(user.id, sentTextMessage);
@@ -187,6 +203,7 @@ const DMChatWindow = ({ user }) => {
       }
 
       setTimeout(() => scrollToBottom('smooth'), 50);
+      setReplyTarget(null);
     } catch (error) {
       console.error('Failed to send DM:', error);
       addToast('Failed to send message. Please try again.', 'error');
@@ -196,25 +213,32 @@ const DMChatWindow = ({ user }) => {
   async function handleEdit(message) {
     setEditTarget(message);
     setEditContent(message.content);
-    setShowEditModal(true);
   }
 
-  const confirmEditMessage = async () => {
-    if (!editTarget || !editContent.trim() || editContent === editTarget.content) {
-      setShowEditModal(false);
+  const cancelEdit = () => {
+    setEditTarget(null);
+    setEditContent('');
+  };
+
+  const cancelReply = () => {
+    setReplyTarget(null);
+  };
+
+  const confirmEditMessage = async (content) => {
+    if (!editTarget || !content.trim() || content === editTarget.content) {
+      cancelEdit();
       return;
     }
 
     try {
-      const response = await dmService.editMessage(editTarget.id, editContent);
+      const response = await dmService.editMessage(editTarget.id, content.trim());
       upsertDmMessage(user.id, response.data || response);
       addToast('Message updated', 'success');
     } catch (err) {
       console.error('Failed to edit DM', err);
       addToast('Failed to edit message', 'error');
     } finally {
-      setShowEditModal(false);
-      setEditTarget(null);
+      cancelEdit();
     }
   };
 
@@ -223,12 +247,17 @@ const DMChatWindow = ({ user }) => {
     setShowDeleteConfirmModal(true);
   }
 
-  const confirmDeleteMessage = async () => {
+  const confirmDeleteMessage = async (scope = 'everyone') => {
     if (!deleteTarget) return;
     try {
-      const response = await dmService.deleteMessage(deleteTarget.id);
-      upsertDmMessage(user.id, response.data || response);
-      addToast('Message deleted', 'success');
+      const response = await dmService.deleteMessage(deleteTarget.id, scope);
+      if (scope === 'self') {
+        removeDmMessage(user.id, deleteTarget.id);
+        addToast('Message removed from your view', 'success');
+      } else {
+        upsertDmMessage(user.id, response.data || response);
+        addToast('Message deleted', 'success');
+      }
     } catch (err) {
       console.error('Failed to delete DM', err);
       addToast('Failed to delete message', 'error');
@@ -242,8 +271,11 @@ const DMChatWindow = ({ user }) => {
     try {
       const response = await dmService.pinMessage(message.id);
       upsertDmMessage(user.id, response.data || response);
+      const updatedMessage = response.data || response;
+      addToast(updatedMessage?.isPinned ? 'Message pinned' : 'Message unpinned', 'success');
     } catch (err) {
       console.error('Failed to pin DM', err);
+      addToast('Failed to update pin', 'error');
     }
   }
 
@@ -297,7 +329,7 @@ const DMChatWindow = ({ user }) => {
 
   return (
     <section className="flex h-full min-h-0 flex-col bg-white overflow-hidden">
-      <header className="flex items-center justify-between border-b border-gray-100 px-8 py-2.5 bg-white/50 backdrop-blur-md sticky top-0 z-20">
+      <header className="flex items-center justify-between px-8 py-2.5 bg-white/50 backdrop-blur-md sticky top-0 z-20">
         {loading && (
           <div className="absolute bottom-0 left-0 h-0.5 w-full bg-indigo-100 overflow-hidden">
             <div className="h-full bg-indigo-500 skeleton-loading" style={{ width: '40%' }}></div>
@@ -337,9 +369,17 @@ const DMChatWindow = ({ user }) => {
             
             {showMenu && selectedMessage && (
               <div className="absolute right-0 top-full mt-3 w-64 bg-white rounded-2xl shadow-2xl z-50 py-2 border border-black/5 animate-in fade-in slide-in-from-top-4 duration-300 origin-top-right">
-                <div className="px-4 py-1.5 border-b border-black/5 mb-1">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#6b6a6b]">Message Options</div>
-                </div>
+                <button 
+                  onClick={() => {
+                    setReplyTarget(selectedMessage);
+                    setShowMenu(false);
+                    setSelectedMessageId(null);
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
+                >
+                  <Reply size={16} className="text-[#6b6a6b]" />
+                  Reply
+                </button>
 
                 <button 
                   onClick={() => {
@@ -383,6 +423,101 @@ const DMChatWindow = ({ user }) => {
         </div>
       </header>
 
+      {latestPinnedMessage && (
+        <div className="sticky top-0 z-10 bg-gradient-to-b from-white via-[#fffbea] to-transparent px-4 pt-3 md:px-8">
+          <div className="mx-auto w-full max-w-6xl rounded-2xl border border-[#f2e7b5] bg-[#fffbea] px-3 py-2.5">
+            <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedMessageId(latestPinnedMessage.id);
+                setShowMenu(false);
+              }}
+              className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff3bf] text-[#8c5b00]"
+              title={latestPinnedMessage.pinnedByName ? `Pinned by ${latestPinnedMessage.pinnedByName}` : 'Pinned'}
+            >
+              <Pin size={14} />
+              {!showPinnedDetails && pinnedMessages.length > 1 && (
+                <span className="absolute -top-1 -right-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#8c5b00] px-1 text-[9px] font-bold text-white">
+                  {pinnedMessages.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (additionalPinnedMessages.length > 0) {
+                  setShowPinnedDetails((prev) => !prev);
+                  return;
+                }
+                setSelectedMessageId(latestPinnedMessage.id);
+                setShowMenu(false);
+              }}
+              className="min-w-0 flex-1 text-left"
+              title={latestPinnedMessage.pinnedByName ? `Pinned by ${latestPinnedMessage.pinnedByName}` : 'Pinned'}
+            >
+              <p className="truncate text-sm text-[#4b4a4b]">
+                {latestPinnedMessage.content?.trim() || 'Pinned attachment'}
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePin(latestPinnedMessage)}
+              className="rounded-full p-1.5 text-[#8c5b00] transition hover:bg-[#fff3bf]"
+              title="Unpin message"
+            >
+              <X size={14} />
+            </button>
+          </div>
+            {showPinnedDetails && additionalPinnedMessages.length > 0 && (
+              <div className="mt-3 space-y-2 border-t border-[#f2e7b5] pt-3">
+                {additionalPinnedMessages.map((message) => (
+                  <div
+                    key={message.id}
+                    className="flex items-start gap-3 rounded-xl border border-gray-100 px-3 py-2"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMessageId(message.id);
+                        setShowPinnedDetails(false);
+                        setShowMenu(false);
+                      }}
+                      className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff3bf] text-[#8c5b00]"
+                      title={message.pinnedByName ? `Pinned by ${message.pinnedByName}` : 'Pinned'}
+                    >
+                      <Pin size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMessageId(message.id);
+                        setShowPinnedDetails(false);
+                        setShowMenu(false);
+                      }}
+                      className="min-w-0 flex-1 text-left"
+                      title={message.pinnedByName ? `Pinned by ${message.pinnedByName}` : 'Pinned'}
+                    >
+                      <span className="block truncate text-sm font-bold text-[#1d1c1d]">
+                        {message.content?.trim() || 'Pinned attachment'}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePin(message)}
+                      className="rounded-full p-2 text-[#8c5b00] transition hover:bg-[#fff3bf]"
+                      title={message.pinnedByName ? `Unpin message pinned by ${message.pinnedByName}` : 'Unpin message'}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div ref={messageContainerRef} className="scrollbar-thin flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex flex-col gap-8 p-10">
@@ -414,30 +549,6 @@ const DMChatWindow = ({ user }) => {
           </div>
         ) : (
           <>
-            {pinnedMessages.length > 0 && (
-              <div className="sticky top-0 z-10 flex items-center justify-between bg-white/80 backdrop-blur-sm px-5 py-3 border-b border-black/5 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff7d6] text-[#8c5b00]">
-                    <Pin size={16} />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-[#1d1c1d]">
-                      {pinnedMessages.length} pinned {pinnedMessages.length === 1 ? 'message' : 'messages'}
-                    </div>
-                    <div className="text-xs text-[#6b6a6b]">Visible to both participants</div>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => {
-                    const lastPinned = pinnedMessages[pinnedMessages.length - 1];
-                    setSelectedMessageId(lastPinned.id);
-                  }}
-                  className="text-sm font-bold text-[#1164a3] hover:underline"
-                >
-                  View all
-                </button>
-              </div>
-            )}
             {thread.map((message, index) => {
               const messageDate = new Date(message.sentAt).toLocaleDateString();
               const prevMessageDate = index > 0 ? new Date(thread[index - 1].sentAt).toLocaleDateString() : null;
@@ -472,8 +583,13 @@ const DMChatWindow = ({ user }) => {
                   )}
                   <MessageBubble 
                     message={message} 
-                    isSelected={selectedMessageId === message.id}
+                    isSelected={!message.isDeleted && selectedMessageId === message.id}
                     onClick={() => {
+                      if (message.isDeleted) {
+                        setSelectedMessageId(null);
+                        setShowMenu(false);
+                        return;
+                      }
                       if (selectedMessageId === message.id) {
                         setSelectedMessageId(null);
                         setShowMenu(false);
@@ -495,66 +611,50 @@ const DMChatWindow = ({ user }) => {
 
       <MessageInput 
         placeholder={`Message ${user.displayName}`} 
-        onSendMessage={handleSend} 
+        onSendMessage={editTarget ? confirmEditMessage : handleSend} 
         onTyping={handleTyping}
         mentionSuggestions={[user]}
         currentUserId={currentUser.id}
+        editMode={Boolean(editTarget)}
+        editValue={editContent}
+        onCancelEdit={cancelEdit}
+        editLabel={editTarget?.content}
+        submitLabel="Save"
+        replyTarget={replyTarget}
+        onCancelReply={cancelReply}
       />
 
       {/* Delete Message Confirmation */}
       <Modal
         isOpen={showDeleteConfirmModal}
         onClose={() => setShowDeleteConfirmModal(false)}
-        title="Delete Message"
+        title="Delete message?"
         rounded="rounded-none"
       >
         <div className="p-1">
-          <p className="text-sm text-gray-500 mb-8 leading-relaxed">
-            Are you sure you want to delete this message? This action cannot be undone.
+          <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+            Choose how you want to delete this message.
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => confirmDeleteMessage('self')}
+              className="w-full px-4 py-3 border border-gray-200 rounded-none text-left text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+            >
+              Delete from me
+            </button>
+            {deleteTarget?.senderId === currentUser?.id && (
+              <button
+                onClick={() => confirmDeleteMessage('everyone')}
+                className="w-full px-4 py-3 bg-red-600 text-left text-white rounded-none font-bold text-sm hover:bg-red-700 transition-all shadow-md active:scale-95"
+              >
+                Delete from everyone
+              </button>
+            )}
             <button
               onClick={() => setShowDeleteConfirmModal(false)}
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-none text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+              className="w-full px-4 py-3 border border-gray-200 rounded-none text-left text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
             >
               Cancel
-            </button>
-            <button
-              onClick={confirmDeleteMessage}
-              className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-none font-bold text-sm hover:bg-red-700 transition-all shadow-md active:scale-95"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Edit Message Modal */}
-      <Modal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        title="Edit Message"
-        rounded="rounded-none"
-      >
-        <div className="p-1">
-          <textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            className="w-full min-h-[100px] bg-[#fafafa] border border-black/5 rounded-none px-4 py-3 text-sm font-bold text-[#1d1c1d] outline-none focus:bg-white focus:border-[#2c0b2e]/30 transition-all mb-6"
-            placeholder="Edit your message..."
-          />
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowEditModal(false)}
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-none text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={confirmEditMessage}
-              className="flex-1 px-4 py-2.5 bg-[#3f0e40] text-white rounded-none font-bold text-sm hover:bg-[#350d36] transition-all shadow-md active:scale-95"
-            >
-              Save Changes
             </button>
           </div>
         </div>

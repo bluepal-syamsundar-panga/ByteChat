@@ -1,11 +1,11 @@
-import { X, UserMinus, Shield, User, Info, Calendar, Hash, Lock, MoreVertical, Trash2 } from 'lucide-react';
+import { X, UserMinus, Shield, User, Calendar, Hash, Lock, MoreVertical } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import channelService from '../../services/channelService';
 import { useState, useRef, useEffect } from 'react';
 import useToastStore from '../../store/toastStore';
 import Modal from '../Shared/Modal';
 
-const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved, isWorkspaceOwner }) => {
+const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved, onMemberPromoted, onMemberDemoted, isWorkspaceOwner }) => {
   const currentUser = useAuthStore((state) => state.user);
   const [activeMenu, setActiveMenu] = useState(null);
   const { addToast } = useToastStore();
@@ -23,7 +23,7 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  if (!isOpen) return null;
+
 
   const isAdmin = channel?.role === 'ADMIN' || isWorkspaceOwner;
 
@@ -55,8 +55,32 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
     }
   };
 
+  const handleMakeAdmin = async (userId) => {
+    try {
+      await channelService.makeAdmin(channel.id, userId);
+      onMemberPromoted?.(userId);
+      setActiveMenu(null);
+      addToast('Member promoted to admin', 'success');
+    } catch (error) {
+      console.error('Failed to promote member:', error);
+      addToast(error.response?.data?.message || 'Failed to make member admin', 'error');
+    }
+  };
+
+  const handleRemoveAdmin = async (userId) => {
+    try {
+      await channelService.removeAdmin(channel.id, userId);
+      onMemberDemoted?.(userId);
+      setActiveMenu(null);
+      addToast('Admin access removed', 'success');
+    } catch (error) {
+      console.error('Failed to remove admin:', error);
+      addToast(error.response?.data?.message || 'Failed to remove admin access', 'error');
+    }
+  };
+
   return (
-    <div className={`fixed inset-y-0 right-0 z-50 w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out border-l border-gray-100 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+    <div className={`fixed inset-y-0 right-0 z-50 w-80 bg-white shadow-2xl transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) border-l border-gray-100 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
       <div className="flex h-full flex-col">
         {/* Header */}
         <header className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
@@ -72,7 +96,7 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           {/* Channel Hero Section */}
           <div className="p-6 text-center border-b border-gray-50 bg-gray-50/30">
-            <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl ${(channel?.isPrivate || channel?.private) ? 'bg-indigo-100 text-indigo-600' : 'bg-blue-100 text-blue-600'} shadow-inner`}>
+            <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-[#3f0e40]/10 text-[#3f0e40] shadow-inner`}>
               {(channel?.isPrivate || channel?.private) ? (
                 <Lock size={32} strokeWidth={2.5} />
               ) : (
@@ -110,11 +134,11 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
                 <div key={member.id} className="flex items-center justify-between group">
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-50 to-blue-50 border border-black/5 flex items-center justify-center overflow-hidden shrink-0">
+                        <div className="h-10 w-10 rounded-full bg-[#3f0e40]/5 border border-black/5 flex items-center justify-center overflow-hidden shrink-0">
                           {member.avatarUrl ? (
                             <img src={member.avatarUrl} alt={member.displayName} className="h-full w-full object-cover" />
                           ) : (
-                            <span className="text-indigo-400 font-black text-sm">{member.displayName?.[0] || 'U'}</span>
+                            <span className="text-[#3f0e40]/60 font-black text-sm">{member.displayName?.[0] || 'U'}</span>
                           )}
                         </div>
                         {member.online && (
@@ -134,7 +158,7 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
 
                   <div className="relative flex items-center gap-2">
                     {member.id === currentUser?.id && (
-                      <span className="text-[10px] font-black text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full">YOU</span>
+                      <span className="text-[10px] font-black text-[#3f0e40] bg-[#3f0e40]/10 px-2 py-0.5 rounded-full">YOU</span>
                     )}
                     
                     {isAdmin && member.id !== currentUser?.id && (
@@ -154,6 +178,24 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
                             ref={menuRef}
                             className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-black/5 z-[60] py-1.5 animate-in fade-in zoom-in-95 duration-200"
                           >
+                            {member.role !== 'ADMIN' && (
+                              <button
+                                onClick={() => handleMakeAdmin(member.id)}
+                                className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-amber-600 hover:bg-amber-50 transition-colors font-medium"
+                              >
+                                <Shield size={16} />
+                                Make Admin
+                              </button>
+                            )}
+                            {member.role === 'ADMIN' && (
+                              <button
+                                onClick={() => handleRemoveAdmin(member.id)}
+                                className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+                              >
+                                <Shield size={16} />
+                                Remove as Admin
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 handleRemove(member.id, member.displayName);

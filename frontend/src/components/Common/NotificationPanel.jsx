@@ -10,7 +10,7 @@ import { formatMessageTimestamp } from '../../utils/formatDate';
 import channelService from '../../services/channelService';
 import useToastStore from '../../store/toastStore';
 
-const NotificationPanel = ({ variant = 'light' }) => {
+const NotificationPanel = ({ variant = 'light', position = 'right' }) => {
   const currentUser = useAuthStore((state) => state.user);
   const { notifications, setNotifications } = useChatStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -94,7 +94,9 @@ const NotificationPanel = ({ variant = 'light' }) => {
             const channelsRes = await channelService.getWorkspaceChannels(activeWorkspaceId);
             const channelsData = channelsRes.data?.data || channelsRes.data?.content || channelsRes.data || [];
             console.log('Refreshed channels:', channelsData.length);
-            useChatStore.getState().setChannels(Array.isArray(channelsData) ? channelsData : []);
+            const normalizedChannels = Array.isArray(channelsData) ? channelsData : [];
+            useChatStore.getState().setChannels(normalizedChannels);
+            useChatStore.getState().setSidebarChannels(normalizedChannels);
         }
         
         useToastStore.getState().addToast('Invite accepted successfully!', 'success');
@@ -142,7 +144,7 @@ const NotificationPanel = ({ variant = 'light' }) => {
       >
         <Bell size={20} />
         {relevantNotifications.length > 0 && (
-          <span className="absolute top-0 right-0 flex h-5 w-5 items-center justify-center bg-[#e01e5a] text-[10px] font-bold text-white">
+          <span className="absolute -top-1 -right-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#e01e5a] px-1.5 text-[10px] font-bold text-white shadow-md shadow-[#e01e5a]/30">
             {relevantNotifications.length > 9 ? '9+' : relevantNotifications.length}
           </span>
         )}
@@ -154,7 +156,7 @@ const NotificationPanel = ({ variant = 'light' }) => {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className={`absolute z-50 w-96 border border-black/8 bg-white shadow-xl ${variant === 'dark' ? 'right-0 top-full mt-2' : 'left-full top-0 ml-4'}`}>
+          <div className={`absolute z-50 w-96 border border-black/8 bg-white shadow-xl rounded-none ${position === 'bottom' ? 'right-0 top-full mt-2' : 'left-full top-0 ml-4'}`}>
             <div className="border-b border-black/8 px-4 py-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-[#1d1c1d]">Notifications</h3>

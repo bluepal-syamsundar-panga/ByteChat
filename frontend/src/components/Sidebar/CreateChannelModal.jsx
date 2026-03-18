@@ -9,7 +9,10 @@ const CreateChannelModal = () => {
         isCreateChannelModalOpen, 
         setIsCreateChannelModalOpen, 
         activeWorkspaceId, 
-        setChannels 
+        channels,
+        sidebarChannels,
+        setChannels,
+        setSidebarChannels,
     } = useChatStore();
     const { addToast } = useToastStore();
     
@@ -27,7 +30,10 @@ const CreateChannelModal = () => {
         setLoading(true);
         try {
             const res = await channelService.createChannel(activeWorkspaceId, newChannelName, newChannelDesc, isPrivate);
-            setChannels([...channels, res.data.data]);
+            const createdChannel = res?.data?.data ?? res?.data ?? res;
+            setChannels([...(channels || []), createdChannel]);
+            setSidebarChannels([...(sidebarChannels || []), createdChannel]);
+            addToast('Channel created successfully!', 'success');
             setIsCreateChannelModalOpen(false);
             setNewChannelName('');
             setNewChannelDesc('');

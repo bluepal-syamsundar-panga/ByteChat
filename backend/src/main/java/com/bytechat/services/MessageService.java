@@ -8,8 +8,9 @@ import org.springframework.data.domain.Page;
 public interface MessageService {
     MessageResponse sendMessage(Long channelId, MessageRequest request, User sender);
     Page<MessageResponse> getRoomMessages(Long channelId, int page, int size, User currentUser);
+    MessageResponse getMessageResponse(Long messageId, User currentUser);
     MessageResponse editMessage(Long messageId, MessageRequest request, User currentUser);
-    MessageResponse deleteMessage(Long messageId, User currentUser);
+    MessageResponse deleteMessage(Long messageId, String scope, User currentUser);
     MessageResponse pinMessage(Long messageId, User currentUser);
     MessageResponse reactToMessage(Long messageId, String emoji, User currentUser);
     void markAsRead(Long messageId, User currentUser);

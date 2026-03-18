@@ -29,6 +29,13 @@ public class Message {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
+    private Long replyToMessageId;
+
+    @Column(columnDefinition = "TEXT")
+    private String replyToContent;
+
+    private String replyToSenderName;
+
     private String type; // TEXT, FILE, SYSTEM
 
     @Builder.Default
@@ -36,6 +43,10 @@ public class Message {
     
     @Builder.Default
     private boolean isPinned = false;
+
+    private Long pinnedByUserId;
+
+    private String pinnedByName;
 
     private LocalDateTime editedAt;
 
@@ -47,4 +58,10 @@ public class Message {
     @CollectionTable(name = "message_mentions", joinColumns = @JoinColumn(name = "message_id"))
     @Column(name = "user_id")
     private List<Long> mentionedUserIds;
+
+    @ElementCollection
+    @CollectionTable(name = "message_hidden_users", joinColumns = @JoinColumn(name = "message_id"))
+    @Column(name = "user_id")
+    @Builder.Default
+    private List<Long> hiddenForUserIds = new java.util.ArrayList<>();
 }

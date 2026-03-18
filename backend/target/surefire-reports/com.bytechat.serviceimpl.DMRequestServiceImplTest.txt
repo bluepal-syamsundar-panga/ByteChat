@@ -1,0 +1,22 @@
+-------------------------------------------------------------------------------
+Test set: com.bytechat.serviceimpl.DMRequestServiceImplTest
+-------------------------------------------------------------------------------
+Tests run: 7, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.165 s <<< FAILURE! -- in com.bytechat.serviceimpl.DMRequestServiceImplTest
+com.bytechat.serviceimpl.DMRequestServiceImplTest.sendRequest_ToSelf_ThrowsException -- Time elapsed: 0.067 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalArgumentException> but was: <java.lang.RuntimeException>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:67)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3115)
+	at com.bytechat.serviceimpl.DMRequestServiceImplTest.sendRequest_ToSelf_ThrowsException(DMRequestServiceImplTest.java:70)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.RuntimeException: Workspace not found
+	at com.bytechat.serviceimpl.DMRequestServiceImpl.lambda$sendRequest$0(DMRequestServiceImpl.java:34)
+	at java.base/java.util.Optional.orElseThrow(Optional.java:403)
+	at com.bytechat.serviceimpl.DMRequestServiceImpl.sendRequest(DMRequestServiceImpl.java:34)
+	at com.bytechat.serviceimpl.DMRequestServiceImplTest.lambda$sendRequest_ToSelf_ThrowsException$0(DMRequestServiceImplTest.java:70)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:53)
+	... 6 more
+

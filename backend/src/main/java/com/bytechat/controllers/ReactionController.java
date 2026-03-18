@@ -19,10 +19,17 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 @RestController
 @RequestMapping("/api/messages/{messageId}/reactions")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Reactions", description = "Endpoints for managing emoji reactions to messages")
+@SecurityRequirement(name = "Bearer Authentication")
 public class ReactionController {
 
     private final ReactionService reactionService;
@@ -30,29 +37,20 @@ public class ReactionController {
     private final MessageRepository messageRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
+    @Operation(summary = "Add reaction", description = "Adds an emoji reaction to a specific message.")
     @PostMapping
     public ResponseEntity<ApiResponse<MessageResponse>> addReaction(
-            @PathVariable(name = "messageId") Long messageId,
-            @RequestParam(name = "emoji") String emoji,
+            @Parameter(description = "ID of the message to react to") @PathVariable(name = "messageId") Long messageId,
+            @Parameter(description = "Emoji character or shortcode") @RequestParam(name = "emoji") String emoji,
             @AuthenticationPrincipal User currentUser) {
         log.info("User {} adding reaction {} to message {}", currentUser.getId(), emoji, messageId);
-        // The original snippet had a syntax error here. Correcting based on common patterns.
-        // The @AuthenticationPrincipal handles null users by throwing an exception,
-        // so the explicit null check for currentUser is removed.
-        // The try-catch block is also typically handled by a global exception handler in Spring.
-        // For this specific instruction, I will keep the try-catch as it was in the original,
-        // but adapt it to the new parameters.
         try {
             reactionService.addReaction(messageId, currentUser.getId(), emoji);
             
             // Get full updated message response
             Message message = messageRepository.findById(messageId)
                     .orElseThrow(() -> new RuntimeException("Message not found"));
-            MessageResponse response = messageService.getRoomMessages(message.getChannel().getId(), 0, 1, currentUser)
-                    .getContent().stream()
-                    .filter(m -> m.getId().equals(messageId))
-                    .findFirst()
-                    .orElse(null);
+            MessageResponse response = messageService.getMessageResponse(messageId, currentUser);
             
             if (response != null) {
                 // Broadcast update
@@ -70,13 +68,13 @@ public class ReactionController {
         }
     }
 
+    @Operation(summary = "Remove reaction", description = "Removes a specific emoji reaction from a message.")
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> removeReaction(
-            @PathVariable(name = "messageId") Long messageId,
-            @RequestParam(name = "emoji") String emoji,
+            @Parameter(description = "ID of the message") @PathVariable(name = "messageId") Long messageId,
+            @Parameter(description = "Emoji to remove") @RequestParam(name = "emoji") String emoji,
             @AuthenticationPrincipal User currentUser) {
         log.info("User {} removing reaction {} from message {}", currentUser.getId(), emoji, messageId);
-        // Similar correction for removeReaction based on the provided snippet and common patterns.
         try {
             reactionService.removeReaction(messageId, currentUser.getId(), emoji);
             return ResponseEntity.ok(ApiResponse.success(null, "Reaction removed"));
@@ -85,8 +83,10 @@ public class ReactionController {
         }
     }
 
+    @Operation(summary = "Get message reactions", description = "Retrieves all reactions for a specific message.")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Reaction>>> getReactions(@PathVariable(name = "messageId") Long messageId) {
+    public ResponseEntity<ApiResponse<List<Reaction>>> getReactions(
+            @Parameter(description = "ID of the message") @PathVariable(name = "messageId") Long messageId) {
         List<Reaction> reactions = reactionService.getReactionsForMessage(messageId);
         return ResponseEntity.ok(ApiResponse.success(reactions, "Reactions retrieved"));
     }

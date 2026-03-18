@@ -33,8 +33,8 @@ const chatService = {
     const response = await api.put(`/messages/${messageId}`, { content, type: 'TEXT' });
     return response.data;
   },
-  async deleteMessage(messageId) {
-    const response = await api.delete(`/messages/${messageId}`);
+  async deleteMessage(messageId, scope = 'everyone') {
+    const response = await api.delete(`/messages/${messageId}?scope=${encodeURIComponent(scope)}`);
     return response.data;
   },
   async pinMessage(messageId) {

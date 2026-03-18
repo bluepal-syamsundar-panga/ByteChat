@@ -6,7 +6,8 @@ const dmService = {
     return response.data;
   },
   async sendDirectMessage(userId, content) {
-    const response = await api.post(`/dm/${userId}`, { content, type: 'TEXT' });
+    const payload = typeof content === 'string' ? { content, type: 'TEXT' } : content;
+    const response = await api.post(`/dm/${userId}`, payload);
     return response.data;
   },
   async markAsRead(userId) {
@@ -17,8 +18,8 @@ const dmService = {
     const response = await api.put(`/dm/${dmId}`, { content });
     return response.data;
   },
-  async deleteMessage(dmId) {
-    const response = await api.delete(`/dm/${dmId}`);
+  async deleteMessage(dmId, scope = 'everyone') {
+    const response = await api.delete(`/dm/${dmId}?scope=${encodeURIComponent(scope)}`);
     return response.data;
   },
   async pinMessage(dmId) {

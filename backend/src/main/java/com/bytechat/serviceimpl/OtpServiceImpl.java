@@ -33,7 +33,11 @@ public class OtpServiceImpl implements OtpService {
                 .build();
         
         otpRepository.save(otp);
-        emailService.sendOtp(email, code);
+        if (otpType == com.bytechat.entity.OtpType.PASSWORD_RESET) {
+            emailService.sendPasswordResetOtp(email, code);
+        } else {
+            emailService.sendOtp(email, code);
+        }
     }
 
     @Override

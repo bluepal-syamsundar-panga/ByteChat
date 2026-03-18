@@ -14,6 +14,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
@@ -21,6 +22,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Messages", description = "Endpoints for sending, editing, and retrieving room messages")
+@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "Bearer Authentication")
 public class MessageController {
 
     private final MessageService messageService;
@@ -29,9 +31,9 @@ public class MessageController {
     @GetMapping("/channel/{channelId}") 
     @Operation(summary = "Get channel messages", description = "Retrieves a paginated list of messages for a specific channel.")
     public ResponseEntity<ApiResponse<Page<MessageResponse>>> getChannelMessages(
-            @PathVariable(name = "channelId") Long channelId,
-            @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "50") int size,
+            @Parameter(description = "ID of the channel") @PathVariable(name = "channelId") Long channelId,
+            @Parameter(description = "Page number (0-indexed)") @RequestParam(name = "page", defaultValue = "0") int page,
+            @Parameter(description = "Number of items per page") @RequestParam(name = "size", defaultValue = "50") int size,
             @AuthenticationPrincipal User currentUser) {
         log.info("Fetching messages for channel ID: {}", channelId);
         Page<MessageResponse> messages = messageService.getRoomMessages(channelId, page, size, currentUser);
@@ -40,8 +42,12 @@ public class MessageController {
 
     @PostMapping("/channel/{channelId}")
     @Operation(summary = "Send message", description = "Sends a new message to the specified channel.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Message sent successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Unauthorized to send message to this channel")
+    })
     public ResponseEntity<ApiResponse<MessageResponse>> sendMessage(
-            @PathVariable(name = "channelId") Long channelId,
+            @Parameter(description = "ID of the channel") @PathVariable(name = "channelId") Long channelId,
             @Valid @RequestBody MessageRequest request,
             @AuthenticationPrincipal User currentUser) {
         log.info("Sending message to channel ID: {}", channelId);
@@ -53,6 +59,7 @@ public class MessageController {
         return ResponseEntity.ok(ApiResponse.success(response, "Message sent successfully"));
     }
 
+    @Operation(summary = "Edit message", description = "Updates the content of an existing message.")
     @PutMapping("/{messageId}")
     public ResponseEntity<ApiResponse<MessageResponse>> editMessage(
             @PathVariable(name = "messageId") Long messageId,
@@ -71,12 +78,14 @@ public class MessageController {
         return ResponseEntity.ok(ApiResponse.success(response, "Message edited successfully"));
     }
 
+    @Operation(summary = "Delete message", description = "Performs a soft delete of a message.")
     @DeleteMapping("/{messageId}")
     public ResponseEntity<ApiResponse<Void>> deleteMessage(
             @PathVariable(name = "messageId") Long messageId,
+            @RequestParam(name = "scope", defaultValue = "everyone") String scope,
             @AuthenticationPrincipal User currentUser) {
         log.info("Deleting message with ID: {}", messageId);
-        MessageResponse response = messageService.deleteMessage(messageId, currentUser);
+        MessageResponse response = messageService.deleteMessage(messageId, scope, currentUser);
         
         // Broadcast update to channel topic
         if (response.getChannelId() != null) {
@@ -88,9 +97,10 @@ public class MessageController {
         return ResponseEntity.ok(ApiResponse.success(null, "Message deleted successfully"));
     }
 
+    @Operation(summary = "Mark message as read", description = "Marks a specific message as read for the current user.")
     @PostMapping("/{messageId}/read")
     public ResponseEntity<ApiResponse<Void>> markAsRead(
-            @PathVariable(name = "messageId") Long messageId,
+            @Parameter(description = "ID of the message") @PathVariable(name = "messageId") Long messageId,
             @AuthenticationPrincipal User currentUser) {
         messageService.markAsRead(messageId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Message marked as read"));
@@ -116,7 +126,7 @@ public class MessageController {
     @PostMapping("/channel/{channelId}/read")
     @Operation(summary = "Mark channel as read", description = "Marks all messages in a channel as read for the current user.")
     public ResponseEntity<ApiResponse<Void>> markChannelAsRead(
-            @PathVariable(name = "channelId") Long channelId,
+            @Parameter(description = "ID of the channel") @PathVariable(name = "channelId") Long channelId,
             @AuthenticationPrincipal User currentUser) {
         log.info("Marking channel ID {} as read for user {}", channelId, currentUser.getEmail());
         messageService.markChannelAsRead(channelId, currentUser);

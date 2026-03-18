@@ -1,10 +1,10 @@
-import { Paperclip, Pin, Check, CheckCheck, Plus } from 'lucide-react';
+import { Paperclip, Pin, Plus } from 'lucide-react';
 import React, { useState } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import useAuthStore from '../../store/authStore';
 import { formatMessageTimestamp, formatJustTime } from '../../utils/formatDate';
 
-const MessageBubble = ({ message, isSelected, onClick, onReact }) => {
+const MessageBubble = ({ message, isSelected, onClick, onReact, participants = [] }) => {
   const currentUser = useAuthStore((state) => state.user);
   const [showFullPicker, setShowFullPicker] = useState(false);
   
@@ -45,32 +45,40 @@ const MessageBubble = ({ message, isSelected, onClick, onReact }) => {
   const renderMessageContent = () => {
     if (message.isDeleted) return <div className="italic text-[#6b6a6b]">{message.content}</div>;
 
-    if (message.type === 'FILE' && message.content && message.content.startsWith('/uploads/')) {
+    if (message.type === 'FILE' && message.content) {
+      const isServerFile = message.content.startsWith('/uploads/') || message.content.startsWith('http');
+      if (!isServerFile) {
+        return <div className="whitespace-pre-wrap">{renderContent(message.content)}</div>;
+      }
+
       const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(message.content);
       const baseUrl = import.meta.env.VITE_API_URL 
         ? import.meta.env.VITE_API_URL.split('/api')[0] 
         : 'http://localhost:8080';
-      const url = `${baseUrl}${message.content}`;
+      const url = message.content.startsWith('http') ? message.content : `${baseUrl}${message.content}`;
+      const fileName = decodeURIComponent(url.split('/').pop() || 'attachment');
       
       if (isImage) {
         return (
-          <div className="mt-3 overflow-hidden rounded-2xl border border-gray-100 shadow-sm bg-white/50 group/img ring-1 ring-black/5">
+          <a href={url} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-2xl border border-gray-200 bg-white ring-1 ring-black/5">
             <img 
               src={url} 
               alt="Attachment" 
-              className="max-h-[300px] max-w-full object-contain transition-smooth group-hover/img:scale-[1.02]" 
+              className="max-h-[300px] max-w-full object-contain" 
               onError={(e) => {
                 e.target.onerror = null;
                 e.target.parentNode.innerHTML = '<div class="p-6 text-xs text-red-500 font-medium italic">Failed to load image</div>';
               }}
             />
-          </div>
+          </a>
         );
       }
       return (
-        <a href={url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-3 border border-gray-100 bg-gray-50 px-5 py-3 rounded-2xl text-sm font-bold text-blue-600 transition-smooth hover:bg-white hover:shadow-md hover:scale-[1.02] active:scale-[0.98]">
-          <Paperclip size={18} />
-          <span>Download Attachment</span>
+        <a href={url} target="_blank" rel="noreferrer" download={fileName} className="mt-3 inline-flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-[#1f2937] ring-1 ring-black/5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eef6ff] text-[#1164a3]">
+            <Paperclip size={18} />
+          </span>
+          <span className="max-w-[220px] truncate">{fileName}</span>
         </a>
       );
     }
@@ -79,6 +87,30 @@ const MessageBubble = ({ message, isSelected, onClick, onReact }) => {
 
   const isMine = String(message.senderId) === String(currentUser?.id);
   const senderAvatar = isMine ? currentUser?.avatarUrl : message.senderAvatar;
+  const readBy = message.readBy || [];
+  const visibleSeenReaders = readBy.slice(0, 2);
+  const additionalSeenCount = Math.max(readBy.length - visibleSeenReaders.length, 0);
+  const participantPool = Array.isArray(participants) ? participants : [];
+  const unseenReaders = participantPool.filter((participant) => {
+    if (!participant?.id) return false;
+    if (String(participant.id) === String(message.senderId)) return false;
+    return !readBy.some((reader) => String(reader.id) === String(participant.id));
+  });
+  const replySenderLabel = String(message.replyToSenderName) === String(currentUser?.displayName)
+    ? 'You'
+    : message.replyToSenderName;
+  const isFileMessage = message.type === 'FILE';
+  const isSystemMessage = message.type === 'SYSTEM';
+
+  if (isSystemMessage) {
+    return (
+      <div className="px-4 py-2 text-center">
+        <span className="inline-block text-[12px] font-semibold tracking-tight text-[#2b2b2b]">
+          {message.content}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -93,7 +125,10 @@ const MessageBubble = ({ message, isSelected, onClick, onReact }) => {
             initial
           )}
           {message.isPinned && (
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-amber-900 shadow-sm border border-white">
+            <span
+              className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-amber-900 shadow-sm border border-white"
+              title={message.pinnedByName ? `Pinned by ${message.pinnedByName}` : 'Pinned message'}
+            >
               <Pin size={6} fill="currentColor" />
             </span>
           )}
@@ -104,7 +139,7 @@ const MessageBubble = ({ message, isSelected, onClick, onReact }) => {
             {!isMine && <div className="truncate text-[11px] font-bold text-gray-900">{message.senderName}</div>}
           </div>
 
-          <div className={`mt-0.5 relative inline-block px-3 py-1.5 rounded-xl text-[14px] tracking-tight leading-relaxed ${isMine ? 'bg-[#3f0e40] text-white' : 'bg-gray-100 text-gray-800'}`}>
+          <div className={`mt-0.5 relative inline-block text-[14px] tracking-tight leading-relaxed ${message.reactions?.length > 0 ? 'pb-3' : ''} ${isFileMessage ? 'bg-transparent px-0 py-0' : `px-4 py-2 rounded-[22px] shadow-sm ring-1 ${isMine ? 'bg-gradient-to-br from-[#4a154b] to-[#611f69] text-white ring-[#4a154b]/30' : 'bg-white text-gray-800 ring-black/5'}`}`}>
             {isSelected && (
               <div className={`absolute bottom-full mb-2 flex items-center gap-1.5 bg-white border border-black/5 p-1 rounded-full shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300 z-50 ${isMine ? 'right-0' : 'left-0'}`}>
                 {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
@@ -150,25 +185,22 @@ const MessageBubble = ({ message, isSelected, onClick, onReact }) => {
             )}
             <div className="flex flex-wrap items-end justify-end gap-x-2">
               <div className="flex-1 min-w-0">
+                {message.replyToMessageId && (
+                  <div className={`mb-2 rounded-2xl border-l-4 px-3 py-2 text-xs ${isFileMessage ? 'border-[#1164a3] bg-gray-50 text-slate-600' : isMine ? 'border-white/50 bg-white/10 text-purple-100' : 'border-[#1164a3] bg-[#f8fbff] text-slate-600'}`}>
+                    <div className={`font-bold ${isFileMessage ? 'text-[#1164a3]' : isMine ? 'text-white' : 'text-[#1164a3]'}`}>{replySenderLabel}</div>
+                    <div className="truncate">{message.replyToContent || 'Attachment'}</div>
+                  </div>
+                )}
                 {renderMessageContent()}
               </div>
-              <div className={`inline-flex items-center gap-1 shrink-0 mb-[-2px] text-[9px] font-bold ${isMine ? 'text-purple-200/80' : 'text-gray-400/80'} select-none`}>
+              <div className={`inline-flex items-center gap-1 shrink-0 ${isFileMessage ? 'mt-2 text-[10px]' : 'mb-[-2px] text-[9px]'} font-bold ${isFileMessage ? 'text-gray-400' : isMine ? 'text-purple-200/80' : 'text-gray-400/80'} select-none`}>
                 {formatJustTime(message.sentAt)}
-                {isMine && (
-                  <span className="flex">
-                    {message.readCount > 0 ? (
-                      <CheckCheck size={12} className="text-blue-400" />
-                    ) : (
-                      <Check size={12} className="text-purple-200/50" />
-                    )}
-                  </span>
-                )}
               </div>
             </div>
           </div>
 
           {message.reactions?.length > 0 && (
-            <div className={`mt-0.5 flex flex-wrap gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+            <div className={`-mt-2 flex flex-wrap px-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
               {Object.entries(
                 message.reactions.reduce((acc, r) => {
                   acc[r.emoji] = (acc[r.emoji] || 0) + 1;
@@ -181,7 +213,7 @@ const MessageBubble = ({ message, isSelected, onClick, onReact }) => {
                     e.stopPropagation();
                     onReact?.(emoji);
                   }}
-                  className="group relative flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-bold text-gray-700 transition-smooth hover:scale-110 hover:bg-black/5 active:scale-95"
+                  className="group relative flex items-center px-1 py-0.5 rounded-full text-[11px] font-bold text-gray-700 transition-smooth hover:z-10 hover:scale-105 active:scale-95"
                   title={message.reactions
                     .filter(r => r.emoji === emoji)
                     .map(r => r.username)
@@ -194,9 +226,82 @@ const MessageBubble = ({ message, isSelected, onClick, onReact }) => {
             </div>
           )}
 
-          {isMine && message.readCount > 0 && (
-            <div className="mt-1 text-[10px] text-[#6b6a6b] italic">
-              Seen by {message.readCount}
+          {isMine && readBy.length > 0 && (
+            <div className="group/seen relative mt-1 flex items-center justify-end">
+              <span className="mr-2 text-[10px] italic text-[#6b6a6b]">
+                Seen by
+              </span>
+              <div className="flex -space-x-2">
+                {visibleSeenReaders.map((reader) => (
+                  <div
+                    key={reader.id}
+                    className="h-5 w-5 overflow-hidden rounded-full border border-white bg-[#e9dff0] shadow-sm"
+                    title={reader.displayName}
+                  >
+                    {reader.avatarUrl ? (
+                      <img src={reader.avatarUrl} alt={reader.displayName} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[9px] font-bold text-[#3f0e40]">
+                        {reader.displayName?.[0]?.toUpperCase() ?? 'U'}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {additionalSeenCount > 0 && (
+                  <div className="flex h-5 min-w-[20px] items-center justify-center rounded-full border border-white bg-[#3f0e40] px-1 text-[9px] font-bold text-white shadow-sm">
+                    +{additionalSeenCount}
+                  </div>
+                )}
+              </div>
+              <div className="pointer-events-none absolute bottom-full right-0 z-20 mb-2 hidden min-w-[220px] rounded-xl border border-black/5 bg-white p-3 text-left shadow-xl group-hover/seen:block">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Seen ({readBy.length})
+                </div>
+                <div className="space-y-2">
+                  {readBy.map((reader) => (
+                    <div key={reader.id} className="flex items-center gap-2">
+                      <div className="h-7 w-7 overflow-hidden rounded-full bg-[#e9dff0]">
+                        {reader.avatarUrl ? (
+                          <img src={reader.avatarUrl} alt={reader.displayName} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[11px] font-bold text-[#3f0e40]">
+                            {reader.displayName?.[0]?.toUpperCase() ?? 'U'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 text-xs font-medium text-gray-700">
+                        {reader.displayName}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {unseenReaders.length > 0 && (
+                  <>
+                    <div className="my-3 border-t border-gray-100" />
+                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      Unseen ({unseenReaders.length})
+                    </div>
+                    <div className="space-y-2">
+                      {unseenReaders.map((reader) => (
+                        <div key={reader.id} className="flex items-center gap-2">
+                          <div className="h-7 w-7 overflow-hidden rounded-full bg-[#e9dff0]">
+                            {reader.avatarUrl ? (
+                              <img src={reader.avatarUrl} alt={reader.displayName} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[11px] font-bold text-[#3f0e40]">
+                                {reader.displayName?.[0]?.toUpperCase() ?? 'U'}
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 text-xs font-medium text-gray-700">
+                            {reader.displayName}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>

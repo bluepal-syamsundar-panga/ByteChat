@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import useChatStore from '../store/chatStore';
@@ -7,13 +7,18 @@ import chatService from '../services/chatService';
 import NotificationPanel from '../components/Common/NotificationPanel';
 import logo3 from '../assets/logo3.png';
 import { ArrowRight, Sparkles, X, Layout, MessageCircle, Users, Link as LinkIcon, Search, Zap, Shield, Globe, Cpu } from 'lucide-react';
+import CreateWorkspaceModal from '../components/Workspaces/CreateWorkspaceModal';
+
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const { workspaces, setWorkspaces } = useChatStore();
   const { user } = useAuthStore();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const logout = useAuthStore((state) => state.logout);
 
   useEffect(() => {
+
     const fetchWorkspaces = async () => {
       try {
         const response = await chatService.getWorkspaces();
@@ -57,7 +62,7 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f4ede4] text-[#1d1c1d]">
+    <div className="flex min-h-screen flex-col bg-[#f4ede4] text-[#1d1c1d] scroll-smooth">
       {/* Header */}
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between bg-[#3f0e40] px-8 backdrop-blur-md">
         <div className="flex items-center group cursor-pointer" onClick={() => navigate('/')}>
@@ -71,18 +76,28 @@ const LandingPage = () => {
 
           {user && (
             <div className="mr-2">
-              <NotificationPanel variant="light" />
+              <NotificationPanel variant="light" position="bottom" />
             </div>
           )}
 
           <button
-            onClick={() => navigate('/create-workspace')}
+            onClick={() => setIsCreateModalOpen(true)}
             className="bg-white px-5 py-2 text-sm font-bold text-[#3f0e40] rounded-lg transition-all hover:bg-white/90 shadow-lg active:scale-95"
           >
             Create Workspace
           </button>
+          <button
+            onClick={() => {
+              logout();
+              navigate('/login');
+            }}
+            className="border border-white/20 bg-white/10 px-5 py-2 text-sm font-bold text-white rounded-lg transition-all hover:bg-white/15 active:scale-95"
+          >
+            Sign out
+          </button>
         </div>
       </header>
+
 
       {/* Hero Section - Slack Inspired */}
       <section className="bg-[#3f0e40] pt-16 pb-28 px-6 text-center text-white relative overflow-hidden">
@@ -98,7 +113,7 @@ const LandingPage = () => {
       </section>
 
       {/* Main Content Area - Workspace Section */}
-      <main id="workspaces" className="w-full px-12 -mt-24 relative z-10 pb-20 bg-[#fbf5f0] rounded-t-[80px] pt-20 shadow-[0_-20px_50px_-10px_rgba(0,0,0,0.1)]">
+      <main id="workspaces" className="w-full px-12 -mt-24 relative z-10 pb-20 bg-[#fbf5f0] rounded-t-[80px] pt-20 shadow-[0_-20px_50px_-10px_rgba(0,0,0,0.1)] animate-reveal">
         <div className="flex items-center gap-4 mb-10 pl-4">
           <div className="w-1.5 h-10 bg-[#3f0e40] rounded-full shadow-sm" />
           <h2 className="text-4xl font-black tracking-tighter text-[#3f0e40]">My workspaces</h2>
@@ -144,18 +159,19 @@ const LandingPage = () => {
               </div>
               <p className="text-[#6b6a6b] font-bold text-lg mb-4">No workspaces found</p>
               <button
-                onClick={() => navigate('/create-workspace')}
+                onClick={() => setIsCreateModalOpen(true)}
                 className="px-6 py-3 bg-[#3f0e40] text-white font-bold rounded-xl hover:shadow-lg active:scale-95 transition-all"
               >
                 Create your first workspace
               </button>
             </div>
+
           )}
         </div>
       </main>
 
       {/* Features Section */}
-      <section id="features" className="px-12 py-8 bg-[#fcf9f6] relative overflow-hidden">
+      <section id="features" className="px-12 py-24 bg-[#fcf9f6] relative overflow-hidden animate-reveal">
         {/* Decorative background shapes */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#3f0e40]/[0.02] rounded-full -mr-64 -mt-64 blur-3xl" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/[0.02] rounded-full -ml-48 -mb-48 blur-3xl" />
@@ -176,7 +192,8 @@ const LandingPage = () => {
             {features.map((feature, idx) => (
               <div
                 key={idx}
-                className="group bg-white rounded-3xl p-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-black/5 hover:shadow-2xl hover:shadow-[#3f0e40]/5 hover:-translate-y-1 transition-all duration-500 cursor-default"
+                style={{ animationDelay: `${(idx + 1) * 100}ms` }}
+                className="animate-slide-up group bg-white rounded-3xl p-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-black/5 hover:shadow-2xl hover:shadow-[#3f0e40]/5 hover:-translate-y-1 transition-all duration-500 cursor-default"
               >
                 <h3 className="text-2xl font-black text-[#1d1c1d] mb-3">{feature.title}</h3>
                 <p className="text-[#6b6a6b] font-medium leading-relaxed">
@@ -208,7 +225,14 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
+
+      <CreateWorkspaceModal 
+        isOpen={isCreateModalOpen} 
+        onClose={() => setIsCreateModalOpen(false)} 
+      />
+
       <style dangerouslySetInnerHTML={{
+
         __html: `
         @keyframes wave {
           0%, 100% { transform: rotate(0deg); }
@@ -227,6 +251,16 @@ const LandingPage = () => {
         .animate-slide-up {
           animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           opacity: 0;
+        }
+        @keyframes reveal {
+          from { opacity: 0; transform: translateY(40px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-reveal {
+          animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        html {
+          scroll-behavior: smooth;
         }
       `}} />
     </div>

@@ -10,6 +10,7 @@ import com.bytechat.entity.User;
 import com.bytechat.services.OtpService;
 import com.bytechat.services.WorkspaceService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,20 +27,26 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Workspaces", description = "Endpoints for workspace management")
+@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "Bearer Authentication")
 public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
     private final OtpService otpService;
 
+    @Operation(summary = "Send OTP for workspace creation", description = "Generates and sends an OTP to the provided email for workspace registration.")
     @PostMapping("/send-otp")
-    public ResponseEntity<ApiResponse<Void>> sendOtp(@RequestParam(name = "email") String email) {
+    public ResponseEntity<ApiResponse<Void>> sendOtp(
+            @Parameter(description = "Email address for verification") @RequestParam(name = "email") String email) {
         log.info("Requesting workspace creation OTP for email: {}", email);
         otpService.generateAndSendOtp(email, com.bytechat.entity.OtpType.WORKSPACE_CREATION);
         return ResponseEntity.ok(ApiResponse.success(null, "OTP sent to " + email));
     }
 
+    @Operation(summary = "Verify OTP", description = "Verifies the OTP sent to the user's email.")
     @PostMapping("/verify-otp")
-    public ResponseEntity<ApiResponse<Boolean>> verifyOtp(@RequestParam(name = "email") String email, @RequestParam(name = "code") String code) {
+    public ResponseEntity<ApiResponse<Boolean>> verifyOtp(
+            @Parameter(description = "Email address") @RequestParam(name = "email") String email, 
+            @Parameter(description = "6-digit OTP code") @RequestParam(name = "code") String code) {
         log.info("Verifying workspace creation OTP for email: {}", email);
         boolean verified = otpService.verifyOtp(email, code);
         if (verified) {
@@ -49,10 +56,11 @@ public class WorkspaceController {
         }
     }
 
+    @Operation(summary = "Create workspace with details", description = "Creates a new workspace and sets up the owner. Requires email verification.")
     @PostMapping("/create")
     public ResponseEntity<ApiResponse<WorkspaceCreationResponse>> createWorkspace(
             @Valid @RequestBody CreateWorkspaceRequest request,
-            @RequestParam(name = "email") String email,
+            @Parameter(description = "Verified email address") @RequestParam(name = "email") String email,
             @AuthenticationPrincipal User currentUser) {
         
         log.info("Creating workspace: {} for email: {}", request.getName(), email);
@@ -65,10 +73,10 @@ public class WorkspaceController {
     }
 
     @GetMapping
-    @Operation(summary = "Get user workspaces")
+    @Operation(summary = "Get user workspaces", description = "Retrieves a paginated list of workspaces the current user is a member of.")
     public ResponseEntity<ApiResponse<Page<WorkspaceResponse>>> getUserWorkspaces(
-            @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "50") int size,
+            @Parameter(description = "Page number (0-indexed)") @RequestParam(name = "page", defaultValue = "0") int page,
+            @Parameter(description = "Number of items per page") @RequestParam(name = "size", defaultValue = "50") int size,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
             return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
@@ -77,9 +85,10 @@ public class WorkspaceController {
         return ResponseEntity.ok(ApiResponse.success(workspaces, "Workspaces fetched successfully"));
     }
 
+    @Operation(summary = "Join workspace", description = "Allows the current user to join a workspace.")
     @PostMapping("/{workspaceId}/join")
     public ResponseEntity<ApiResponse<Void>> joinWorkspace(
-            @PathVariable(name = "workspaceId") Long workspaceId,
+            @Parameter(description = "ID of the workspace to join") @PathVariable(name = "workspaceId") Long workspaceId,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
             return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
@@ -88,9 +97,10 @@ public class WorkspaceController {
         return ResponseEntity.ok(ApiResponse.success(null, "Joined workspace successfully"));
     }
 
+    @Operation(summary = "Invite user to workspace", description = "Sends a workspace invitation to a user by email.")
     @PostMapping("/{workspaceId}/invite")
     public ResponseEntity<ApiResponse<Void>> inviteUser(
-            @PathVariable(name = "workspaceId") Long workspaceId,
+            @Parameter(description = "ID of the workspace") @PathVariable(name = "workspaceId") Long workspaceId,
             @Valid @RequestBody InviteUserRequest request,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
@@ -100,9 +110,10 @@ public class WorkspaceController {
         return ResponseEntity.ok(ApiResponse.success(null, "Invitation sent"));
     }
 
+    @Operation(summary = "Get workspace members", description = "Retrieves a list of all members in a specific workspace.")
     @GetMapping("/{workspaceId}/members")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getWorkspaceMembers(
-            @PathVariable(name = "workspaceId") Long workspaceId,
+            @Parameter(description = "ID of the workspace") @PathVariable(name = "workspaceId") Long workspaceId,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
             return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
@@ -110,11 +121,11 @@ public class WorkspaceController {
         return ResponseEntity.ok(ApiResponse.success(workspaceService.getWorkspaceMembers(workspaceId, currentUser), "Workspace members fetched"));
     }
 
+    @Operation(summary = "Remove member from workspace", description = "Allows the workspace owner to remove a member.")
     @DeleteMapping("/{workspaceId}/members/{userId}")
-    @Operation(summary = "Remove member from workspace", description = "Only owner can remove members.")
     public ResponseEntity<ApiResponse<Void>> removeMember(
-            @PathVariable(name = "workspaceId") Long workspaceId,
-            @PathVariable(name = "userId") Long userId,
+            @Parameter(description = "ID of the workspace") @PathVariable(name = "workspaceId") Long workspaceId,
+            @Parameter(description = "ID of the user to remove") @PathVariable(name = "userId") Long userId,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
             return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));

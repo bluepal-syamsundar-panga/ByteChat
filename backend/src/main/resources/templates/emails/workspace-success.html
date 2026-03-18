@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Workspace Created Successfully</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f9; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 20px auto; background: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #2d3748; margin: 0; font-size: 24px; }
+        .content { color: #4a5568; line-height: 1.6; }
+        .workspace-info { background-color: #f0fff4; padding: 20px; border-radius: 6px; margin: 25px 0; border-left: 4px solid #48bb78; }
+        .workspace-name { font-weight: bold; color: #2f855a; font-size: 18px; }
+        .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #a0aec0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ByteChat</h1>
+        </div>
+        <div class="content">
+            <p>Congratulations!</p>
+            <p>Your new workspace has been successfully created. You can now start inviting your teammates and collaborating on projects.</p>
+            <div class="workspace-info">
+                <div class="workspace-name" th:text="${workspaceName}">My Workspace</div>
+                <p th:text="${workspaceDescription}">A place for my team to chat.</p>
+            </div>
+            <p>Login to your account to access your workspace.</p>
+            <p>Best regards,<br/>The ByteChat Team</p>
+        </div>
+        <div class="footer">
+            &copy; 2024 ByteChat. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>

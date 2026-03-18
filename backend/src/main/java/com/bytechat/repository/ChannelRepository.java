@@ -12,20 +12,17 @@ import java.util.List;
 public interface ChannelRepository extends JpaRepository<Channel, Long> {
        List<Channel> findByWorkspaceId(Long workspaceId);
 
-       @Query("SELECT DISTINCT c FROM Channel c LEFT JOIN c.memberships cm ON cm.user.id = :userId " +
-                     "WHERE c.workspace.id = :workspaceId AND c.isDeleted = false AND c.isArchived = false " +
-                     "AND (c.isPrivate = false OR cm IS NOT NULL) " +
-                     "AND (cm IS NULL OR cm.isArchived = false)")
+       @Query("SELECT DISTINCT c FROM Channel c JOIN c.memberships cm " +
+                     "WHERE c.workspace.id = :workspaceId AND cm.user.id = :userId " +
+                     "AND c.isDeleted = false AND c.isArchived = false AND cm.isArchived = false")
        List<Channel> findVisibleChannels(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId);
 
-       @Query("SELECT DISTINCT c FROM Channel c LEFT JOIN c.memberships cm ON cm.user.id = :userId " +
-                     "WHERE c.workspace.id = :workspaceId AND c.isDeleted = false " +
-                     "AND (c.isArchived = true OR cm.isArchived = true) " +
-                     "AND (c.isPrivate = false OR cm IS NOT NULL)")
+       @Query("SELECT DISTINCT c FROM Channel c JOIN c.memberships cm " +
+                     "WHERE c.workspace.id = :workspaceId AND cm.user.id = :userId AND c.isDeleted = false " +
+                     "AND (c.isArchived = true OR cm.isArchived = true)")
        List<Channel> findArchivedChannels(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId);
 
-       @Query("SELECT DISTINCT c FROM Channel c LEFT JOIN c.memberships cm ON cm.user.id = :userId " +
-                     "WHERE c.workspace.id = :workspaceId AND c.isDeleted = true " +
-                     "AND (c.isPrivate = false OR cm IS NOT NULL)")
+       @Query("SELECT DISTINCT c FROM Channel c JOIN c.memberships cm " +
+                     "WHERE c.workspace.id = :workspaceId AND cm.user.id = :userId AND c.isDeleted = true")
        List<Channel> findDeletedChannels(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId);
 }

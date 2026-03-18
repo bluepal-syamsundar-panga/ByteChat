@@ -11,6 +11,6 @@ public interface DirectMessageService {
     void markAsRead(Long otherUserId, User currentUser);
 	MessageResponse reactToMessage(Long dmId, String emoji, User currentUser);
 	MessageResponse pinMessage(Long dmId, User currentUser);
-	MessageResponse deleteMessage(Long dmId, User currentUser);
+	MessageResponse deleteMessage(Long dmId, String scope, User currentUser);
 	MessageResponse editMessage(Long dmId, String content, User currentUser);
 }
