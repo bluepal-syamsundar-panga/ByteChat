@@ -1,4 +1,4 @@
-import { ArrowRight, LockKeyhole, Mail, ArrowLeft, KeyRound, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, LockKeyhole, Mail, ArrowLeft, KeyRound, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
@@ -404,33 +404,48 @@ const LoginPage = () => {
   );
 };
 
-const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error, maxLength, required }) => (
-  <div className="w-full group">
-    <div className="mb-2 px-1">
-      <span className="text-xs font-bold uppercase tracking-wider text-[#6b6a6b] group-focus-within:text-[#3f0e40] transition-colors">
-        {label} {required && <span className="text-rose-500 ml-0.5">**</span>}
-      </span>
-    </div>
-    <div className={`
-      flex items-center gap-3 bg-[#f8f8f8] border-[1.5px] rounded-2xl px-5 transition-all duration-200
-      ${error ? 'border-rose-200 bg-rose-50/30' : 'border-transparent group-focus-within:border-[#3f0e40]/20 group-focus-within:bg-white'}
-    `}>
-      <span className={`${error ? 'text-rose-400' : 'text-[#6b6a6b] group-focus-within:text-[#3f0e40]'} transition-colors`}>{icon}</span>
-      <input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full h-14 bg-transparent outline-none text-[#1d1c1d] font-medium placeholder:text-[#6b6a6b]/40"
-      />
-    </div>
-    {error && (
-      <div className="mt-1.5 px-1 text-[10px] font-bold text-rose-500 animate-in fade-in slide-in-from-top-1">
-        {error}
+const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error, maxLength, required }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === 'password';
+  const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
+
+  return (
+    <div className="w-full group">
+      <div className="mb-2 px-1">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#6b6a6b] group-focus-within:text-[#3f0e40] transition-colors">
+          {label} {required && <span className="text-rose-500 ml-0.5">**</span>}
+        </span>
       </div>
-    )}
-  </div>
-);
+      <div className={`
+        flex items-center gap-3 bg-[#f8f8f8] border-[1.5px] rounded-2xl px-5 transition-all duration-200
+        ${error ? 'border-rose-200 bg-rose-50/30' : 'border-transparent group-focus-within:border-[#3f0e40]/20 group-focus-within:bg-white'}
+      `}>
+        <span className={`${error ? 'text-rose-400' : 'text-[#6b6a6b] group-focus-within:text-[#3f0e40]'} transition-colors`}>{icon}</span>
+        <input
+          type={inputType}
+          value={value}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full h-14 bg-transparent outline-none text-[#1d1c1d] font-medium placeholder:text-[#6b6a6b]/40"
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="text-[#6b6a6b] hover:text-[#3f0e40] transition-colors focus:outline-none"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        )}
+      </div>
+      {error && (
+        <div className="mt-1.5 px-1 text-[10px] font-bold text-rose-500 animate-in fade-in slide-in-from-top-1">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default LoginPage;
