@@ -7,6 +7,7 @@ D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\controllers\AuthControll
 D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\serviceimpl\NotificationServiceImplTest.java
 D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\controllers\UserControllerIntegrationTest.java
 D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\controllers\WorkspaceControllerIntegrationTest.java
+D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\config\TestWebSocketConfig.java
 D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\controllers\DirectMessageControllerIntegrationTest.java
 D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\serviceimpl\WorkspaceServiceImplTest.java
 D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\controllers\FileUploadControllerIntegrationTest.java

@@ -3,7 +3,9 @@ D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\controllers\ReactionCont
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\MessageService.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\FileStorageService.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\exception\UnauthorizedException.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\config\StaticResourceConfig.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\serviceimpl\MessageServiceImpl.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\response\AttachmentResponse.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\WorkspaceMember.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\serviceimpl\WorkspaceServiceImpl.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\WorkspaceRole.java
@@ -97,6 +99,7 @@ D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\ChannelMember.jav
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\ReactionService.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\exception\ConflictException.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\repository\UserRepository.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\response\MessageReadUserResponse.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\serviceimpl\CloudinaryServiceImpl.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\OtpType.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\WorkspaceInvitation.java

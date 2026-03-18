@@ -4,7 +4,9 @@ import com.bytechat.dto.request.AuthRequest;
 import com.bytechat.dto.response.AuthResponse;
 import com.bytechat.services.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.bytechat.config.TestWebSocketConfig;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.Import;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(TestWebSocketConfig.class)
 class AuthControllerIntegrationTest {
 
     @Autowired

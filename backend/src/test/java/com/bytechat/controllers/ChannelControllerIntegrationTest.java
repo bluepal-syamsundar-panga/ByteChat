@@ -5,7 +5,9 @@ import com.bytechat.entity.Role;
 import com.bytechat.entity.User;
 import com.bytechat.services.ChannelService;
 import org.junit.jupiter.api.BeforeEach;
+import com.bytechat.config.TestWebSocketConfig;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.Import;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
@@ -32,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 )
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
+@Import(TestWebSocketConfig.class)
 class ChannelControllerIntegrationTest {
 
     @Autowired

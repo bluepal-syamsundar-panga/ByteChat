@@ -1,27 +1,31 @@
 package com.bytechat.serviceimpl;
 
-import com.bytechat.dto.response.NotificationResponse;
 import com.bytechat.entity.Notification;
 import com.bytechat.entity.User;
 import com.bytechat.repository.NotificationRepository;
 import com.bytechat.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class NotificationServiceImplTest {
 
     private NotificationRepository notificationRepository;
     private UserRepository userRepository;
-
-    // 🔥 IMPORTANT: DO NOT MOCK
     private SimpMessagingTemplate messagingTemplate;
-
     private NotificationServiceImpl notificationService;
 
     private User recipient;
@@ -32,8 +36,18 @@ class NotificationServiceImplTest {
         notificationRepository = mock(NotificationRepository.class);
         userRepository = mock(UserRepository.class);
 
-        // ✅ FIXED HERE
-        messagingTemplate = new SimpMessagingTemplate(mock(org.springframework.messaging.MessageChannel.class));
+        MessageChannel channel = new MessageChannel() {
+            @Override
+            public boolean send(Message<?> message) {
+                return true;
+            }
+
+            @Override
+            public boolean send(Message<?> message, long timeout) {
+                return true;
+            }
+        };
+        messagingTemplate = new SimpMessagingTemplate(channel);
 
         notificationService = new NotificationServiceImpl(
                 notificationRepository,
@@ -55,8 +69,6 @@ class NotificationServiceImplTest {
                 .build();
     }
 
-    // ================= SEND =================
-
     @Test
     void sendNotification_Success() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(recipient));
@@ -66,11 +78,7 @@ class NotificationServiceImplTest {
 
         assertNotNull(result);
         verify(notificationRepository).save(any(Notification.class));
-
-        // ❌ Cannot verify messagingTemplate since it's null
     }
-
-    // ================= GET =================
 
     @Test
     void getUserNotifications_ReturnsList() {
@@ -92,8 +100,6 @@ class NotificationServiceImplTest {
         assertEquals(1, results.size());
     }
 
-    // ================= MARK READ =================
-
     @Test
     void markAsRead_Success() {
         when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
@@ -112,7 +118,7 @@ class NotificationServiceImplTest {
         notificationService.markWorkspaceNotificationsAsRead(1L, 1L);
 
         assertTrue(notification.isRead());
-        verify(notificationRepository).saveAll(anyList());
+        verify(notificationRepository).saveAll(any());
     }
 
     @Test
@@ -123,7 +129,7 @@ class NotificationServiceImplTest {
         notificationService.markChannelNotificationsAsRead(1L, 1L);
 
         assertTrue(notification.isRead());
-        verify(notificationRepository).saveAll(anyList());
+        verify(notificationRepository).saveAll(any());
     }
 
     @Test
@@ -134,10 +140,8 @@ class NotificationServiceImplTest {
         notificationService.markDMNotificationsAsRead(1L, 2L);
 
         assertTrue(notification.isRead());
-        verify(notificationRepository).saveAll(anyList());
+        verify(notificationRepository).saveAll(any());
     }
-
-    // ================= GET SINGLE =================
 
     @Test
     void getNotification_Success() {

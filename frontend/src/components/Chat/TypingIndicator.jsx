@@ -3,39 +3,41 @@ const TypingIndicator = ({ users }) => {
     return null;
   }
 
-  const userList = Object.values(users).filter(u => u.isTyping);
+  const userList = Object.values(users).filter((u) => (u?.isTyping ?? u?.typing ?? false));
   if (userList.length === 0) return null;
 
+  const leadUser = userList[0];
+  const typingLabel =
+    userList.length === 1
+      ? `${leadUser.displayName || 'Someone'} is typing...`
+      : `${userList.length} people are typing...`;
+
   return (
-    <div className="absolute bottom-6 left-8 z-30 pointer-events-none select-none">
-      <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <div className="inline-flex items-center gap-3 bg-[#f0f2f5] border border-gray-200/50 px-4 py-2 rounded-2xl shadow-sm">
-          <div className="flex -space-x-1.5 overflow-hidden">
-            {userList.slice(0, 2).map((user, i) => (
-              <div 
-                key={user.userId || i} 
-                className="inline-block h-5 w-5 rounded-full border border-white bg-gray-200 flex items-center justify-center text-[8px] font-bold text-gray-600 shadow-xs"
-              >
-                {user.avatar ? (
-                  <img src={user.avatar} alt="" className="h-full w-full rounded-full object-cover" />
-                ) : (
-                  (user.displayName?.[0] || 'U').toUpperCase()
-                )}
-              </div>
-            ))}
+    <div className="px-8 py-1">
+      <div className="group flex max-w-[85%] items-end gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#611f69] to-[#3f0e40] font-extrabold text-white">
+          {leadUser?.avatar ? (
+            <img src={leadUser.avatar} alt={leadUser.displayName || 'Typing user'} className="h-full w-full object-cover" />
+          ) : (
+            (leadUser?.displayName?.[0] || 'U').toUpperCase()
+          )}
+        </div>
+
+        <div className="min-w-0">
+          <div className="truncate text-[11px] font-bold text-gray-900">
+            {leadUser?.displayName || 'Someone'}
           </div>
 
-          <div className="flex gap-1 items-center">
-            <span className="h-1.5 w-1.5 rounded-full bg-gray-500 typing-dot"></span>
-            <span className="h-1.5 w-1.5 rounded-full bg-gray-500 typing-dot" style={{ animationDelay: '0.2s' }}></span>
-            <span className="h-1.5 w-1.5 rounded-full bg-gray-500 typing-dot" style={{ animationDelay: '0.4s' }}></span>
+          <div className="mt-0.5 inline-flex items-center gap-3 rounded-[22px] bg-white px-4 py-3 text-gray-800 shadow-sm ring-1 ring-black/5">
+            <div className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-gray-400 typing-dot"></span>
+              <span className="h-2 w-2 rounded-full bg-gray-400 typing-dot" style={{ animationDelay: '0.2s' }}></span>
+              <span className="h-2 w-2 rounded-full bg-gray-400 typing-dot" style={{ animationDelay: '0.4s' }}></span>
+            </div>
+            <span className="text-[11px] font-bold text-gray-500 tracking-tight">
+              {typingLabel}
+            </span>
           </div>
-
-          <span className="text-[11px] font-bold text-gray-600 tracking-tight">
-            {userList.length === 1 
-              ? `${userList[0].displayName} is typing...` 
-              : `${userList.length} people are typing...`}
-          </span>
         </div>
       </div>
     </div>

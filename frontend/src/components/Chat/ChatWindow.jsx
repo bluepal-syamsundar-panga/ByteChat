@@ -66,6 +66,8 @@ const ChatWindow = ({ room, channel }) => {
   const scrollRef = useRef(null);
   const messageContainerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const remoteTypingTimeoutsRef = useRef({});
+  const hadTypingUsersRef = useRef(false);
   const menuRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
@@ -303,10 +305,28 @@ const ChatWindow = ({ room, channel }) => {
           
           if (workspaceId) {
             subscribeToTyping(workspaceId, (event) => {
-              // Store the full event object to include avatar and displayName
-              setTyping(workspaceId, {
-                [event.userId]: event.isTyping ? event : null,
-              });
+              if (!event?.userId) return;
+              const isTyping = event.isTyping ?? event.typing ?? false;
+
+              window.clearTimeout(remoteTypingTimeoutsRef.current[event.userId]);
+
+              if (isTyping) {
+                setTyping(workspaceId, {
+                  [event.userId]: { ...event, isTyping: true },
+                });
+
+                remoteTypingTimeoutsRef.current[event.userId] = window.setTimeout(() => {
+                  setTyping(workspaceId, {
+                    [event.userId]: null,
+                  });
+                }, 1000);
+              } else {
+                remoteTypingTimeoutsRef.current[event.userId] = window.setTimeout(() => {
+                  setTyping(workspaceId, {
+                    [event.userId]: null,
+                  });
+                }, 1000);
+              }
             });
           }
         });
@@ -339,6 +359,8 @@ const ChatWindow = ({ room, channel }) => {
 
     return () => {
       mounted = false;
+      Object.values(remoteTypingTimeoutsRef.current).forEach((timeoutId) => window.clearTimeout(timeoutId));
+      remoteTypingTimeoutsRef.current = {};
       setActiveThread(null);
     };
   }, [entityId, entityType, appendChannelMessage, appendRoomMessage, setChannelMessages, setRoomMessages, setTyping, setActiveThread, clearChannelUnread]);
@@ -370,6 +392,14 @@ const ChatWindow = ({ room, channel }) => {
     });
     return active;
   }, [currentUser?.id, workspaceId, typingByWorkspace, channelId]);
+
+  useEffect(() => {
+    const hasTypingUsers = Object.keys(typingUsers).length > 0;
+    if (hasTypingUsers && !hadTypingUsersRef.current) {
+      setTimeout(() => scrollToBottom('smooth'), 50);
+    }
+    hadTypingUsersRef.current = hasTypingUsers;
+  }, [typingUsers]);
 
   async function handleSend(content, file) {
     try {
@@ -679,13 +709,14 @@ const ChatWindow = ({ room, channel }) => {
   }, [messages, selectedMessageId]);
 
   function handleTyping(isTyping) {
-    if (!workspaceId) return;
+    if (!workspaceId || !currentUser?.id) return;
     publishTyping(workspaceId, {
       userId: currentUser?.id,
       displayName: currentUser?.displayName,
       avatar: currentUser?.avatarUrl,
       isTyping,
-      channelId
+      channelId,
+      roomId,
     });
 
     window.clearTimeout(typingTimeoutRef.current);
@@ -694,11 +725,28 @@ const ChatWindow = ({ room, channel }) => {
         publishTyping(workspaceId, {
           userId: currentUser?.id,
           displayName: currentUser?.displayName,
+          avatar: currentUser?.avatarUrl,
           isTyping: false,
+          channelId,
+          roomId,
         });
-      }, 1800);
+      }, 900);
     }
   }
+
+  useEffect(() => () => {
+    window.clearTimeout(typingTimeoutRef.current);
+    if (workspaceId && currentUser?.id) {
+      publishTyping(workspaceId, {
+        userId: currentUser.id,
+        displayName: currentUser.displayName,
+        avatar: currentUser.avatarUrl,
+        isTyping: false,
+        channelId,
+        roomId,
+      });
+    }
+  }, [workspaceId, currentUser?.id, currentUser?.displayName, currentUser?.avatarUrl, channelId, roomId]);
 
   if (!entityId) {
     return (

@@ -1,5 +1,7 @@
 package com.bytechat.controllers;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,7 +19,10 @@ public class TypingController {
 
     @MessageMapping("/chat.typing")
     public void handleTyping(@Payload TypingEvent event) {
-        // Broadcast typing event to the specific workspace
+        if (event == null || event.getWorkspaceId() == null || event.getWorkspaceId().isBlank()) {
+            return;
+        }
+
         messagingTemplate.convertAndSend("/topic/typing." + event.getWorkspaceId(), event);
     }
 
@@ -25,9 +30,15 @@ public class TypingController {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class TypingEvent {
-        private Long workspaceId;
+        private String workspaceId;
         private Long userId;
         private String displayName;
+        private String avatar;
+        @JsonProperty("isTyping")
+        @JsonAlias({"typing"})
         private boolean isTyping;
+        private Long channelId;
+        private Long roomId;
+        private Long targetUserId;
     }
 }

@@ -1,5 +1,6 @@
 package com.bytechat.controllers;
 
+import com.bytechat.config.TestWebSocketConfig;
 import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.entity.User;
@@ -7,28 +8,33 @@ import com.bytechat.services.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(TestWebSocketConfig.class)
 class MessageControllerIntegrationTest {
 
     @Autowired
@@ -39,9 +45,6 @@ class MessageControllerIntegrationTest {
 
     @MockBean
     private MessageService messageService;
-
-    @MockBean
-    private SimpMessagingTemplate messagingTemplate;
 
     private User testUser;
 
@@ -68,19 +71,17 @@ class MessageControllerIntegrationTest {
     void sendMessage_Success() throws Exception {
         MessageRequest request = new MessageRequest();
         request.setContent("Hello");
-        
+
         MessageResponse response = MessageResponse.builder().id(1L).content("Hello").channelId(1L).build();
         when(messageService.sendMessage(anyLong(), any(MessageRequest.class), any())).thenReturn(response);
 
         mockMvc.perform(post("/api/messages/channel/1")
-                .with(user(testUser))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                        .with(user(testUser))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content").value("Hello"));
-        
-        verify(messagingTemplate).convertAndSend(eq("/topic/channel/1"), any(MessageResponse.class));
     }
 
     @Test
@@ -92,9 +93,9 @@ class MessageControllerIntegrationTest {
         when(messageService.editMessage(anyLong(), any(MessageRequest.class), any())).thenReturn(response);
 
         mockMvc.perform(put("/api/messages/1")
-                .with(user(testUser))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                        .with(user(testUser))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }

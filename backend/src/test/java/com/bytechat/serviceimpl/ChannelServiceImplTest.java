@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.Arrays;
 import java.util.List;
@@ -41,6 +42,8 @@ class ChannelServiceImplTest {
     private ChannelMemberRepository channelMemberRepository;
     @Mock
     private EmailService emailService;
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
 
     @InjectMocks
     private ChannelServiceImpl channelService;
@@ -92,6 +95,11 @@ class ChannelServiceImplTest {
         when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(channelMemberRepository.existsByChannelIdAndUserId(1L, 1L)).thenReturn(false);
+        when(messageRepository.saveAndFlush(any(Message.class))).thenAnswer(invocation -> {
+            Message message = invocation.getArgument(0);
+            message.setId(1L);
+            return message;
+        });
 
         channelService.addMember(1L, user);
 

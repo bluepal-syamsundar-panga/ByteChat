@@ -36,6 +36,8 @@ const DMChatWindow = ({ user }) => {
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [typingUser, setTypingUser] = useState(null);
   const typingTimeoutRef = useRef(null);
+  const remoteTypingTimeoutRef = useRef(null);
+  const hadTypingUserRef = useRef(false);
 
   const selectedMessage = useMemo(() => {
     const match = thread.find(m => m.id === selectedMessageId);
@@ -151,11 +153,16 @@ const DMChatWindow = ({ user }) => {
 
       // Subscribe to DM typing
       typingSub = subscribeToTyping('direct', (data) => {
+        const isTyping = data?.isTyping ?? data?.typing ?? false;
+
         if (data.targetUserId === currentUser.id && data.userId === user.id) {
-          setTypingUser(data.isTyping ? data : null);
-          if (data.isTyping) {
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-            typingTimeoutRef.current = setTimeout(() => setTypingUser(null), 3000);
+          clearTimeout(remoteTypingTimeoutRef.current);
+
+          if (isTyping) {
+            setTypingUser({ ...data, isTyping: true });
+            remoteTypingTimeoutRef.current = setTimeout(() => setTypingUser(null), 1000);
+          } else {
+            remoteTypingTimeoutRef.current = setTimeout(() => setTypingUser(null), 1000);
           }
         }
       });
@@ -169,6 +176,7 @@ const DMChatWindow = ({ user }) => {
       mounted = false;
       dmSub?.unsubscribe();
       typingSub?.unsubscribe();
+      clearTimeout(remoteTypingTimeoutRef.current);
       setActiveThread(null);
     };
   }, [setDmMessages, appendDmMessage, user?.id, currentUser?.id, setActiveThread, clearDmUnread]);
@@ -314,6 +322,8 @@ const DMChatWindow = ({ user }) => {
 
   function handleTyping(isTyping) {
     if (!currentUser?.id) return;
+    window.clearTimeout(typingTimeoutRef.current);
+
     publishTyping('direct', {
       userId: currentUser.id,
       displayName: currentUser.displayName,
@@ -321,7 +331,40 @@ const DMChatWindow = ({ user }) => {
       isTyping,
       targetUserId: user.id
     });
+
+    if (isTyping) {
+      typingTimeoutRef.current = window.setTimeout(() => {
+        publishTyping('direct', {
+          userId: currentUser.id,
+          displayName: currentUser.displayName,
+          avatar: currentUser.avatarUrl,
+          isTyping: false,
+          targetUserId: user.id,
+        });
+      }, 900);
+    }
   }
+
+  useEffect(() => () => {
+    window.clearTimeout(typingTimeoutRef.current);
+    if (currentUser?.id && user?.id) {
+      publishTyping('direct', {
+        userId: currentUser.id,
+        displayName: currentUser.displayName,
+        avatar: currentUser.avatarUrl,
+        isTyping: false,
+        targetUserId: user.id,
+      });
+    }
+  }, [currentUser?.id, currentUser?.displayName, currentUser?.avatarUrl, user?.id]);
+
+  useEffect(() => {
+    const hasTypingUser = Boolean(typingUser);
+    if (hasTypingUser && !hadTypingUserRef.current) {
+      setTimeout(() => scrollToBottom('smooth'), 50);
+    }
+    hadTypingUserRef.current = hasTypingUser;
+  }, [typingUser]);
 
   if (!user) {
     return <EmptyState title="Select a direct message" description="Open a teammate from the DM list to start chatting." />;

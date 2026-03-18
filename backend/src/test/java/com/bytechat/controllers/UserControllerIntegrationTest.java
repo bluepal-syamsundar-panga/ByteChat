@@ -6,7 +6,9 @@ import com.bytechat.entity.User;
 import com.bytechat.services.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import com.bytechat.config.TestWebSocketConfig;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.Import;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -26,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(TestWebSocketConfig.class)
 class UserControllerIntegrationTest {
 
     @Autowired

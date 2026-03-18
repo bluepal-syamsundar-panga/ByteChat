@@ -27,6 +27,7 @@ const MessageInput = ({
   const textareaRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const attachMenuRef = useRef(null);
+  const wasTypingRef = useRef(false);
 
   const canSend = useMemo(() => (content.trim().length > 0 || pendingFile) && !disabled, [content, pendingFile, disabled]);
 
@@ -68,6 +69,12 @@ const MessageInput = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => () => {
+    if (wasTypingRef.current) {
+      onTyping?.(false);
+    }
+  }, [onTyping]);
 
   function handleEmojiClick(emojiData) {
     setContent((prev) => prev + emojiData.emoji);
@@ -118,7 +125,10 @@ const MessageInput = ({
         URL.revokeObjectURL(pendingFile.previewUrl);
       }
       setPendingFile(null);
-      onTyping?.(false);
+      if (wasTypingRef.current) {
+        onTyping?.(false);
+        wasTypingRef.current = false;
+      }
       
       // Reset textarea height
       if (textareaRef.current) {
@@ -130,8 +140,12 @@ const MessageInput = ({
   }
 
   function handleChange(event) {
-    setContent(event.target.value);
-    onTyping?.(event.target.value.trim().length > 0);
+    const nextValue = event.target.value;
+    const nextIsTyping = nextValue.trim().length > 0;
+
+    setContent(nextValue);
+    onTyping?.(nextIsTyping);
+    wasTypingRef.current = nextIsTyping;
   }
 
   function handleSelectMention(member) {
@@ -280,6 +294,12 @@ const MessageInput = ({
                   if (event.key === 'Enter' && !event.shiftKey) {
                     event.preventDefault();
                     handleSubmit(event);
+                  }
+                }}
+                onBlur={() => {
+                  if (wasTypingRef.current) {
+                    onTyping?.(false);
+                    wasTypingRef.current = false;
                   }
                 }}
                 disabled={disabled}

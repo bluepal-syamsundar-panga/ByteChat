@@ -6,9 +6,10 @@ import com.bytechat.services.FileStorageService;
 import com.bytechat.util.SecurityUtils;
 
 import org.junit.jupiter.api.BeforeEach;
+import com.bytechat.config.TestWebSocketConfig;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.Import;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 import org.mockito.MockedStatic;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false) // ✅ FIX: disable security
 @ActiveProfiles("test")
+@Import(TestWebSocketConfig.class)
 class FileUploadControllerIntegrationTest {
 
     @Autowired
