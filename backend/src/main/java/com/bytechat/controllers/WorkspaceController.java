@@ -110,6 +110,18 @@ public class WorkspaceController {
         return ResponseEntity.ok(ApiResponse.success(null, "Invitation sent"));
     }
 
+    @Operation(summary = "Leave workspace", description = "Allows a non-owner member to leave the workspace and lose access.")
+    @PostMapping("/{workspaceId}/leave")
+    public ResponseEntity<ApiResponse<Void>> leaveWorkspace(
+            @Parameter(description = "ID of the workspace") @PathVariable(name = "workspaceId") Long workspaceId,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+        }
+        workspaceService.leaveWorkspace(workspaceId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null, "Left workspace successfully"));
+    }
+
     @Operation(summary = "Get workspace members", description = "Retrieves a list of all members in a specific workspace.")
     @GetMapping("/{workspaceId}/members")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getWorkspaceMembers(
@@ -132,5 +144,17 @@ public class WorkspaceController {
         }
         workspaceService.removeMember(workspaceId, userId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Member removed from workspace"));
+    }
+
+    @Operation(summary = "Delete workspace", description = "Allows the workspace owner to delete the workspace and all of its channels for every member.")
+    @DeleteMapping("/{workspaceId}")
+    public ResponseEntity<ApiResponse<Void>> deleteWorkspace(
+            @Parameter(description = "ID of the workspace") @PathVariable(name = "workspaceId") Long workspaceId,
+            @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+        }
+        workspaceService.deleteWorkspace(workspaceId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null, "Workspace deleted successfully"));
     }
 }

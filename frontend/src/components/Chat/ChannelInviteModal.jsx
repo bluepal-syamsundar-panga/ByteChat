@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Search, UserPlus, X, Loader2, Check } from 'lucide-react';
+import { Search, UserPlus, Loader2, Check } from 'lucide-react';
 import Modal from '../Shared/Modal';
 import workspaceService from '../../services/workspaceService';
 import channelService from '../../services/channelService';
 import useToastStore from '../../store/toastStore';
+import useAuthStore from '../../store/authStore';
 
 const ChannelInviteModal = ({ isOpen, onClose, channelId, workspaceId, channelName }) => {
     const [members, setMembers] = useState([]);
@@ -11,6 +12,7 @@ const ChannelInviteModal = ({ isOpen, onClose, channelId, workspaceId, channelNa
     const [loading, setLoading] = useState(false);
     const [invitingEmails, setInvitingEmails] = useState(new Set());
     const addToast = useToastStore((state) => state.addToast);
+    const currentUser = useAuthStore((state) => state.user);
 
     useEffect(() => {
         if (isOpen && workspaceId) {
@@ -48,16 +50,28 @@ const ChannelInviteModal = ({ isOpen, onClose, channelId, workspaceId, channelNa
         }
     };
 
-    const filteredMembers = members.filter(m => 
-        m.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.email?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const normalizedQuery = searchQuery.toLowerCase();
+    const filteredMembers = members.filter((member) => {
+        const isCurrentUser =
+            String(member.id) === String(currentUser?.id) ||
+            String(member.email).toLowerCase() === String(currentUser?.email).toLowerCase();
+
+        if (isCurrentUser) {
+            return false;
+        }
+
+        return (
+            member.displayName?.toLowerCase().includes(normalizedQuery) ||
+            member.email?.toLowerCase().includes(normalizedQuery)
+        );
+    });
 
     return (
         <Modal 
             isOpen={isOpen} 
             onClose={onClose} 
             title={`Invite to #${channelName}`}
+            rounded="rounded-none"
         >
             <div className="space-y-4">
                 <div className="relative group/search">

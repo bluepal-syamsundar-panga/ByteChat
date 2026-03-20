@@ -16,6 +16,7 @@ public interface WorkspaceService {
     Page<WorkspaceResponse> getUserWorkspaces(User currentUser, int page, int size);
     void joinWorkspace(Long workspaceId, User currentUser);
     void leaveWorkspace(Long workspaceId, User currentUser);
+    void deleteWorkspace(Long workspaceId, User currentUser);
     void archiveWorkspace(Long workspaceId, User currentUser);
     void inviteUser(Long workspaceId, String email, User currentUser);
     void inviteUser(Long workspaceId, InviteUserRequest request, User currentUser);

@@ -57,9 +57,11 @@ const useChatStore = create((set) => ({
     }),
   setNotifications: (notifications) =>
     set((state) => ({
-      notifications: typeof notifications === 'function'
-        ? notifications(state.notifications)
-        : notifications,
+      notifications: normalizeNotifications(
+        typeof notifications === 'function'
+          ? notifications(state.notifications)
+          : notifications
+      ),
     })),
   setActiveThread: (activeThread) => set({ activeThread }),
   setRoomMessages: (roomId, messages) =>
@@ -204,6 +206,25 @@ function dedupe(messages) {
 
 function normalizeMessages(messages) {
   return (messages ?? []).map(normalizeMessage);
+}
+
+function normalizeNotifications(notifications) {
+  const map = new Map();
+
+  (Array.isArray(notifications) ? notifications : []).forEach((notification) => {
+    if (!notification) {
+      return;
+    }
+
+    const key = notification.id ?? `${notification.type}:${notification.relatedEntityId}:${notification.createdAt}`;
+    map.set(key, notification);
+  });
+
+  return [...map.values()].sort((left, right) => {
+    const leftTime = new Date(left?.createdAt ?? 0).getTime() || 0;
+    const rightTime = new Date(right?.createdAt ?? 0).getTime() || 0;
+    return rightTime - leftTime;
+  });
 }
 
 function normalizeMessage(message) {

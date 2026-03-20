@@ -5,6 +5,7 @@ import useChatStore from '../store/chatStore';
 import useAuthStore from '../store/authStore';
 import chatService from '../services/chatService';
 import NotificationPanel from '../components/Common/NotificationPanel';
+import { connectWebSocket, disconnectWebSocket, subscribeToNotifications } from '../services/websocket';
 import logo3 from '../assets/logo3.png';
 import { ArrowRight, Sparkles, X, Layout, MessageCircle, Users, Link as LinkIcon, Search, Zap, Shield, Globe, Cpu } from 'lucide-react';
 import CreateWorkspaceModal from '../components/Workspaces/CreateWorkspaceModal';
@@ -18,7 +19,6 @@ const LandingPage = () => {
   const logout = useAuthStore((state) => state.logout);
 
   useEffect(() => {
-
     const fetchWorkspaces = async () => {
       try {
         const response = await chatService.getWorkspaces();
@@ -33,6 +33,20 @@ const LandingPage = () => {
 
     fetchWorkspaces();
   }, [setWorkspaces]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return undefined;
+    }
+
+    connectWebSocket(() => {
+      subscribeToNotifications(user.id, (notification) => {
+        useChatStore.getState().setNotifications((prev) => [notification, ...prev]);
+      });
+    });
+
+    return () => disconnectWebSocket();
+  }, [user?.id]);
 
   const features = [
     {
@@ -140,11 +154,6 @@ const LandingPage = () => {
                 <p className="text-[13px] text-[#6b6a6b] font-medium leading-normal mb-3 line-clamp-2 min-h-[36px]">
                   {ws.description || 'Modern collaboration for teams.'}
                 </p>
-
-                <div className="flex items-center gap-2 text-[11px] text-[#3f0e40] font-bold bg-[#3f0e40]/5 px-2.5 py-1 rounded-full mb-3">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                  <span>Active now</span>
-                </div>
 
                 <div className="mt-2 w-full pt-3 border-t border-black/5 flex items-center justify-between text-[#3f0e40] font-bold text-[13px] opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
                   <span>Open workspace</span>

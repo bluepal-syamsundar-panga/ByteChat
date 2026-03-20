@@ -170,6 +170,21 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     @Transactional
+    public void deleteWorkspace(Long workspaceId, User currentUser) {
+        log.info("Deleting workspace {} by user {}", workspaceId, currentUser.getEmail());
+        Workspace workspace = getWorkspaceOrThrow(workspaceId);
+
+        if (!workspace.getOwner().getId().equals(currentUser.getId())) {
+            log.warn("Delete failed: User {} is not the owner of workspace {}", currentUser.getEmail(), workspaceId);
+            throw new com.bytechat.exception.UnauthorizedException("Only the workspace owner can delete this workspace.");
+        }
+
+        workspaceRepository.delete(workspace);
+        log.info("Workspace {} deleted successfully", workspaceId);
+    }
+
+    @Override
+    @Transactional
     public void removeMember(Long workspaceId, Long userId, User currentUser) {
         log.info("Removing member {} from workspace {} by user {}", userId, workspaceId, currentUser.getEmail());
         Workspace workspace = getWorkspaceOrThrow(workspaceId);
@@ -257,6 +272,14 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         if (workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, invitedUser.getId())) {
             log.warn("Invitation failed: User {} is already in workspace {}", email, workspaceId);
             throw new com.bytechat.exception.ConflictException("User is already in this workspace");
+        }
+
+        boolean hasPendingInvite = !notificationRepository
+                .findByRecipientIdAndTypeAndRelatedEntityIdAndIsReadFalse(invitedUser.getId(), "WORKSPACE_INVITE", workspaceId)
+                .isEmpty();
+        if (hasPendingInvite) {
+            log.warn("Invitation failed: User {} already has a pending invite for workspace {}", email, workspaceId);
+            throw new com.bytechat.exception.ConflictException("You already sent invitation");
         }
 
         notificationService.sendNotification(

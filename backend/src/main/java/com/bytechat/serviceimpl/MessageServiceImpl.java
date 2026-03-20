@@ -215,6 +215,10 @@ public class MessageServiceImpl implements MessageService {
             log.info("Marked {} messages as read in channel {} for user {}", reads.size(), channelId, currentUser.getEmail());
         }
 
+        unreadMessages.forEach(message ->
+                notificationService.markRelatedNotificationsAsRead(currentUser.getId(), "MENTION", message.getId())
+        );
+
         // Also mark channel notifications (mentions, etc.) as read
         notificationService.markChannelNotificationsAsRead(currentUser.getId(), channelId);
     }

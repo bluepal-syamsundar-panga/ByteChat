@@ -81,6 +81,20 @@ const DMChatWindow = ({ user }) => {
     scrollRef.current?.scrollIntoView({ behavior });
   };
 
+  function clearConversationNotifications(messageIds = []) {
+    if (!messageIds.length) return;
+    const messageIdSet = new Set(messageIds.map((id) => String(id)));
+    useChatStore.getState().setNotifications((prev) =>
+      prev.filter(
+        (notification) =>
+          !(
+            (notification?.type === 'DIRECT_MESSAGE' || notification?.type === 'MENTION') &&
+            messageIdSet.has(String(notification?.relatedEntityId))
+          )
+      )
+    );
+  }
+
   useEffect(() => {
     if (!user?.id) {
       return;
@@ -111,12 +125,7 @@ const DMChatWindow = ({ user }) => {
           setDmMessages(user.id, newMessages);
           await dmService.markAsRead(user.id);
           clearDmUnread(user.id);
-          
-          // Clear DM notifications in local store
-          const notificationsResponse = await notificationService.getNotifications();
-          const latestNotifications = notificationsResponse?.data ?? notificationsResponse;
-          const { setNotifications } = useChatStore.getState();
-          setNotifications(latestNotifications);
+          clearConversationNotifications(newMessages.map((message) => message.id));
 
           if (isInitial) {
             // Instant scroll on first load
@@ -148,6 +157,13 @@ const DMChatWindow = ({ user }) => {
           const container = messageContainerRef.current;
           const isAtBottom = container ? (container.scrollHeight - container.scrollTop <= container.clientHeight + 100) : true;
           appendDmMessage(user.id, message);
+          if (message.senderId === user.id) {
+            clearDmUnread(user.id);
+            dmService.markAsRead(user.id).catch((error) => {
+              console.error('Failed to mark DM conversation as read', error);
+            });
+            clearConversationNotifications([message.id]);
+          }
           if (isAtBottom) setTimeout(() => scrollToBottom('smooth'), 50);
         }
       });

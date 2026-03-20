@@ -6,6 +6,7 @@ import com.bytechat.entity.*;
 import com.bytechat.repository.*;
 import com.bytechat.services.ChannelService;
 import com.bytechat.services.NotificationService;
+import com.bytechat.exception.ConflictException;
 import com.bytechat.exception.UnauthorizedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -131,5 +132,43 @@ class WorkspaceServiceImplTest {
         when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
 
         assertThrows(UnauthorizedException.class, () -> workspaceService.archiveWorkspace(1L, otherUser));
+    }
+
+    @Test
+    void deleteWorkspace_Success() {
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+
+        workspaceService.deleteWorkspace(1L, owner);
+
+        verify(workspaceRepository).delete(workspace);
+    }
+
+    @Test
+    void deleteWorkspace_NotOwner_ThrowsException() {
+        User otherUser = User.builder().id(2L).email("other@example.com").build();
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+
+        assertThrows(UnauthorizedException.class, () -> workspaceService.deleteWorkspace(1L, otherUser));
+        verify(workspaceRepository, never()).delete(any(Workspace.class));
+    }
+
+    @Test
+    void inviteUser_WithPendingInvite_ThrowsConflictException() {
+        User invitedUser = User.builder().id(2L).email("member@example.com").displayName("Member").build();
+
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+        when(userRepository.findByEmail("member@example.com")).thenReturn(Optional.of(invitedUser));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, invitedUser.getId())).thenReturn(false);
+        when(notificationRepository.findByRecipientIdAndTypeAndRelatedEntityIdAndIsReadFalse(invitedUser.getId(), "WORKSPACE_INVITE", 1L))
+                .thenReturn(Collections.singletonList(Notification.builder().id(99L).build()));
+
+        ConflictException exception = assertThrows(
+                ConflictException.class,
+                () -> workspaceService.inviteUser(1L, "member@example.com", owner)
+        );
+
+        assertEquals("You already sent invitation", exception.getMessage());
+        verify(notificationService, never()).sendNotification(anyLong(), anyString(), anyString(), anyLong());
+        verify(emailService, never()).sendInvitation(anyString(), anyString(), anyString(), anyString(), anyString());
     }
 }

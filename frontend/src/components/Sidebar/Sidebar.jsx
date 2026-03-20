@@ -88,7 +88,9 @@ const Sidebar = ({ onAcceptInvite }) => {
             setSidebarChannels(res.data.data || []);
           } else {
             res = await channelService.getWorkspaceChannels(activeWorkspaceId);
-            const data = res.data.data || [];
+            const data = (res.data.data || []).map((channel) =>
+              channel.id === activeChannelId ? { ...channel, unreadCount: 0 } : channel
+            );
             setChannels(data);
             setSidebarChannels(data);
           }
@@ -100,7 +102,7 @@ const Sidebar = ({ onAcceptInvite }) => {
       };
       fetchChannels();
     }
-  }, [activeWorkspaceId, sidebarMode, setChannels]);
+  }, [activeWorkspaceId, activeChannelId, sidebarMode, setChannels, setSidebarChannels]);
 
   useEffect(() => {
     if (activeChannelId) {
@@ -418,7 +420,7 @@ const SidebarLink = ({ to, isActive, icon, title, subtitle, badge, isArchived, i
       <div className={`mt-0.5 shrink-0 ${isActive ? 'text-white' : 'text-white/40 group-hover:text-white/80'}`}>{icon}</div>
       <div className="min-w-0 flex-1">
         <div className={`truncate text-sm font-bold tracking-tight ${isDeleted ? 'line-through text-red-300' : ''}`}>{title}</div>
-        {subtitle && <div className="truncate text-[11px] font-bold text-white/30 group-hover:text-white/40 mt-0.5 transition-smooth">{subtitle}</div>}
+        {subtitle && <div className="max-w-[180px] truncate text-[11px] font-bold text-white/30 group-hover:text-white/40 mt-0.5 transition-smooth">{subtitle}</div>}
       </div>
       {badge && (
         <div className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-sm ring-2 ring-[#2c0b2d]">

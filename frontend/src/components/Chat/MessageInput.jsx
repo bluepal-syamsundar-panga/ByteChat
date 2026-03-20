@@ -263,6 +263,11 @@ const MessageInput = ({
 
   function handleSelectMention(member) {
     setContent((current) => current.replace(/@([A-Za-z0-9._-]*)$/, `@${member.displayName.replace(/\s+/g, '')} `));
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      const nextLength = textareaRef.current?.value?.length ?? 0;
+      textareaRef.current?.setSelectionRange?.(nextLength, nextLength);
+    });
   }
 
   return (

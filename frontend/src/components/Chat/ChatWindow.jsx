@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import chatService from '../../services/chatService';
 import userService from '../../services/userService';
 import channelService from '../../services/channelService';
+import workspaceService from '../../services/workspaceService';
 import {
   connectWebSocket,
   publishChannelMessage,
@@ -35,6 +36,7 @@ const ChatWindow = ({ room, channel }) => {
     channelMessages,
     channels,
     sidebarChannels,
+    workspaces,
     onlineUsers,
     typingByWorkspace,
     setRoomMessages,
@@ -115,6 +117,12 @@ const ChatWindow = ({ room, channel }) => {
     () => channels.find((item) => item.id === channelId) || channel,
     [channels, channel, channelId]
   );
+  const activeWorkspace = useMemo(
+    () => workspaces.find((item) => String(item.id) === String(workspaceId)) || room,
+    [workspaces, workspaceId, room]
+  );
+  const isWorkspaceOwner = String(activeWorkspace?.ownerId ?? activeWorkspace?.createdById) === String(currentUser?.id);
+  const isDefaultChannel = Boolean(effectiveChannel?.isDefault || effectiveChannel?.name === 'general');
   const selectedMessage = useMemo(() => {
     const match = messages.find(m => m.id === selectedMessageId);
     return match && !match.isDeleted ? match : null;
@@ -210,6 +218,20 @@ const ChatWindow = ({ room, channel }) => {
     refreshChannelContext();
   }
 
+  function clearMentionNotificationsForMessages(messageIds = []) {
+    if (!messageIds.length) return;
+    const messageIdSet = new Set(messageIds.map((id) => String(id)));
+    useChatStore.getState().setNotifications((prev) =>
+      prev.filter(
+        (notification) =>
+          !(
+            notification?.type === 'MENTION' &&
+            messageIdSet.has(String(notification?.relatedEntityId))
+          )
+      )
+    );
+  }
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -248,7 +270,7 @@ const ChatWindow = ({ room, channel }) => {
         console.log('Loaded', newMessages.length, 'messages for channel', entityId);
         setChannelMessages(entityId, newMessages);
 
-        // Fetch members separately — failure here must NOT block message display
+        // Fetch members separately Ã¢â‚¬â€ failure here must NOT block message display
         try {
           const membersResponse = await userService.getChannelMembers(entityId);
           const membersData = membersResponse?.data?.data || membersResponse?.data || membersResponse;
@@ -265,10 +287,7 @@ const ChatWindow = ({ room, channel }) => {
         // Auto-clear notifications
         try {
           await notificationService.markRoomRead(entityId);
-          const notificationsResponse = await notificationService.getNotifications();
-          const latestNotifications = notificationsResponse?.data ?? notificationsResponse;
-          const { setNotifications } = useChatStore.getState();
-          setNotifications(latestNotifications);
+          clearMentionNotificationsForMessages(newMessages.map((message) => message.id));
         } catch (e) {
           console.error('Failed to clear notifications', e);
         }
@@ -284,6 +303,16 @@ const ChatWindow = ({ room, channel }) => {
                 const container = messageContainerRef.current;
                 const isAtBottom = container ? (container.scrollHeight - container.scrollTop <= container.clientHeight + 100) : true;
                 appendChannelMessage(entityId, message);
+                if (message?.senderId && String(message.senderId) !== String(currentUser?.id)) {
+                  clearChannelUnread(entityId);
+                  chatService.markChannelAsRead(entityId).catch((err) => {
+                    console.error('Failed to mark active channel as read', err);
+                  });
+                  chatService.markAsRead(message.id).catch((err) => {
+                    console.error('Failed to mark active message as read', err);
+                  });
+                  clearMentionNotificationsForMessages([message.id]);
+                }
                 if (message?.type === 'SYSTEM') {
                   syncChannelMembershipAfterSystemMessage(message);
                   setTimeout(() => refreshChannelMessages(), 250);
@@ -377,6 +406,34 @@ const ChatWindow = ({ room, channel }) => {
 
     previousMemberCountRef.current = currentCount;
   }, [channelId, members.length]);
+
+  useEffect(() => {
+    if (entityType !== 'channel' || !channelId || !workspaceId) {
+      return undefined;
+    }
+
+    const refreshContextIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshChannelContext();
+      }
+    };
+
+    const intervalId = window.setInterval(refreshContextIfVisible, 5000);
+    window.addEventListener('focus', refreshContextIfVisible);
+    document.addEventListener('visibilitychange', refreshContextIfVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshContextIfVisible);
+      document.removeEventListener('visibilitychange', refreshContextIfVisible);
+    };
+  }, [entityType, channelId, workspaceId]);
+
+  useEffect(() => {
+    if (showChannelInfo && entityType === 'channel') {
+      refreshChannelContext();
+    }
+  }, [showChannelInfo, entityType, channelId, workspaceId]);
 
   const typingUsers = useMemo(() => {
     const entries = Object.entries(typingByWorkspace[workspaceId] ?? {});
@@ -600,11 +657,18 @@ const ChatWindow = ({ room, channel }) => {
 
   const confirmLeaveChannel = async () => {
     try {
-      await channelService.leaveChannel(channelId);
-      removeMemberFromLocalState((member) => String(member.id) === String(currentUser?.id));
-      removeCurrentChannelFromStore();
+      if (isDefaultChannel) {
+        await workspaceService.leaveWorkspace(workspaceId);
+        useChatStore.getState().setWorkspaces((prev) => prev.filter((item) => String(item.id) !== String(workspaceId)));
+        useChatStore.getState().setChannels((prev) => prev.filter((item) => String(item.workspaceId) !== String(workspaceId)));
+        useChatStore.getState().setSidebarChannels((prev = []) => prev.filter((item) => String(item.workspaceId) !== String(workspaceId)));
+      } else {
+        await channelService.leaveChannel(channelId);
+        removeMemberFromLocalState((member) => String(member.id) === String(currentUser?.id));
+        removeCurrentChannelFromStore();
+      }
       setShowLeaveModal(false);
-      navigate(`/chat/workspace/${workspaceId}`);
+      navigate('/');
     } catch (error) {
       console.error('Failed to leave channel:', error);
       addToast(error.response?.data?.message || 'Failed to leave channel.', 'error');
@@ -632,18 +696,32 @@ const ChatWindow = ({ room, channel }) => {
 
   const confirmDeleteChannel = async () => {
     try {
-      await channelService.deleteChannel(channelId);
-      // Update store
-      const { channels, sidebarChannels, setChannels, setSidebarChannels } = useChatStore.getState();
-      setChannels(channels.map(c => c.id === channelId ? { ...c, isDeleted: true } : c));
-      setSidebarChannels((sidebarChannels || []).map(c => c.id === channelId ? { ...c, isDeleted: true } : c));
+      if (isDefaultChannel) {
+        await workspaceService.deleteWorkspace(workspaceId);
+        const { workspaces, channels, sidebarChannels, setWorkspaces, setChannels, setSidebarChannels } = useChatStore.getState();
+        setWorkspaces(workspaces.filter((item) => String(item.id) !== String(workspaceId)));
+        setChannels(channels.filter((item) => String(item.workspaceId) !== String(workspaceId)));
+        setSidebarChannels((sidebarChannels || []).filter((item) => String(item.workspaceId) !== String(workspaceId)));
+      } else {
+        await channelService.deleteChannel(channelId);
+        // Update store
+        const { channels, sidebarChannels, setChannels, setSidebarChannels } = useChatStore.getState();
+        setChannels(channels.map(c => c.id === channelId ? { ...c, isDeleted: true } : c));
+        setSidebarChannels((sidebarChannels || []).map(c => c.id === channelId ? { ...c, isDeleted: true } : c));
+      }
       
       setShowChannelDeleteModal(false);
-      addToast('Channel moved to trash', 'success');
-      navigate(`/chat/workspace/${workspaceId}`);
+      addToast(isDefaultChannel ? 'Workspace deleted successfully' : 'Channel moved to trash', 'success');
+      navigate('/');
     } catch (error) {
       console.error('Failed to delete channel:', error);
-      addToast(error.response?.data?.message || 'Only the creator or workspace owner can delete this channel.', 'error');
+      addToast(
+        error.response?.data?.message ||
+        (isDefaultChannel
+          ? 'Only the workspace owner can delete this workspace.'
+          : 'Only the creator or workspace owner can delete this channel.'),
+        'error'
+      );
     }
   };
 
@@ -794,20 +872,22 @@ const ChatWindow = ({ room, channel }) => {
                 {name}
               </div>
               <div className="mt-1 text-[10px] font-bold text-[#3f0e40] animate-in fade-in slide-in-from-left-2 duration-300">
-                {members.length} members • Click for info
+                {members.length} members . Click for info
+              </div>
             </div>
           </div>
-        </div>
 
         <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setShowInviteModal(true)}
-            className="hidden sm:flex items-center justify-center gap-2 bg-[#3f0e40] text-white px-6 h-9 !rounded-full font-bold text-sm transition-smooth hover:bg-[#350d36] hover:scale-[1.05] active:scale-[0.98] shadow-lg shadow-purple-900/10"
-          >
-            <Users size={16} />
-            <span>Invite</span>
-          </button>
+          {!isDefaultChannel && (
+            <button
+              type="button"
+              onClick={() => setShowInviteModal(true)}
+              className="hidden sm:flex items-center justify-center gap-2 bg-[#3f0e40] text-white px-6 h-9 !rounded-full font-bold text-sm transition-smooth hover:bg-[#350d36] hover:scale-[1.05] active:scale-[0.98] shadow-lg shadow-purple-900/10"
+            >
+              <Users size={16} />
+              <span>Invite</span>
+            </button>
+          )}
           
           <div className="relative" ref={menuRef}>
             <button
@@ -825,7 +905,7 @@ const ChatWindow = ({ room, channel }) => {
             </button>
             
             {showMenu && (
-              <div className="absolute right-0 top-full mt-3 w-72 bg-white rounded-2xl shadow-2xl z-50 py-2 border border-black/5 animate-in fade-in slide-in-from-top-4 duration-300 origin-top-right">
+              <div className="absolute right-0 top-full mt-3 w-56 bg-white rounded-2xl shadow-2xl z-50 py-2 border border-black/5 animate-in fade-in slide-in-from-top-4 duration-300 origin-top-right">
                 
                 {selectedMessage ? (
                   /* --- MESSAGE OPTIONS --- */
@@ -883,7 +963,7 @@ const ChatWindow = ({ room, channel }) => {
                   <>
 
                     
-                    {!effectiveChannel?.isArchived && (
+                    {!isDefaultChannel && !effectiveChannel?.isArchived && (
                       <button 
                         onClick={() => {
                           handleArchive();
@@ -896,17 +976,19 @@ const ChatWindow = ({ room, channel }) => {
                       </button>
                     )}
 
-                    <button 
-                      onClick={() => {
-                        handleLeaveChannel();
-                        setShowMenu(false);
-                      }}
-                      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
-                    >
-                      <LogOut size={16} className="text-[#6b6a6b]" /> Leave Channel
-                    </button>
+                    {(!isDefaultChannel || !isWorkspaceOwner) && (
+                      <button 
+                        onClick={() => {
+                          handleLeaveChannel();
+                          setShowMenu(false);
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
+                      >
+                        <LogOut size={16} className="text-[#6b6a6b]" /> {isDefaultChannel ? 'Leave Workspace' : 'Leave Channel'}
+                      </button>
+                    )}
 
-                    {(effectiveChannel?.role === 'ADMIN' || currentUser?.id === room?.ownerId) && (
+                    {((!isDefaultChannel && effectiveChannel?.role === 'ADMIN') || isWorkspaceOwner) && (
                       <button 
                         onClick={() => {
                           handleDeleteChannel();
@@ -914,21 +996,23 @@ const ChatWindow = ({ room, channel }) => {
                         }}
                         className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10"
                       >
-                        <Trash2 size={16} className="text-[#e01e5a]" /> Delete Channel
+                        <Trash2 size={16} className="text-[#e01e5a]" /> {isDefaultChannel ? 'Delete Workspace' : 'Delete Channel'}
                       </button>
                     )}
                   </>
                 )}
 
-                <button 
-                  onClick={() => {
-                    setShowInviteModal(true);
-                    setShowMenu(false);
-                  }}
-                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5 lg:hidden border-t border-black/5"
-                >
-                  <Users size={16} className="text-[#6b6a6b]" /> Invite member
-                </button>
+                {!isDefaultChannel && (
+                  <button 
+                    onClick={() => {
+                      setShowInviteModal(true);
+                      setShowMenu(false);
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5 lg:hidden border-t border-black/5"
+                  >
+                    <Users size={16} className="text-[#6b6a6b]" /> Invite member
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -940,7 +1024,7 @@ const ChatWindow = ({ room, channel }) => {
         onClose={() => setShowChannelInfo(false)}
         channel={effectiveChannel}
         members={members}
-        isWorkspaceOwner={room?.ownerId === currentUser?.id}
+        isWorkspaceOwner={isWorkspaceOwner}
         onMemberPromoted={(userId) => {
           setMembers((prev) =>
             prev.map((member) =>
@@ -1083,10 +1167,10 @@ const ChatWindow = ({ room, channel }) => {
               Start the conversation with a welcome note or a friendly wave.
             </div>
             <button 
-              onClick={() => handleSend(`Hey ${currentUser?.displayName?.split(' ')[0] || 'there'}! 👋`)}
+              onClick={() => handleSend('Hello everyone,')}
               className="mt-8 bg-[#2c0b2d] text-white px-6 py-3 rounded-2xl font-bold transition-smooth hover:bg-[#1a061b] hover:scale-110 active:scale-95 shadow-lg shadow-[#2c0b2e]/20"
             >
-              Say Hello! 👋
+              Say Hello!
             </button>
           </div>
         ) : (
@@ -1262,26 +1346,29 @@ const ChatWindow = ({ room, channel }) => {
       <Modal
         isOpen={showLeaveModal}
         onClose={() => setShowLeaveModal(false)}
-        title="Leave Channel"
+        title={isDefaultChannel ? "Leave Workspace" : "Leave Channel"}
         rounded="rounded-none"
       >
         <div className="p-1">
           <p className="text-sm text-gray-500 mb-8 leading-relaxed">
-            Are you sure you want to leave <strong>#{channel?.name}</strong>?
-            {channel?.isPrivate ? " Since this is a private channel, you'll need an invite to join again." : " You can rejoin this public channel anytime."}
+            {isDefaultChannel ? (
+              <>Are you sure you want to leave <strong>{activeWorkspace?.name}</strong>? You will lose access to this workspace and all of its channels.</>
+            ) : (
+              <>Are you sure you want to leave <strong>#{channel?.name}</strong>?{channel?.isPrivate ? " Since this is a private channel, you'll need an invite to join again." : " You can rejoin this public channel anytime."}</>
+            )}
           </p>
           <div className="flex gap-3">
             <button
               onClick={() => setShowLeaveModal(false)}
               className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
             >
-              Keep Channel
+              {isDefaultChannel ? 'Stay in Workspace' : 'Keep Channel'}
             </button>
             <button
               onClick={confirmLeaveChannel}
               className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all shadow-md active:scale-95"
             >
-              Leave Channel
+              {isDefaultChannel ? 'Leave Workspace' : 'Leave Channel'}
             </button>
           </div>
         </div>
@@ -1326,12 +1413,16 @@ const ChatWindow = ({ room, channel }) => {
       <Modal
         isOpen={showChannelDeleteModal}
         onClose={() => setShowChannelDeleteModal(false)}
-        title="Move to Trash"
+        title={isDefaultChannel ? "Delete Workspace" : "Move to Trash"}
       >
         <div className="p-1">
           <p className="text-sm text-gray-500 mb-8 leading-relaxed">
-            Move <strong>#{channel?.name}</strong> to Trash? 
-            This channel will be hidden for everyone, but can be restored by the workspace owner or creator from the Trash Bin.
+            {isDefaultChannel ? (
+              <>Delete <strong>{activeWorkspace?.name}</strong>? This will remove the entire workspace, including all channels, for every member.</>
+            ) : (
+              <>Move <strong>#{channel?.name}</strong> to Trash? 
+              This channel will be hidden for everyone, but can be restored by the workspace owner or creator from the Trash Bin.</>
+            )}
           </p>
           <div className="flex gap-3">
             <button
@@ -1344,7 +1435,7 @@ const ChatWindow = ({ room, channel }) => {
               onClick={confirmDeleteChannel}
               className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all shadow-md active:scale-95"
             >
-              Move to Trash
+              {isDefaultChannel ? 'Delete Workspace' : 'Move to Trash'}
             </button>
           </div>
         </div>
