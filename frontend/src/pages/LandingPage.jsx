@@ -76,7 +76,7 @@ const LandingPage = () => {
 
           {user && (
             <div className="mr-2">
-              <NotificationPanel variant="light" position="bottom" />
+              <NotificationPanel variant="light" position="bottom" allowedTypes={['WORKSPACE_INVITE']} />
             </div>
           )}
 

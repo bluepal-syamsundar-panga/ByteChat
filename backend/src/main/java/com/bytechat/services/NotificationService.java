@@ -12,5 +12,6 @@ public interface NotificationService {
     void markWorkspaceNotificationsAsRead(Long userId, Long workspaceId);
     void markChannelNotificationsAsRead(Long userId, Long channelId);
     void markDMNotificationsAsRead(Long userId, Long senderId);
+    void markRelatedNotificationsAsRead(Long userId, String type, Long relatedEntityId);
     Notification getNotification(Long notificationId);
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import workspaceService from '../../services/workspaceService';
 import useAuthStore from '../../store/authStore';
+import useChatStore from '../../store/chatStore';
 
 const CreateWorkspaceModal = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -60,6 +61,7 @@ const CreateWorkspaceModal = ({ isOpen, onClose }) => {
         
         // Store auth tokens and user info
         const login = useAuthStore.getState().login;
+        const { setWorkspaces, setActiveWorkspaceId } = useChatStore.getState();
         
         login(
           {
@@ -72,6 +74,12 @@ const CreateWorkspaceModal = ({ isOpen, onClose }) => {
           auth.accessToken,
           auth.refreshToken
         );
+
+        setWorkspaces((prev = []) => {
+          const exists = prev.some((item) => String(item.id) === String(workspace.id));
+          return exists ? prev : [...prev, workspace];
+        });
+        setActiveWorkspaceId(workspace.id);
 
         // Navigate to the newly created workspace
         navigate(`/chat/workspace/${workspace.id}`);

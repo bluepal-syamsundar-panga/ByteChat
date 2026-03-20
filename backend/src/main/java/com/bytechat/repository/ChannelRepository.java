@@ -12,9 +12,10 @@ import java.util.List;
 public interface ChannelRepository extends JpaRepository<Channel, Long> {
        List<Channel> findByWorkspaceId(Long workspaceId);
 
-       @Query("SELECT DISTINCT c FROM Channel c JOIN c.memberships cm " +
-                     "WHERE c.workspace.id = :workspaceId AND cm.user.id = :userId " +
-                     "AND c.isDeleted = false AND c.isArchived = false AND cm.isArchived = false")
+       @Query("SELECT DISTINCT c FROM Channel c LEFT JOIN c.memberships cm WITH cm.user.id = :userId " +
+                     "WHERE c.workspace.id = :workspaceId " +
+                     "AND c.isDeleted = false AND c.isArchived = false " +
+                     "AND ((c.isPrivate = false) OR (cm.id IS NOT NULL AND cm.isArchived = false))")
        List<Channel> findVisibleChannels(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId);
 
        @Query("SELECT DISTINCT c FROM Channel c JOIN c.memberships cm " +

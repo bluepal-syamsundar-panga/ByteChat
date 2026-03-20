@@ -118,10 +118,15 @@ const Sidebar = ({ onAcceptInvite }) => {
   useEffect(() => {
     let mounted = true;
     async function loadData() {
+      if (!activeWorkspaceId) {
+        setSharedUsers([]);
+        return;
+      }
       try {
-        const usersResp = await userService.getSharedRoomUsers();
+        const usersResp = await workspaceService.getWorkspaceMembers(activeWorkspaceId);
+        const usersData = usersResp?.data?.data || usersResp?.data || usersResp;
         if (mounted) {
-          setSharedUsers(Array.isArray(usersResp?.data) ? usersResp.data : []);
+          setSharedUsers(Array.isArray(usersData) ? usersData : []);
         }
       } catch (e) {
         console.error('Failed to load sidebar data', e);
@@ -133,7 +138,7 @@ const Sidebar = ({ onAcceptInvite }) => {
       mounted = false;
       clearInterval(interval);
     };
-  }, [setSharedUsers]);
+  }, [activeWorkspaceId, setSharedUsers]);
 
   const visibleDMs = sharedUsers.filter(u => u.id !== user?.id);
 

@@ -60,6 +60,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
         // Create default #general channel
         channelService.createChannel(workspace.getId(), "general", "Default channel for " + workspace.getName(), false, true, currentUser);
+        addUserToDefaultChannels(workspace.getId(), currentUser);
         
         // Send workspace success email
         try {
@@ -146,22 +147,8 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                     .build();
             workspaceMemberRepository.save(member);
             log.info("User {} added as member to workspace {}", currentUser.getEmail(), workspaceId);
-            
-            // Add to default channel
-            List<Channel> channels = channelRepository.findByWorkspaceId(workspaceId);
-            for (Channel channel : channels) {
-                if (channel.isDefault()) {
-                    if (!channelMemberRepository.existsByChannelIdAndUserId(channel.getId(), currentUser.getId())) {
-                        ChannelMember cm = ChannelMember.builder()
-                                .channel(channel)
-                                .user(currentUser)
-                                .role(ChannelRole.MEMBER)
-                                .build();
-                        channelMemberRepository.save(cm);
-                        log.info("User {} added to default channel {} in workspace {}", currentUser.getEmail(), channel.getName(), workspaceId);
-                    }
-                }
-            }
+
+            addUserToDefaultChannels(workspaceId, currentUser);
         }
     }
 
@@ -340,6 +327,28 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private Workspace getWorkspaceOrThrow(Long workspaceId) {
         return workspaceRepository.findById(workspaceId)
                 .orElseThrow(() -> new RuntimeException("Workspace not found"));
+    }
+
+    private void addUserToDefaultChannels(Long workspaceId, User user) {
+        List<Channel> channels = channelRepository.findByWorkspaceId(workspaceId);
+        for (Channel channel : channels) {
+            if (!isWorkspaceWideDefaultChannel(channel)) {
+                continue;
+            }
+            if (!channelMemberRepository.existsByChannelIdAndUserId(channel.getId(), user.getId())) {
+                ChannelMember membership = ChannelMember.builder()
+                        .channel(channel)
+                        .user(user)
+                        .role(ChannelRole.MEMBER)
+                        .build();
+                channelMemberRepository.save(membership);
+                log.info("User {} added to default channel {} in workspace {}", user.getEmail(), channel.getName(), workspaceId);
+            }
+        }
+    }
+
+    private boolean isWorkspaceWideDefaultChannel(Channel channel) {
+        return channel != null && (channel.isDefault() || "general".equalsIgnoreCase(channel.getName()));
     }
 
     private WorkspaceResponse mapToResponse(Workspace workspace) {

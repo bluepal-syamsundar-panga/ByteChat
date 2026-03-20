@@ -194,6 +194,7 @@ public class MessageServiceImpl implements MessageService {
                     .build();
             messageReadRepository.save(messageRead);
         }
+        notificationService.markRelatedNotificationsAsRead(currentUser.getId(), "MENTION", messageId);
     }
 
     @Override

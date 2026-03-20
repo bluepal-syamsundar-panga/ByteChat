@@ -27,7 +27,7 @@ const MessageBubble = ({ message, isSelected, onClick, onReact, participants = [
       }
       // Add highlighted mention
       parts.push(
-        <span key={match.index} className="rounded-md bg-blue-50 px-1.5 py-0.5 font-bold text-blue-600 ring-1 ring-blue-100 mx-0.5">
+        <span key={match.index} className="mx-0.5 font-bold text-blue-600">
           {match[0]}
         </span>
       );
@@ -57,7 +57,8 @@ const MessageBubble = ({ message, isSelected, onClick, onReact, participants = [
         ? import.meta.env.VITE_API_URL.split('/api')[0] 
         : 'http://localhost:8080';
       const url = message.content.startsWith('http') ? message.content : `${baseUrl}${message.content}`;
-      const fileName = decodeURIComponent(url.split('/').pop() || 'attachment');
+      const rawFileName = decodeURIComponent(url.split('/').pop() || 'attachment');
+      const fileName = rawFileName.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_/i, '');
       const normalizedName = fileName.toLowerCase();
       const looksLikeVoiceNote = normalizedName.includes('voice-note');
       const isAudio = message.type === 'AUDIO' || looksLikeVoiceNote || /\.(mp3|wav|m4a|aac|oga|ogg|opus)$/i.test(normalizedName);

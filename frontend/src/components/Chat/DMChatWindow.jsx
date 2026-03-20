@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import dmService from '../../services/dmService';
 import chatService from '../../services/chatService';
+import notificationService from '../../services/notificationService';
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
 import MessageBubble from './MessageBubble';
@@ -112,10 +113,10 @@ const DMChatWindow = ({ user }) => {
           clearDmUnread(user.id);
           
           // Clear DM notifications in local store
+          const notificationsResponse = await notificationService.getNotifications();
+          const latestNotifications = notificationsResponse?.data ?? notificationsResponse;
           const { setNotifications } = useChatStore.getState();
-          setNotifications(prev => prev.map(n => 
-            (n.type === 'DIRECT_MESSAGE') ? { ...n, isRead: true, read: true } : n
-          ));
+          setNotifications(latestNotifications);
 
           if (isInitial) {
             // Instant scroll on first load

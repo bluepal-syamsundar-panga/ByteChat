@@ -1,5 +1,5 @@
-import { Bell, LogOut, MessageSquare, Plus, UserCircle, Home, Archive, Trash2 } from 'lucide-react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Plus, Home, Archive, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
 import NotificationPanel from '../Common/NotificationPanel';
@@ -25,14 +25,15 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
     : 'BC';
 
   return (
-    <div className="flex h-full w-[68px] flex-col items-center bg-[#2c0b2e] py-4 text-white">
-      {/* Branding */}
-      <div 
-        onClick={() => navigate('/')}
-        className="mb-4 flex h-16 w-full items-center justify-center cursor-pointer group"
-      >
-        <div className="flex h-12 w-12 items-center justify-center transition-transform group-hover:scale-110">
-          <img src={logo3} alt="ByteChat" className="h-full w-full object-contain" />
+    <div className="flex h-full w-[68px] flex-col items-center bg-[#2c0b2e] py-2 text-white">
+      <div className="mb-3 flex w-full flex-col items-center gap-3">
+        <div 
+          onClick={() => navigate('/')}
+          className="flex h-16 w-full items-center justify-center cursor-pointer group"
+        >
+          <div className="flex h-12 w-12 items-center justify-center transition-transform group-hover:scale-110">
+            <img src={logo3} alt="ByteChat" className="h-full w-full object-contain" />
+          </div>
         </div>
       </div>
 
@@ -75,15 +76,14 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
 
         {/* Notifications */}
         <div className="relative">
-          <NotificationPanel />
+          <NotificationPanel allowedTypes={['MENTION', 'CHANNEL_INVITE', 'ROOM_INVITE']} />
         </div>
 
         {/* Direct Messages Hub */}
         <DMPanel />
       </div>
 
-      {/* Bottom Section: Profile & Logout */}
-      <div className="mt-auto flex flex-col items-center gap-3 pb-6">
+      <div className="mt-auto flex flex-col items-center gap-1 pb-2">
         <button
           onClick={onProfileClick}
           className="relative flex h-12 w-12 items-center justify-center rounded-full transition-smooth hover:scale-110 shadow-sm outline-none border-0"
@@ -100,14 +100,15 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
         </button>
 
         <button
-          onClick={() => {
-            const logout = useAuthStore.getState().logout;
-            logout();
-          }}
-          className="flex h-12 w-12 items-center justify-center text-white/40 transition-smooth hover:bg-white/10 hover:text-white rounded-2xl hover:scale-110"
-          title="Sign Out"
+          onClick={() => navigate('/')}
+          className="flex min-h-0 items-center justify-center rounded-full bg-white/8 px-2 py-1 text-white/70 transition-smooth hover:bg-white/14 hover:text-white"
+          style={{ fontSize: '7px', lineHeight: '7px' }}
+          title="Back to landing page"
         >
-          <LogOut size={22} />
+          <span className="flex items-center gap-0.5">
+            <ArrowLeft size={16} />
+            Back
+          </span>
         </button>
       </div>
     </div>

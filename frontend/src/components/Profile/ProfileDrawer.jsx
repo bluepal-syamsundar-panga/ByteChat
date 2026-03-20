@@ -1,4 +1,4 @@
-import { Camera, Save, UserRound, Users, X } from 'lucide-react';
+import { Camera, Mail, Save, UserRound, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import notificationService from '../../services/notificationService';
 import userService from '../../services/userService';
@@ -16,6 +16,7 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -24,6 +25,7 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
         displayName: user?.displayName ?? '',
         avatarUrl: user?.avatarUrl ?? '',
       });
+      setIsEditing(false);
     }
   }, [isOpen, user]);
 
@@ -41,10 +43,19 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
   }
 
   async function handleSave() {
+    if (!isEditing) {
+      setIsEditing(true);
+      return;
+    }
+
     try {
       setSaving(true);
-      const response = await userService.updateCurrentUser(form);
+      const response = await userService.updateCurrentUser({
+        displayName: form.displayName,
+        avatarUrl: form.avatarUrl,
+      });
       updateUser(response.data);
+      setIsEditing(false);
       addToast('Profile updated successfully', 'success');
     } catch (error) {
       addToast(error.response?.data?.message ?? 'Unable to update profile', 'error');
@@ -118,8 +129,8 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
               </label>
               <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-[#2bac76] border-4 border-white shadow-lg" />
             </div>
-            <h3 className="mt-4 text-xl font-black text-gray-900">{user?.displayName}</h3>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{user?.email}</p>
+            <h3 className="mt-4 text-xl font-black text-gray-900">Welcome ByteChat</h3>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Profile settings</p>
           </div>
 
           {/* Form Fields */}
@@ -132,22 +143,22 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
                   <input
                     value={form.displayName}
                     onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+                    disabled={!isEditing}
                     className="w-full bg-transparent text-sm font-bold text-[#1d1c1d] outline-none placeholder:text-gray-300"
                     placeholder="New display name"
                   />
                 </div>
               </label>
 
-
               <label className="block">
-                <span className="text-[11px] font-black uppercase tracking-wider text-[#6b6a6b] ml-1">Custom Avatar URL</span>
+                <span className="text-[11px] font-black uppercase tracking-wider text-[#6b6a6b] ml-1">Mail</span>
                 <div className="mt-2 relative flex h-12 items-center gap-3 rounded-xl bg-[#fafafa] px-4 border border-black/5 focus-within:bg-white focus-within:border-[#2c0b2e]/30 transition-all">
-                  <Camera size={16} className="text-[#2c0b2e]/40" />
+                  <Mail size={16} className="text-[#2c0b2e]/40" />
                   <input
-                    value={form.avatarUrl}
-                    onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })}
+                    value={user?.email ?? ''}
+                    disabled
                     className="w-full bg-transparent text-sm font-bold text-[#1d1c1d] outline-none placeholder:text-gray-300"
-                    placeholder="https://..."
+                    placeholder="Mail"
                   />
                 </div>
               </label>
@@ -163,7 +174,7 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
               ) : (
                 <Save size={18} strokeWidth={2.5} />
               )}
-              {saving ? 'UPDATING...' : 'SAVE CHANGES'}
+              {saving ? 'UPDATING...' : isEditing ? 'SAVE CHANGES' : 'UPDATE PROFILE'}
             </button>
           </div>
         </div>

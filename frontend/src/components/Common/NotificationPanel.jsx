@@ -10,7 +10,7 @@ import { formatMessageTimestamp } from '../../utils/formatDate';
 import channelService from '../../services/channelService';
 import useToastStore from '../../store/toastStore';
 
-const NotificationPanel = ({ variant = 'light', position = 'right' }) => {
+const NotificationPanel = ({ variant = 'light', position = 'right', allowedTypes = null }) => {
   const currentUser = useAuthStore((state) => state.user);
   const { notifications, setNotifications } = useChatStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -52,9 +52,15 @@ const NotificationPanel = ({ variant = 'light', position = 'right' }) => {
     });
   }, [currentUser?.id, setNotifications]);
 
-  const relevantNotifications = notifications.filter(
-    (n) => (n.type === 'MENTION' || n.type === 'ROOM_INVITE' || n.type === 'CHANNEL_INVITE' || n.type === 'WORKSPACE_INVITE') && !n.isRead && !n.read
-  );
+  const allowedTypeSet = Array.isArray(allowedTypes) && allowedTypes.length > 0
+    ? new Set(allowedTypes)
+    : null;
+
+  const relevantNotifications = notifications.filter((n) => {
+    const defaultAllowed = n.type === 'MENTION' || n.type === 'ROOM_INVITE' || n.type === 'CHANNEL_INVITE' || n.type === 'WORKSPACE_INVITE';
+    const typeAllowed = allowedTypeSet ? allowedTypeSet.has(n.type) : defaultAllowed;
+    return typeAllowed && !n.isRead && !n.read;
+  });
 
   const handleMarkAsRead = async (notificationId) => {
     try {

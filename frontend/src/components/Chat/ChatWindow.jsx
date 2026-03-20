@@ -264,11 +264,11 @@ const ChatWindow = ({ room, channel }) => {
 
         // Auto-clear notifications
         try {
-          await notificationService.markRoomRead(entityId); // Assuming markRoomRead handles both or needs update
+          await notificationService.markRoomRead(entityId);
+          const notificationsResponse = await notificationService.getNotifications();
+          const latestNotifications = notificationsResponse?.data ?? notificationsResponse;
           const { setNotifications } = useChatStore.getState();
-          setNotifications(prev => prev.map(n => 
-            (n.relatedEntityId === entityId) ? { ...n, isRead: true, read: true } : n
-          ));
+          setNotifications(latestNotifications);
         } catch (e) {
           console.error('Failed to clear notifications', e);
         }

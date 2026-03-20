@@ -75,6 +75,9 @@ public class ChannelServiceImpl implements ChannelService {
     @Override
     public List<ChannelResponse> getWorkspaceChannels(Long workspaceId, User currentUser) {
         log.info("Fetching visible channels for workspace {} for user {}", workspaceId, currentUser.getEmail());
+        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, currentUser.getId())) {
+            throw new com.bytechat.exception.UnauthorizedException("User is not a member of this workspace");
+        }
         return channelRepository.findVisibleChannels(workspaceId, currentUser.getId()).stream()
                 .map(channel -> mapToResponse(channel, currentUser))
                 .collect(Collectors.toList());
@@ -138,6 +141,25 @@ public class ChannelServiceImpl implements ChannelService {
     @Override
     public List<UserResponse> getChannelMembers(Long channelId) {
         log.info("Fetching members for channel {}", channelId);
+        Channel channel = getChannel(channelId);
+        if (isWorkspaceWideDefaultChannel(channel)) {
+            syncDefaultChannelMemberships(channel);
+            return workspaceMemberRepository.findByWorkspaceId(channel.getWorkspace().getId()).stream()
+                    .map(WorkspaceMember::getUser)
+                    .map(user -> {
+                        UserResponse response = mapToUserResponse(user);
+                        ChannelMember membership = channelMemberRepository.findByChannelIdAndUserId(channelId, user.getId()).orElse(null);
+                        if (membership != null) {
+                            response.setRole(membership.getRole().name());
+                        } else {
+                            response.setRole(channel.getCreatedBy() != null && channel.getCreatedBy().getId().equals(user.getId())
+                                    ? ChannelRole.ADMIN.name()
+                                    : ChannelRole.MEMBER.name());
+                        }
+                        return response;
+                    })
+                    .collect(Collectors.toList());
+        }
         return channelMemberRepository.findByChannelId(channelId).stream()
                 .map(cm -> {
                     UserResponse resp = mapToUserResponse(cm.getUser());
@@ -604,7 +626,9 @@ public class ChannelServiceImpl implements ChannelService {
                 .isArchived(isArchived)
                 .isDeleted(channel.isDeleted())
                 .createdAt(channel.getCreatedAt())
-                .memberCount(channelMemberRepository.findByChannelId(channel.getId()).size())
+                .memberCount(isWorkspaceWideDefaultChannel(channel)
+                        ? workspaceMemberRepository.findByWorkspaceId(channel.getWorkspace().getId()).size()
+                        : channelMemberRepository.findByChannelId(channel.getId()).size())
                 .createdBy(channel.getCreatedBy() != null ? mapToUserResponse(channel.getCreatedBy()) : null)
                 .role(role)
                 .build();
@@ -614,5 +638,30 @@ public class ChannelServiceImpl implements ChannelService {
         }
         
         return response;
+    }
+
+    private void syncDefaultChannelMemberships(Channel channel) {
+        if (channel.getWorkspace() == null) {
+            return;
+        }
+
+        List<WorkspaceMember> workspaceMembers = workspaceMemberRepository.findByWorkspaceId(channel.getWorkspace().getId());
+        for (WorkspaceMember workspaceMember : workspaceMembers) {
+            Long userId = workspaceMember.getUser().getId();
+            if (!channelMemberRepository.existsByChannelIdAndUserId(channel.getId(), userId)) {
+                ChannelRole role = WorkspaceRole.OWNER.equals(workspaceMember.getRole()) ? ChannelRole.ADMIN : ChannelRole.MEMBER;
+                ChannelMember membership = ChannelMember.builder()
+                        .channel(channel)
+                        .user(workspaceMember.getUser())
+                        .role(role)
+                        .build();
+                channelMemberRepository.save(membership);
+                log.info("Synced workspace member {} into default channel {}", workspaceMember.getUser().getEmail(), channel.getName());
+            }
+        }
+    }
+
+    private boolean isWorkspaceWideDefaultChannel(Channel channel) {
+        return channel != null && (channel.isDefault() || "general".equalsIgnoreCase(channel.getName()));
     }
 }
