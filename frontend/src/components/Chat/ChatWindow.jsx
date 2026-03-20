@@ -1,4 +1,4 @@
-import { Hash, Lock, Pin, Users, MoreVertical, SmilePlus, Pencil, Trash2, LogOut, MessageSquareShare, Reply, X } from 'lucide-react';
+import { Hash, Lock, Pin, Users, MoreVertical, SmilePlus, Pencil, Trash2, LogOut, MessageSquareShare, Reply, X, Video } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import { useNavigate } from 'react-router-dom';
@@ -52,6 +52,7 @@ const ChatWindow = ({ room, channel }) => {
     clearChannelUnread,
     setChannels,
     setSidebarChannels,
+    openMeetingLauncher,
   } = useChatStore();
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState([]);
@@ -878,6 +879,16 @@ const ChatWindow = ({ room, channel }) => {
           </div>
 
         <div className="flex items-center gap-4">
+          {channelId && (
+            <button
+              type="button"
+              onClick={() => openMeetingLauncher({ channel: effectiveChannel || channel, workspaceId, mode: 'create' })}
+              className="flex h-10 w-10 items-center justify-center text-[#3f0e40] transition hover:scale-105 hover:text-[#5f2161]"
+              title="Create meeting"
+            >
+              <Video size={18} />
+            </button>
+          )}
           {!isDefaultChannel && (
             <button
               type="button"

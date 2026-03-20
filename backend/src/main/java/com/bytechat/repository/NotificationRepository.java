@@ -13,6 +13,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByRecipientIdOrderByCreatedAtDesc(Long recipientId);
     List<Notification> findByRecipientIdAndIsReadFalse(Long recipientId);
     List<Notification> findByRecipientIdAndTypeAndRelatedEntityIdAndIsReadFalse(Long recipientId, String type, Long relatedEntityId);
+    List<Notification> findByTypeAndRelatedEntityIdAndIsReadFalse(String type, Long relatedEntityId);
     
     @Query("SELECT n FROM Notification n WHERE n.recipient.id = :userId AND n.type = 'MENTION' AND n.isRead = false " +
            "AND n.relatedEntityId IN (SELECT m.id FROM Message m WHERE m.channel.workspace.id = :workspaceId)")

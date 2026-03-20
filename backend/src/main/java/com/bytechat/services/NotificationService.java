@@ -13,5 +13,6 @@ public interface NotificationService {
     void markChannelNotificationsAsRead(Long userId, Long channelId);
     void markDMNotificationsAsRead(Long userId, Long senderId);
     void markRelatedNotificationsAsRead(Long userId, String type, Long relatedEntityId);
+    void markRelatedNotificationsAsReadForAll(String type, Long relatedEntityId);
     Notification getNotification(Long notificationId);
 }

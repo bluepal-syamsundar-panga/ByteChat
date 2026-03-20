@@ -6,12 +6,15 @@ import CreateChannelModal from '../components/Sidebar/CreateChannelModal';
 import ProfileDrawer from '../components/Profile/ProfileDrawer';
 import Modal from '../components/Shared/Modal';
 import NotificationPanel from '../components/Common/NotificationPanel';
+import MeetingLauncherModal from '../components/Meetings/MeetingLauncherModal';
+import MeetingRoomModal from '../components/Meetings/MeetingRoomModal';
 import useAuthStore from '../store/authStore';
 import useChatStore from '../store/chatStore';
 import chatService from '../services/chatService';
 import workspaceService from '../services/workspaceService';
 import notificationService from '../services/notificationService';
 import userService from '../services/userService';
+import meetingService from '../services/meetingService';
 import { connectWebSocket, disconnectWebSocket, subscribeToNotifications, subscribeToDM } from '../services/websocket';
 import useToastStore from '../store/toastStore';
 
@@ -25,6 +28,13 @@ const MainLayout = () => {
     setNotifications,
     workspaces,
     activeWorkspaceId,
+    meetingLauncher,
+    closeMeetingLauncher,
+    activeMeeting,
+    setActiveMeeting,
+    clearActiveMeeting,
+    setMeetings,
+    removeMeeting,
   } = useChatStore();
   const { addToast } = useToastStore();
   const location = useLocation();
@@ -46,6 +56,32 @@ const MainLayout = () => {
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [newWorkspaceDescription, setNewWorkspaceDescription] = useState('');
 
+  const refreshMeetingsForWorkspace = async (workspaceId) => {
+    if (!workspaceId) return [];
+    try {
+      const response = await meetingService.getWorkspaceMeetings(workspaceId);
+      const data = response?.data?.data || response?.data || [];
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error(`Failed to refresh meetings for workspace ${workspaceId}`, error);
+      return [];
+    }
+  };
+
+  const refreshAllMeetings = async () => {
+    const state = useChatStore.getState();
+    const workspaceList = state.workspaces || [];
+    if (workspaceList.length === 0) {
+      setMeetings([]);
+      return;
+    }
+
+    const results = await Promise.all(
+      workspaceList.map((workspace) => refreshMeetingsForWorkspace(workspace.id))
+    );
+    setMeetings(results.flat());
+  };
+
   useEffect(() => {
     if (!user?.id) return;
 
@@ -61,6 +97,28 @@ const MainLayout = () => {
           }
           return; // Skip adding to the generic notifications panel
         }
+
+        if (notification.type === 'MEETING_INVITE') {
+          setNotifications((prev) => [notification, ...prev]);
+          refreshAllMeetings();
+          return;
+        }
+
+        if (notification.type === 'MEETING_ENDED') {
+          removeMeeting(notification.relatedEntityId);
+          setNotifications((prev) =>
+            prev.filter((item) =>
+              !(item.type === 'MEETING_INVITE' && String(item.relatedEntityId) === String(notification.relatedEntityId))
+            )
+          );
+          const currentMeeting = useChatStore.getState().activeMeeting;
+          if (currentMeeting && String(currentMeeting.id) === String(notification.relatedEntityId)) {
+            useChatStore.getState().clearActiveMeeting();
+          }
+          refreshAllMeetings();
+          return;
+        }
+
         setNotifications((prev) => [notification, ...prev]);
       });
 
@@ -76,7 +134,30 @@ const MainLayout = () => {
     });
     loadAppContent();
     return () => disconnectWebSocket();
-  }, [user?.id]);
+  }, [user?.id, setMeetings, removeMeeting, setNotifications]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadMeetings = async () => {
+      if (!useChatStore.getState().workspaces?.length) {
+        if (mounted) {
+          setMeetings([]);
+        }
+        return;
+      }
+      const results = await Promise.all(
+        useChatStore.getState().workspaces.map((workspace) => refreshMeetingsForWorkspace(workspace.id))
+      );
+      if (mounted) {
+        setMeetings(results.flat());
+      }
+    };
+
+    loadMeetings();
+    return () => {
+      mounted = false;
+    };
+  }, [activeWorkspaceId, workspaces, setMeetings]);
 
   const [showProfile, setShowProfile] = useState(false);
 
@@ -189,6 +270,22 @@ const MainLayout = () => {
           </div>
         </div>
       </Modal>
+
+      <MeetingLauncherModal
+        isOpen={Boolean(meetingLauncher)}
+        onClose={closeMeetingLauncher}
+        channel={meetingLauncher?.channel}
+        workspaceId={meetingLauncher?.workspaceId}
+        mode={meetingLauncher?.mode}
+        selectedMeeting={meetingLauncher?.meeting}
+        onMeetingJoined={(meeting) => setActiveMeeting(meeting)}
+      />
+
+      <MeetingRoomModal
+        isOpen={Boolean(activeMeeting)}
+        meeting={activeMeeting}
+        onClose={clearActiveMeeting}
+      />
     </div>
   );
 };

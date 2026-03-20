@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus, Home, Archive, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Home, Archive, Trash2, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
@@ -9,7 +9,7 @@ import logo3 from '../../assets/logo3.png';
 const AppRail = ({ onCreateRoom, onProfileClick }) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { notifications, workspaces, setIsCreateChannelModalOpen, sidebarMode, setSidebarMode } = useChatStore();
+  const { workspaces, meetings, setIsCreateChannelModalOpen, sidebarMode, setSidebarMode } = useChatStore();
 
   const handleHomeClick = () => {
     setSidebarMode('channels');
@@ -23,6 +23,7 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
   const firstWorkspaceInitials = (workspaces && workspaces.length > 0) 
     ? workspaces[0].name.substring(0, 2).toUpperCase() 
     : 'BC';
+  const liveMeetingCount = (meetings || []).filter((meeting) => meeting.isActive).length;
 
   return (
     <div className="flex h-full w-[68px] flex-col items-center bg-[#2c0b2e] py-2 text-white">
@@ -65,6 +66,19 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
           <Archive size={22} />
         </button>
 
+        <button
+          onClick={() => setSidebarMode('meetings')}
+          className={`relative flex h-12 w-12 items-center justify-center rounded-2xl transition-smooth hover:scale-110 ${sidebarMode === 'meetings' ? 'bg-white/20 text-white shadow-md ring-1 ring-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
+          title="Live Meetings"
+        >
+          <Video size={22} />
+          {liveMeetingCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#e01e5a] px-1 text-[10px] font-bold text-white">
+              {liveMeetingCount > 9 ? '9+' : liveMeetingCount}
+            </span>
+          )}
+        </button>
+
         {/* Trash */}
         <button
           onClick={() => setSidebarMode('trash')}
@@ -76,7 +90,7 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
 
         {/* Notifications */}
         <div className="relative">
-          <NotificationPanel allowedTypes={['MENTION', 'CHANNEL_INVITE', 'ROOM_INVITE']} />
+          <NotificationPanel allowedTypes={['MENTION', 'CHANNEL_INVITE', 'ROOM_INVITE', 'MEETING_INVITE']} />
         </div>
 
         {/* Direct Messages Hub */}

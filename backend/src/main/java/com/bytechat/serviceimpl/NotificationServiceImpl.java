@@ -97,6 +97,15 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional
+    public void markRelatedNotificationsAsReadForAll(String type, Long relatedEntityId) {
+        List<Notification> notifications = notificationRepository
+                .findByTypeAndRelatedEntityIdAndIsReadFalse(type, relatedEntityId);
+        notifications.forEach(notification -> notification.setRead(true));
+        notificationRepository.saveAll(notifications);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Notification getNotification(Long notificationId) {
         return notificationRepository.findById(notificationId)

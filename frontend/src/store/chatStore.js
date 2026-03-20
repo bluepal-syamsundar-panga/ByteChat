@@ -7,6 +7,9 @@ const useChatStore = create((set) => ({
   users: [],
   onlineUsers: [],
   notifications: [],
+  meetings: [],
+  meetingLauncher: null,
+  activeMeeting: null,
   sharedUsers: [],
   activeWorkspaceId: null,
   activeThread: null,
@@ -14,8 +17,27 @@ const useChatStore = create((set) => ({
   channelMessages: {},
   dmMessages: {},
   typingByWorkspace: {},
-  sidebarMode: 'channels', // 'channels', 'archive', 'trash'
+  sidebarMode: 'channels', // 'channels', 'archive', 'trash', 'meetings'
   setSidebarMode: (mode) => set({ sidebarMode: mode }),
+  openMeetingLauncher: (payload) => set({ meetingLauncher: payload }),
+  closeMeetingLauncher: () => set({ meetingLauncher: null }),
+  setActiveMeeting: (meeting) => set({ activeMeeting: meeting }),
+  clearActiveMeeting: () => set({ activeMeeting: null }),
+  setMeetings: (meetings) =>
+    set(() => ({
+      meetings: normalizeMeetings(meetings),
+    })),
+  upsertMeeting: (meeting) =>
+    set((state) => ({
+      meetings: normalizeMeetings([
+        ...(state.meetings ?? []).filter((item) => String(item.id) !== String(meeting?.id)),
+        meeting,
+      ]),
+    })),
+  removeMeeting: (meetingId) =>
+    set((state) => ({
+      meetings: (state.meetings ?? []).filter((item) => String(item.id) !== String(meetingId)),
+    })),
   isCreateChannelModalOpen: false,
   setIsCreateChannelModalOpen: (isOpen) => set({ isCreateChannelModalOpen: isOpen }),
   setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id }),
@@ -234,6 +256,16 @@ function normalizeMessage(message) {
     isDeleted: message.isDeleted ?? message.deleted ?? false,
     isPinned: message.isPinned ?? message.pinned ?? false,
   };
+}
+
+function normalizeMeetings(meetings) {
+  return (Array.isArray(meetings) ? meetings : [])
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftTime = new Date(left?.createdAt ?? 0).getTime() || 0;
+      const rightTime = new Date(right?.createdAt ?? 0).getTime() || 0;
+      return rightTime - leftTime;
+    });
 }
 
 export default useChatStore;

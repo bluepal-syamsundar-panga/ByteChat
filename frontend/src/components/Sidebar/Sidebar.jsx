@@ -1,4 +1,4 @@
-import { Bell, Hash, Lock, Mail, MessageCircleMore, Plus, Check, X, Users2, Trash2 } from 'lucide-react';
+import { Bell, Hash, Lock, Mail, MessageCircleMore, Plus, Check, X, Users2, Trash2, Video } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import useAuthStore from '../../store/authStore';
@@ -7,6 +7,7 @@ import userService from '../../services/userService';
 import channelService from '../../services/channelService';
 import chatService from '../../services/chatService';
 import workspaceService from '../../services/workspaceService';
+import meetingService from '../../services/meetingService';
 import useToastStore from '../../store/toastStore';
 import Modal from '../Shared/Modal';
 
@@ -28,6 +29,9 @@ const Sidebar = ({ onAcceptInvite }) => {
     sidebarMode,
     setSidebarMode
   } = useChatStore();
+  const meetings = useChatStore((state) => state.meetings);
+  const setMeetings = useChatStore((state) => state.setMeetings);
+  const openMeetingLauncher = useChatStore((state) => state.openMeetingLauncher);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(useChatStore.getState().activeWorkspaceId);
   const { addToast } = useToastStore();
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, type: 'danger' });
@@ -80,7 +84,15 @@ const Sidebar = ({ onAcceptInvite }) => {
       const fetchChannels = async () => {
         let res;
         try {
-          if (sidebarMode === 'archive') {
+          if (sidebarMode === 'meetings') {
+            const workspaceMeetings = await Promise.all(
+              (workspaces || []).map((workspace) => meetingService.getWorkspaceMeetings(workspace.id))
+            );
+            setMeetings(
+              workspaceMeetings.flatMap((response) => response?.data?.data || [])
+            );
+            return;
+          } else if (sidebarMode === 'archive') {
             res = await channelService.getArchivedChannels(activeWorkspaceId);
             setSidebarChannels(res.data.data || []);
           } else if (sidebarMode === 'trash') {
@@ -97,12 +109,13 @@ const Sidebar = ({ onAcceptInvite }) => {
         } catch (err) {
           console.error('Failed to fetch channels for mode:', sidebarMode, err);
           if (sidebarMode === 'channels') setChannels([]);
+          if (sidebarMode === 'meetings') setMeetings([]);
           setSidebarChannels([]);
         }
       };
       fetchChannels();
     }
-  }, [activeWorkspaceId, activeChannelId, sidebarMode, setChannels, setSidebarChannels]);
+  }, [activeWorkspaceId, activeChannelId, sidebarMode, setChannels, setSidebarChannels, setMeetings]);
 
   useEffect(() => {
     if (activeChannelId) {
@@ -214,12 +227,12 @@ const Sidebar = ({ onAcceptInvite }) => {
         <div className="px-6 py-6 space-y-4">
           <div className="flex flex-col">
             <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">
-              {sidebarMode === 'archive' ? 'Archive' : sidebarMode === 'trash' ? 'Trash' : 'Workspace'}
+              {sidebarMode === 'archive' ? 'Archive' : sidebarMode === 'trash' ? 'Trash' : sidebarMode === 'meetings' ? 'Meetings' : 'Workspace'}
             </div>
             <div className="mt-1.5 flex items-center justify-between">
               <div>
                 <div className="text-xl font-black tracking-tight text-white">
-                  {sidebarMode === 'archive' ? 'Archived' : sidebarMode === 'trash' ? 'Deleted' : (activeWorkspace?.name || 'ByteChat')}
+                  {sidebarMode === 'archive' ? 'Archived' : sidebarMode === 'trash' ? 'Deleted' : sidebarMode === 'meetings' ? 'Live Meetings' : (activeWorkspace?.name || 'ByteChat')}
                 </div>
               </div>
               {sidebarMode === 'channels' && (
@@ -252,7 +265,7 @@ const Sidebar = ({ onAcceptInvite }) => {
         <div className="scrollbar-thin flex-1 space-y-8 overflow-y-auto px-4 py-2">
           <section>
             <div className="mb-4 flex items-center justify-between px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-white/40">
-              <span>{sidebarMode === 'archive' ? 'Archived Channels' : sidebarMode === 'trash' ? 'Trashed Channels' : 'Channels'}</span>
+              <span>{sidebarMode === 'archive' ? 'Archived Channels' : sidebarMode === 'trash' ? 'Trashed Channels' : sidebarMode === 'meetings' ? 'Joinable Meetings' : 'Channels'}</span>
               {sidebarMode === 'channels' && (
                 <button
                   onClick={() => setIsCreateChannelModalOpen(true)}
@@ -264,7 +277,36 @@ const Sidebar = ({ onAcceptInvite }) => {
               )}
             </div>
             <div className="space-y-0.5">
-              {(sidebarChannels || [])
+              {sidebarMode === 'meetings' ? (
+                (meetings || [])
+                  .filter((meeting) =>
+                    `${meeting.title} ${meeting.channelName}`.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((meeting) => (
+                    <button
+                      key={meeting.id}
+                      type="button"
+                      onClick={() => openMeetingLauncher({
+                        channel: { id: meeting.channelId, name: meeting.channelName },
+                        workspaceId: meeting.workspaceId,
+                        mode: 'join',
+                        meeting,
+                      })}
+                      className="flex w-full items-start gap-3.5 rounded-xl px-5 py-3 text-left text-white/70 transition hover:bg-white/5 hover:text-white/95"
+                    >
+                      <div className="mt-0.5 rounded-xl bg-[#f04e98]/15 p-2 text-[#ff7fb7]">
+                        <Video size={15} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-bold tracking-tight text-white">{meeting.title}</div>
+                        <div className="mt-0.5 truncate text-[11px] font-bold text-white/35">
+                          #{meeting.channelName} • by {meeting.creator?.displayName}
+                        </div>
+                      </div>
+                    </button>
+                  ))
+              ) : (
+                (sidebarChannels || [])
                 .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
                 .filter(c => {
                   if (sidebarMode === 'archive') return c.isArchived || c.archived;
@@ -288,11 +330,15 @@ const Sidebar = ({ onAcceptInvite }) => {
                     isCreator={channel.createdBy?.id === user?.id}
                     isAdmin={activeWorkspace?.ownerId === user?.id}
                   />
-                ))}
-              {channels.length === 0 && activeWorkspaceId && (
+                ))
+              )}
+              {sidebarMode === 'meetings' && meetings.length === 0 && workspaces.length > 0 && (
+                <p className="px-3 text-xs text-white/30 italic">No live meetings right now</p>
+              )}
+              {sidebarMode !== 'meetings' && channels.length === 0 && activeWorkspaceId && (
                 <p className="px-3 text-xs text-white/30 italic">No channels found</p>
               )}
-              {channels.length === 0 && !activeWorkspaceId && (
+              {sidebarMode !== 'meetings' && channels.length === 0 && !activeWorkspaceId && (
                 <p className="px-3 text-xs text-white/30 italic">Select a workspace</p>
               )}
             </div>
