@@ -1,4 +1,4 @@
-import { Paperclip, Pin, Plus } from 'lucide-react';
+import { FileText, Paperclip, Pin, Plus } from 'lucide-react';
 import React, { useState } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import useAuthStore from '../../store/authStore';
@@ -45,18 +45,25 @@ const MessageBubble = ({ message, isSelected, onClick, onReact, participants = [
   const renderMessageContent = () => {
     if (message.isDeleted) return <div className="italic text-[#6b6a6b]">{message.content}</div>;
 
-    if (message.type === 'FILE' && message.content) {
-      const isServerFile = message.content.startsWith('/uploads/') || message.content.startsWith('http');
+    const isServerFile = typeof message.content === 'string'
+      && (message.content.startsWith('/uploads/') || message.content.startsWith('http'));
+
+    if ((['FILE', 'VIDEO', 'AUDIO', 'DOCUMENT'].includes(message.type) || isServerFile) && message.content) {
       if (!isServerFile) {
         return <div className="whitespace-pre-wrap">{renderContent(message.content)}</div>;
       }
 
-      const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(message.content);
       const baseUrl = import.meta.env.VITE_API_URL 
         ? import.meta.env.VITE_API_URL.split('/api')[0] 
         : 'http://localhost:8080';
       const url = message.content.startsWith('http') ? message.content : `${baseUrl}${message.content}`;
       const fileName = decodeURIComponent(url.split('/').pop() || 'attachment');
+      const normalizedName = fileName.toLowerCase();
+      const looksLikeVoiceNote = normalizedName.includes('voice-note');
+      const isAudio = message.type === 'AUDIO' || looksLikeVoiceNote || /\.(mp3|wav|m4a|aac|oga|ogg|opus)$/i.test(normalizedName);
+      const isImage = message.type === 'FILE' || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(normalizedName);
+      const isVideo = (message.type === 'VIDEO' || /\.(mp4|mov|m4v|avi|mkv|webm)$/i.test(normalizedName)) && !isAudio;
+      const isDocument = message.type === 'DOCUMENT' || !isImage && !isVideo && !isAudio;
       
       if (isImage) {
         return (
@@ -73,6 +80,53 @@ const MessageBubble = ({ message, isSelected, onClick, onReact, participants = [
           </a>
         );
       }
+
+      if (isAudio) {
+        return (
+          <div className="mt-3 min-w-[260px]">
+            <audio controls preload="metadata" className="w-full">
+              <source src={url} />
+              Your browser does not support audio playback.
+            </audio>
+          </div>
+        );
+      }
+
+      if (isVideo) {
+        return (
+          <div className="mt-3 overflow-hidden rounded-2xl border border-gray-200 bg-black ring-1 ring-black/5">
+            <video
+              src={url}
+              controls
+              preload="metadata"
+              className="max-h-[340px] max-w-full object-contain"
+            >
+              Your browser does not support video playback.
+            </video>
+          </div>
+        );
+      }
+
+      if (isDocument) {
+        return (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            download={fileName}
+            className="mt-3 flex min-w-[260px] items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-left ring-1 ring-black/5 transition hover:border-gray-300"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#ecfdf5] text-[#059669]">
+              <FileText size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-bold uppercase tracking-wide text-[#64748b]">Document</span>
+              <span className="block truncate text-sm font-bold text-[#1f2937]">{fileName}</span>
+            </span>
+          </a>
+        );
+      }
+
       return (
         <a href={url} target="_blank" rel="noreferrer" download={fileName} className="mt-3 inline-flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-[#1f2937] ring-1 ring-black/5">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eef6ff] text-[#1164a3]">
@@ -99,7 +153,7 @@ const MessageBubble = ({ message, isSelected, onClick, onReact, participants = [
   const replySenderLabel = String(message.replyToSenderName) === String(currentUser?.displayName)
     ? 'You'
     : message.replyToSenderName;
-  const isFileMessage = message.type === 'FILE';
+  const isFileMessage = ['FILE', 'VIDEO', 'AUDIO', 'DOCUMENT'].includes(message.type);
   const isSystemMessage = message.type === 'SYSTEM';
 
   if (isSystemMessage) {

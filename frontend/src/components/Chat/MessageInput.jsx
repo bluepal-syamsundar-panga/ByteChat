@@ -1,4 +1,4 @@
-import { Paperclip, SendHorizonal, SmilePlus, X, Plus, Image as ImageIcon, FileText } from 'lucide-react';
+import { Paperclip, SendHorizonal, SmilePlus, X, Plus, Image as ImageIcon, FileText, Video, Mic, Square, Trash2 } from 'lucide-react';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 
@@ -23,11 +23,18 @@ const MessageInput = ({
   const [pendingFile, setPendingFile] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const attachMenuRef = useRef(null);
   const wasTypingRef = useRef(false);
+  const mediaRecorderRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const recordingChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const shouldSaveRecordingRef = useRef(true);
 
   const canSend = useMemo(() => (content.trim().length > 0 || pendingFile) && !disabled, [content, pendingFile, disabled]);
 
@@ -76,6 +83,15 @@ const MessageInput = ({
     }
   }, [onTyping]);
 
+  useEffect(() => () => {
+    if (pendingFile?.previewUrl) {
+      URL.revokeObjectURL(pendingFile.previewUrl);
+    }
+    window.clearInterval(recordingTimerRef.current);
+    mediaRecorderRef.current?.stop?.();
+    mediaStreamRef.current?.getTracks?.().forEach((track) => track.stop());
+  }, [pendingFile]);
+
   function handleEmojiClick(emojiData) {
     setContent((prev) => prev + emojiData.emoji);
   }
@@ -83,12 +99,19 @@ const MessageInput = ({
   function handleFileChange(event) {
     const file = event.target.files?.[0];
     if (file) {
+      if (pendingFile?.previewUrl) {
+        URL.revokeObjectURL(pendingFile.previewUrl);
+      }
       const isImage = file.type.startsWith('image/');
-      const previewUrl = isImage ? URL.createObjectURL(file) : null;
+      const isVideo = file.type.startsWith('video/');
+      const isAudio = file.type.startsWith('audio/');
+      const previewUrl = (isImage || isVideo || isAudio) ? URL.createObjectURL(file) : null;
       setPendingFile({
         file,
         name: file.name,
         isImage,
+        isVideo,
+        isAudio,
         previewUrl
       });
       requestAnimationFrame(() => {
@@ -106,6 +129,96 @@ const MessageInput = ({
       URL.revokeObjectURL(pendingFile.previewUrl);
     }
     setPendingFile(null);
+  }
+
+  async function handleStartVoiceRecording() {
+    if (disabled || editMode || pendingFile) return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+
+      mediaStreamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+      recordingChunksRef.current = [];
+      shouldSaveRecordingRef.current = true;
+      setRecordingSeconds(0);
+      setIsRecordingVoice(true);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordingChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(recordingChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        if (shouldSaveRecordingRef.current && audioBlob.size > 0) {
+          const extension = recorder.mimeType?.includes('ogg') ? 'ogg' : 'webm';
+          const audioFile = new File([audioBlob], `voice-note-${Date.now()}.${extension}`, { type: audioBlob.type });
+          const previewUrl = URL.createObjectURL(audioBlob);
+          setPendingFile({
+            file: audioFile,
+            name: 'Voice message',
+            isImage: false,
+            isVideo: false,
+            isAudio: true,
+            previewUrl,
+          });
+        }
+
+        mediaStreamRef.current?.getTracks?.().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+        mediaRecorderRef.current = null;
+        recordingChunksRef.current = [];
+        shouldSaveRecordingRef.current = true;
+        window.clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+        setIsRecordingVoice(false);
+        setRecordingSeconds(0);
+      };
+
+      recorder.start();
+      recordingTimerRef.current = window.setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Voice recording failed:', error);
+      setIsRecordingVoice(false);
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }
+
+  function handleStopVoiceRecording() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+  }
+
+  function handleCancelVoiceRecording() {
+    shouldSaveRecordingRef.current = false;
+    recordingChunksRef.current = [];
+    window.clearInterval(recordingTimerRef.current);
+    recordingTimerRef.current = null;
+    setRecordingSeconds(0);
+    setIsRecordingVoice(false);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    } else {
+      mediaStreamRef.current?.getTracks?.().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+      mediaRecorderRef.current = null;
+    }
+  }
+
+  function formatRecordingTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
   }
 
   async function handleSubmit(event) {
@@ -184,6 +297,19 @@ const MessageInput = ({
               </button>
               <button 
                 onClick={() => {
+                  fileInputRef.current.accept = "video/*";
+                  fileInputRef.current.click();
+                  setShowAttachMenu(false);
+                }}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <div className="p-1.5 bg-rose-50 text-rose-600 rounded-lg">
+                  <Video size={16} />
+                </div>
+                Videos
+              </button>
+              <button 
+                onClick={() => {
                   fileInputRef.current.accept = ".pdf,.doc,.docx,.txt";
                   fileInputRef.current.click();
                   setShowAttachMenu(false);
@@ -238,6 +364,17 @@ const MessageInput = ({
                 <div className="h-8 w-8 shrink-0 border border-black/5 rounded-lg overflow-hidden shadow-sm">
                   <img src={pendingFile.previewUrl} alt="Preview" className="h-full w-full object-cover" />
                 </div>
+              ) : pendingFile.isVideo && pendingFile.previewUrl ? (
+                <div className="h-8 w-8 shrink-0 border border-black/5 rounded-lg overflow-hidden shadow-sm bg-black">
+                  <video src={pendingFile.previewUrl} className="h-full w-full object-cover" muted />
+                </div>
+              ) : pendingFile.isAudio && pendingFile.previewUrl ? (
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-emerald-50 rounded-lg border border-emerald-100 text-emerald-600 shadow-sm">
+                    <Mic size={16} />
+                  </div>
+                  <audio controls src={pendingFile.previewUrl} className="h-8 max-w-[240px]" />
+                </div>
               ) : (
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-white rounded-lg border border-gray-100 text-blue-500 shadow-sm">
                   <Paperclip size={16} />
@@ -257,6 +394,34 @@ const MessageInput = ({
           )}
 
           <div className="relative w-full">
+            {isRecordingVoice && (
+              <div className="mb-2 flex items-center justify-between gap-3 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="flex h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
+                  <div className="text-sm font-bold text-[#7f1d1d]">Recording voice message</div>
+                  <div className="text-sm font-semibold text-[#b91c1c]">{formatRecordingTime(recordingSeconds)}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCancelVoiceRecording}
+                    className="rounded-full p-2 text-gray-500 transition hover:bg-white hover:text-red-500"
+                    title="Discard recording"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStopVoiceRecording}
+                    className="rounded-full bg-[#b91c1c] p-2 text-white transition hover:bg-[#991b1b]"
+                    title="Stop recording"
+                  >
+                    <Square size={14} fill="currentColor" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {filteredSuggestions.length > 0 && (
               <div className="absolute bottom-full left-0 mb-4 w-full max-w-sm border border-black/8 bg-white p-2 shadow-lg rounded-xl overflow-hidden z-[60]">
                 {filteredSuggestions.map((member) => (
@@ -347,6 +512,21 @@ const MessageInput = ({
                     </div>
                   )}
                 </div>
+                {!editMode && (
+                  <button
+                    type="button"
+                    onClick={isRecordingVoice ? handleStopVoiceRecording : handleStartVoiceRecording}
+                    className={`p-2 transition-smooth rounded-full ${
+                      isRecordingVoice
+                        ? 'text-red-600 hover:bg-red-50'
+                        : 'text-gray-400 hover:text-[#3f0e40]'
+                    }`}
+                    title={isRecordingVoice ? 'Stop recording' : 'Record voice message'}
+                    disabled={disabled || Boolean(pendingFile)}
+                  >
+                    {isRecordingVoice ? <Square size={18} fill="currentColor" /> : <Mic size={18} />}
+                  </button>
+                )}
                 {editMode && (
                   <button
                     type="button"

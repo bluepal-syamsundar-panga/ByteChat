@@ -404,17 +404,27 @@ const ChatWindow = ({ room, channel }) => {
   async function handleSend(content, file) {
     try {
       let fileUrl = null;
+      let fileMessageType = 'FILE';
       
       // 1. Upload file if present
       if (file) {
         const resp = await chatService.uploadFile(file);
         const attachment = resp?.data ?? resp;
         fileUrl = attachment?.fileUrl ?? attachment?.url ?? null;
+        if (file.type?.startsWith('image/')) {
+          fileMessageType = 'FILE';
+        } else if (file.type?.startsWith('video/')) {
+          fileMessageType = 'VIDEO';
+        } else if (file.type?.startsWith('audio/')) {
+          fileMessageType = 'AUDIO';
+        } else {
+          fileMessageType = 'DOCUMENT';
+        }
       }
 
       // 2. Send file message if file was uploaded
       if (fileUrl) {
-        const filePayload = { content: fileUrl, type: 'FILE', replyToMessageId: replyTarget?.id ?? null };
+        const filePayload = { content: fileUrl, type: fileMessageType, replyToMessageId: replyTarget?.id ?? null };
         const fileApiResponse = await chatService.sendChannelMessage(entityId, filePayload);
         const sentFileMessage = fileApiResponse?.data ?? fileApiResponse;
         if (sentFileMessage?.id) {
