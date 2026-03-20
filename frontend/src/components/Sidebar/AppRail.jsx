@@ -4,6 +4,7 @@ import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
 import NotificationPanel from '../Common/NotificationPanel';
 import DMPanel from '../Common/DMPanel';
+import GroupPanel from '../Common/GroupPanel';
 import logo3 from '../../assets/logo3.png';
 
 const AppRail = ({ onCreateRoom, onProfileClick }) => {
@@ -81,6 +82,9 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
 
         {/* Direct Messages Hub */}
         <DMPanel />
+
+        {/* Group Messages Hub */}
+        <GroupPanel />
       </div>
 
       <div className="mt-auto flex flex-col items-center gap-1 pb-2">

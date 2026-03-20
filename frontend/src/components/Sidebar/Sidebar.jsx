@@ -1,4 +1,4 @@
-import { Bell, Hash, Lock, Mail, MessageCircleMore, Plus, Check, X, Users2, Trash2 } from 'lucide-react';
+import { Bell, Hash, Lock, Mail, MessageCircleMore, Plus, Check, X, Users, Users2, Trash2 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import useAuthStore from '../../store/authStore';
@@ -7,8 +7,10 @@ import userService from '../../services/userService';
 import channelService from '../../services/channelService';
 import chatService from '../../services/chatService';
 import workspaceService from '../../services/workspaceService';
+import groupDmService from '../../services/groupDmService';
 import useToastStore from '../../store/toastStore';
 import Modal from '../Shared/Modal';
+import DMInviteModal from '../Chat/DMInviteModal';
 
 const Sidebar = ({ onAcceptInvite }) => {
   const location = useLocation();
@@ -21,10 +23,13 @@ const Sidebar = ({ onAcceptInvite }) => {
     setSidebarChannels,
     sharedUsers,
     setSharedUsers,
+    groupConversations,
+    setGroupConversations,
     setActiveWorkspaceId: setStoreActiveWorkspaceId,
     setIsCreateChannelModalOpen,
     clearChannelUnread,
     clearDmUnread,
+    clearGroupUnread,
     sidebarMode,
     setSidebarMode
   } = useChatStore();
@@ -34,11 +39,14 @@ const Sidebar = ({ onAcceptInvite }) => {
   const [activeChannelId, setActiveChannelId] = useState(null);
   const [channelMembersList, setChannelMembersList] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [pendingGroupInvites, setPendingGroupInvites] = useState([]);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
 
   useEffect(() => {
     const workspaceIdMatch = location.pathname.match(/\/chat\/workspace\/(\d+)/);
     const channelIdMatch = location.pathname.match(/\/chat\/channel\/(\d+)/);
     const dmIdMatch = location.pathname.match(/\/chat\/dm\/(\d+)/);
+    const groupIdMatch = location.pathname.match(/\/chat\/group\/(\d+)/);
 
     if (channelIdMatch) {
       const channelId = parseInt(channelIdMatch[1]);
@@ -52,12 +60,17 @@ const Sidebar = ({ onAcceptInvite }) => {
       clearDmUnread(parseInt(dmIdMatch[1]));
     }
 
+    if (groupIdMatch) {
+      clearGroupUnread(parseInt(groupIdMatch[1]));
+      setSidebarMode('groups');
+    }
+
     if (workspaceIdMatch) {
       const wsId = parseInt(workspaceIdMatch[1]);
       setActiveWorkspaceId(wsId);
       setStoreActiveWorkspaceId(wsId);
     }
-  }, [location.pathname, clearChannelUnread, clearDmUnread, setStoreActiveWorkspaceId]);
+  }, [location.pathname, clearChannelUnread, clearDmUnread, clearGroupUnread, setStoreActiveWorkspaceId, setSidebarMode]);
 
   useEffect(() => {
     const channelIdMatch = location.pathname.match(/\/chat\/channel\/(\d+)/);
@@ -142,7 +155,42 @@ const Sidebar = ({ onAcceptInvite }) => {
     };
   }, [activeWorkspaceId, setSharedUsers]);
 
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadGroups() {
+      try {
+        const [groupsResp, invitesResp] = await Promise.all([
+          groupDmService.getGroups(),
+          groupDmService.getPendingInvites(),
+        ]);
+        const groupsData = groupsResp.data || [];
+        const invitesData = invitesResp.data || [];
+        if (!mounted) {
+          return;
+        }
+        setGroupConversations(Array.isArray(groupsData) ? groupsData : []);
+        setPendingGroupInvites(Array.isArray(invitesData) ? invitesData : []);
+      } catch (error) {
+        console.error('Failed to load group sidebar data', error);
+      }
+    }
+
+    loadGroups();
+    const interval = setInterval(loadGroups, 10000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [setGroupConversations]);
+
   const visibleDMs = sharedUsers.filter(u => u.id !== user?.id);
+  const visibleGroups = groupConversations
+    .filter((group) => !activeWorkspaceId || String(group.workspaceId) === String(activeWorkspaceId))
+    .filter((group) => group.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const visibleGroupInvites = pendingGroupInvites.filter(
+    (invite) => !activeWorkspaceId || String(invite.workspaceId) === String(activeWorkspaceId)
+  );
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -208,6 +256,32 @@ const Sidebar = ({ onAcceptInvite }) => {
 
   const activeWorkspace = workspaces.find(r => r.id === activeWorkspaceId);
 
+  const handleAcceptGroupInvite = async (inviteId) => {
+    try {
+      const response = await groupDmService.acceptInvite(inviteId);
+      const acceptedInvite = response.data || response;
+      setPendingGroupInvites((prev) => prev.filter((invite) => invite.id !== inviteId));
+      const groupsResp = await groupDmService.getGroups();
+      setGroupConversations(groupsResp.data || []);
+      if (acceptedInvite?.groupConversationId) {
+        clearGroupUnread(acceptedInvite.groupConversationId);
+      }
+      addToast('Group invitation accepted', 'success');
+    } catch (error) {
+      addToast(error.response?.data?.message || 'Failed to accept group invitation', 'error');
+    }
+  };
+
+  const handleRejectGroupInvite = async (inviteId) => {
+    try {
+      await groupDmService.rejectInvite(inviteId);
+      setPendingGroupInvites((prev) => prev.filter((invite) => invite.id !== inviteId));
+      addToast('Group invitation rejected', 'success');
+    } catch (error) {
+      addToast(error.response?.data?.message || 'Failed to reject group invitation', 'error');
+    }
+  };
+
   return (
     <>
       <aside className="flex w-full max-w-[var(--sidebar-width)] shrink-0 flex-col sidebar-gradient text-white md:w-[var(--sidebar-width)] border-r border-white/5">
@@ -252,7 +326,15 @@ const Sidebar = ({ onAcceptInvite }) => {
         <div className="scrollbar-thin flex-1 space-y-8 overflow-y-auto px-4 py-2">
           <section>
             <div className="mb-4 flex items-center justify-between px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-white/40">
-              <span>{sidebarMode === 'archive' ? 'Archived Channels' : sidebarMode === 'trash' ? 'Trashed Channels' : 'Channels'}</span>
+              <span>
+                {sidebarMode === 'archive'
+                  ? 'Archived Channels'
+                  : sidebarMode === 'trash'
+                    ? 'Trashed Channels'
+                    : sidebarMode === 'groups'
+                      ? 'Group Messages'
+                      : 'Channels'}
+              </span>
               {sidebarMode === 'channels' && (
                 <button
                   onClick={() => setIsCreateChannelModalOpen(true)}
@@ -262,38 +344,97 @@ const Sidebar = ({ onAcceptInvite }) => {
                   <Plus size={14} />
                 </button>
               )}
+              {sidebarMode === 'groups' && (
+                <button
+                  onClick={() => setShowCreateGroupModal(true)}
+                  className="hover:text-white transition-smooth p-1 hover:bg-white/10 rounded"
+                  disabled={!activeWorkspaceId}
+                >
+                  <Plus size={14} />
+                </button>
+              )}
             </div>
             <div className="space-y-0.5">
-              {(sidebarChannels || [])
-                .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                .filter(c => {
-                  if (sidebarMode === 'archive') return c.isArchived || c.archived;
-                  if (sidebarMode === 'trash') return c.isDeleted || c.deleted;
-                  return !c.isArchived && !c.archived && !c.isDeleted && !c.deleted;
-                })
-                .map((channel) => (
-                  <SidebarLink
-                    key={channel.id}
-                    to={`/chat/channel/${channel.id}`}
-                    isActive={activeChannelId === channel.id}
-                    icon={sidebarMode === 'trash' ? <Trash2 size={15} /> : (channel.isPrivate || channel.private ? <Lock size={15} /> : <Hash size={15} />)}
-                    title={channel.name}
-                    subtitle={sidebarMode === 'archive' ? 'Archived' : sidebarMode === 'trash' ? 'Deleted' : channel.description}
-                    badge={channel.unreadCount > 0 ? channel.unreadCount : null}
-                    isArchived={channel.isArchived || channel.archived}
-                    isDeleted={channel.isDeleted || channel.deleted}
-                    onRestore={(e) => handleRestore(e, channel.id)}
-                    onPermanentDelete={(e) => handlePermanentDelete(e, channel.id)}
-                    sidebarMode={sidebarMode}
-                    isCreator={channel.createdBy?.id === user?.id}
-                    isAdmin={activeWorkspace?.ownerId === user?.id}
-                  />
-                ))}
-              {channels.length === 0 && activeWorkspaceId && (
-                <p className="px-3 text-xs text-white/30 italic">No channels found</p>
-              )}
-              {channels.length === 0 && !activeWorkspaceId && (
-                <p className="px-3 text-xs text-white/30 italic">Select a workspace</p>
+              {sidebarMode === 'groups' ? (
+                <>
+                  {visibleGroupInvites.length > 0 && (
+                    <div className="mb-3 space-y-2">
+                      {visibleGroupInvites.map((invite) => (
+                        <div key={invite.id} className="rounded-xl bg-white/5 p-3">
+                          <div className="text-sm font-bold text-white">{invite.groupName}</div>
+                          <div className="mt-1 text-[11px] text-white/50">{invite.inviter?.displayName} invited you</div>
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleAcceptGroupInvite(invite.id)}
+                              className="flex-1 bg-white px-3 py-2 text-xs font-bold text-[#3f0e40]"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRejectGroupInvite(invite.id)}
+                              className="flex-1 bg-white/10 px-3 py-2 text-xs font-bold text-white"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {visibleGroups.map((group) => (
+                    <SidebarLink
+                      key={group.id}
+                      to={`/chat/group/${group.id}`}
+                      isActive={location.pathname === `/chat/group/${group.id}`}
+                      icon={<Users size={15} />}
+                      title={group.name}
+                      subtitle={`${group.memberCount} members`}
+                      badge={group.unreadCount > 0 ? group.unreadCount : null}
+                      sidebarMode="channels"
+                    />
+                  ))}
+
+                  {visibleGroups.length === 0 && visibleGroupInvites.length === 0 && activeWorkspaceId && (
+                    <p className="px-3 text-xs text-white/30 italic">No group messages yet</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  {(sidebarChannels || [])
+                    .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .filter(c => {
+                      if (sidebarMode === 'archive') return c.isArchived || c.archived;
+                      if (sidebarMode === 'trash') return c.isDeleted || c.deleted;
+                      return !c.isArchived && !c.archived && !c.isDeleted && !c.deleted;
+                    })
+                    .map((channel) => (
+                      <SidebarLink
+                        key={channel.id}
+                        to={`/chat/channel/${channel.id}`}
+                        isActive={activeChannelId === channel.id}
+                        icon={sidebarMode === 'trash' ? <Trash2 size={15} /> : (channel.isPrivate || channel.private ? <Lock size={15} /> : <Hash size={15} />)}
+                        title={channel.name}
+                        subtitle={sidebarMode === 'archive' ? 'Archived' : sidebarMode === 'trash' ? 'Deleted' : channel.description}
+                        badge={channel.unreadCount > 0 ? channel.unreadCount : null}
+                        isArchived={channel.isArchived || channel.archived}
+                        isDeleted={channel.isDeleted || channel.deleted}
+                        onRestore={(e) => handleRestore(e, channel.id)}
+                        onPermanentDelete={(e) => handlePermanentDelete(e, channel.id)}
+                        sidebarMode={sidebarMode}
+                        isCreator={channel.createdBy?.id === user?.id}
+                        isAdmin={activeWorkspace?.ownerId === user?.id}
+                      />
+                    ))}
+                  {channels.length === 0 && activeWorkspaceId && (
+                    <p className="px-3 text-xs text-white/30 italic">No channels found</p>
+                  )}
+                  {channels.length === 0 && !activeWorkspaceId && (
+                    <p className="px-3 text-xs text-white/30 italic">Select a workspace</p>
+                  )}
+                </>
               )}
             </div>
           </section>
@@ -405,6 +546,12 @@ const Sidebar = ({ onAcceptInvite }) => {
           </div>
         </div>
       </Modal>
+
+      <DMInviteModal
+        isOpen={showCreateGroupModal}
+        onClose={() => setShowCreateGroupModal(false)}
+        forceGroupMode
+      />
     </>
   );
 };

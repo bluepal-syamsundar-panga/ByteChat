@@ -12,7 +12,8 @@ import chatService from '../services/chatService';
 import workspaceService from '../services/workspaceService';
 import notificationService from '../services/notificationService';
 import userService from '../services/userService';
-import { connectWebSocket, disconnectWebSocket, subscribeToNotifications, subscribeToDM } from '../services/websocket';
+import groupDmService from '../services/groupDmService';
+import { connectWebSocket, disconnectWebSocket, subscribeToNotifications, subscribeToDM, subscribeToGroupDM } from '../services/websocket';
 import useToastStore from '../store/toastStore';
 
 const MainLayout = () => {
@@ -23,6 +24,7 @@ const MainLayout = () => {
     setUsers,
     setOnlineUsers,
     setNotifications,
+    setGroupConversations,
     workspaces,
     activeWorkspaceId,
   } = useChatStore();
@@ -73,6 +75,13 @@ const MainLayout = () => {
           state.appendDmMessage(otherUserId, message);
         }
       });
+
+      subscribeToGroupDM(user.id, (message) => {
+        const state = useChatStore.getState();
+        if (message?.groupId) {
+          state.appendGroupMessage(message.groupId, message);
+        }
+      });
     });
     loadAppContent();
     return () => disconnectWebSocket();
@@ -82,12 +91,13 @@ const MainLayout = () => {
 
   async function loadAppContent() {
     try {
-      const [workspacesRes, usersRes, onlineRes, meRes, notificationsRes] = await Promise.allSettled([
+      const [workspacesRes, usersRes, onlineRes, meRes, notificationsRes, groupsRes] = await Promise.allSettled([
         chatService.getWorkspaces(),
         userService.getUsers(),
         userService.getOnlineUsers(),
         userService.getCurrentUser(),
         notificationService.getNotifications(),
+        groupDmService.getGroups(),
       ]);
 
       if (workspacesRes.status === 'fulfilled') {
@@ -118,6 +128,12 @@ const MainLayout = () => {
         setNotifications(notificationsRes.value.data ?? []);
       } else {
         console.error('Failed to load notifications:', notificationsRes.reason?.response?.data || notificationsRes.reason);
+      }
+
+      if (groupsRes.status === 'fulfilled') {
+        setGroupConversations(groupsRes.value.data ?? []);
+      } else {
+        console.error('Failed to load group conversations:', groupsRes.reason?.response?.data || groupsRes.reason);
       }
     } catch (error) {
       console.error('Failed to load app content', error);

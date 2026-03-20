@@ -2,18 +2,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import DMChatWindow from '../components/Chat/DMChatWindow';
 import ChatWindow from '../components/Chat/ChatWindow';
+import GroupDMChatWindow from '../components/Chat/GroupDMChatWindow';
 import useChatStore from '../store/chatStore';
 import channelService from '../services/channelService';
 import userService from '../services/userService';
+import groupDmService from '../services/groupDmService';
 
 const ChatPage = () => {
   const { type, id } = useParams();
-  const { workspaces, channels, users, setChannels } = useChatStore();
+  const { workspaces, channels, setChannels, groupConversations, setGroupConversations } = useChatStore();
   const [loading, setLoading] = useState(false);
 
   const selectedWorkspace = useMemo(() => workspaces.find((ws) => String(ws.id) === id), [id, workspaces]);
   const selectedChannel = useMemo(() => channels.find((channel) => String(channel.id) === id), [id, channels]);
-  const { sharedUsers, setSharedUsers } = useChatStore();
+  const selectedGroup = useMemo(() => groupConversations.find((group) => String(group.id) === id), [id, groupConversations]);
+  const { sharedUsers } = useChatStore();
   const [targetUser, setTargetUser] = useState(null);
   
   const selectedUser = useMemo(() => 
@@ -72,6 +75,24 @@ const ChatPage = () => {
     }
   }, [type, id, sharedUsers]);
 
+  useEffect(() => {
+    if (type === 'group' && id && !selectedGroup) {
+      setLoading(true);
+      groupDmService.getGroup(id)
+        .then((res) => {
+          const groupData = res.data || null;
+          if (groupData) {
+            setGroupConversations((prev) => {
+              const exists = prev.some((item) => String(item.id) === String(groupData.id));
+              return exists ? prev.map((item) => String(item.id) === String(groupData.id) ? groupData : item) : [...prev, groupData];
+            });
+          }
+        })
+        .catch((err) => console.error('Failed to fetch group conversation:', err))
+        .finally(() => setLoading(false));
+    }
+  }, [type, id, selectedGroup, setGroupConversations]);
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -85,6 +106,10 @@ const ChatPage = () => {
 
   if (type === 'dm') {
     return <DMChatWindow user={selectedUser} />;
+  }
+
+  if (type === 'group') {
+    return <GroupDMChatWindow group={selectedGroup} />;
   }
 
   if (type === 'channel') {

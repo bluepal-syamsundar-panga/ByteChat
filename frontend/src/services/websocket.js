@@ -159,6 +159,23 @@ export function subscribeToDM(userId, callback) {
   return subscription;
 }
 
+export function subscribeToGroupDM(userId, callback) {
+  const stompClient = getClient();
+  const key = `group-dm:${userId}`;
+
+  if (!stompClient.connected) return null;
+
+  if (subscriptions.has(key)) {
+    subscriptions.get(key).unsubscribe();
+  }
+
+  const subscription = stompClient.subscribe(`/topic/group-dm/${userId}`, (message) => {
+    callback(JSON.parse(message.body));
+  });
+  subscriptions.set(key, subscription);
+  return subscription;
+}
+
 export function publishRoomMessage(roomId, payload) {
   const stompClient = getClient();
   if (!stompClient.connected) {

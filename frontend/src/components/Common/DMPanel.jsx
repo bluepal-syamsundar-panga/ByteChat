@@ -1,12 +1,11 @@
-import { MessageSquare, UserPlus, X, Check } from 'lucide-react';
-import { useState } from 'react';
+import { Check, MessageSquare, UserPlus, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import useChatStore from '../../store/chatStore';
 import { formatMessageTimestamp } from '../../utils/formatDate';
 import notificationService from '../../services/notificationService';
 import dmRequestService from '../../services/dmRequestService';
 import userService from '../../services/userService';
 import DMInviteModal from '../Chat/DMInviteModal';
-import { useEffect } from 'react';
 
 const DMPanel = () => {
   const { notifications, setNotifications, setSharedUsers } = useChatStore();
@@ -18,8 +17,10 @@ const DMPanel = () => {
     let mounted = true;
     async function loadRequests() {
       try {
-        const resp = await dmRequestService.getPendingRequests();
-        if (mounted) setPendingRequests(resp.data || []);
+        const dmResp = await dmRequestService.getPendingRequests();
+        if (mounted) {
+          setPendingRequests(dmResp.data || []);
+        }
       } catch (e) {
         console.error('Failed to load pending requests', e);
       }
@@ -34,9 +35,13 @@ const DMPanel = () => {
     }
   }, [isOpen]);
 
-  const dmNotifications = notifications.filter(
-    (n) => (n.type === 'DIRECT_MESSAGE' || n.type === 'DM_INVITE') && !n.isRead && !n.read
-  );
+  const dmNotifications = notifications.filter((n) => {
+    const isUnread = !(n.isRead || n.read);
+    if (!isUnread) {
+      return false;
+    }
+    return n.type === 'DIRECT_MESSAGE' || n.type === 'MENTION';
+  });
 
   const handleMarkAsRead = async (notificationId) => {
     try {

@@ -8,13 +8,15 @@ const useChatStore = create((set) => ({
   onlineUsers: [],
   notifications: [],
   sharedUsers: [],
+  groupConversations: [],
   activeWorkspaceId: null,
   activeThread: null,
   roomMessages: {},
   channelMessages: {},
   dmMessages: {},
+  groupMessages: {},
   typingByWorkspace: {},
-  sidebarMode: 'channels', // 'channels', 'archive', 'trash'
+  sidebarMode: 'channels', // 'channels', 'groups', 'archive', 'trash'
   setSidebarMode: (mode) => set({ sidebarMode: mode }),
   isCreateChannelModalOpen: false,
   setIsCreateChannelModalOpen: (isOpen) => set({ isCreateChannelModalOpen: isOpen }),
@@ -54,6 +56,11 @@ const useChatStore = create((set) => ({
     set((state) => {
       const nextUsers = typeof sharedUsers === 'function' ? sharedUsers(state.sharedUsers) : sharedUsers;
       return { sharedUsers: Array.isArray(nextUsers) ? nextUsers : [] };
+    }),
+  setGroupConversations: (groupConversations) =>
+    set((state) => {
+      const nextGroups = typeof groupConversations === 'function' ? groupConversations(state.groupConversations) : groupConversations;
+      return { groupConversations: Array.isArray(nextGroups) ? nextGroups : [] };
     }),
   setNotifications: (notifications) =>
     set((state) => ({
@@ -121,6 +128,8 @@ const useChatStore = create((set) => ({
     })),
   setDmMessages: (userId, messages) =>
     set((state) => ({ dmMessages: { ...state.dmMessages, [userId]: normalizeMessages(messages) } })),
+  setGroupMessages: (groupId, messages) =>
+    set((state) => ({ groupMessages: { ...state.groupMessages, [groupId]: normalizeMessages(messages) } })),
   appendDmMessage: (userId, message) =>
     set((state) => {
       const isCurrent = state.activeThread?.type === 'dm' && String(state.activeThread?.id) === String(userId);
@@ -134,6 +143,37 @@ const useChatStore = create((set) => ({
           : state.sharedUsers.map(u => u.id === userId ? { ...u, unreadCount: (u.unreadCount || 0) + 1 } : u)
       };
     }),
+  appendGroupMessage: (groupId, message) =>
+    set((state) => {
+      const isCurrent = state.activeThread?.type === 'group' && String(state.activeThread?.id) === String(groupId);
+      return {
+        groupMessages: {
+          ...state.groupMessages,
+          [groupId]: dedupe([...(state.groupMessages[groupId] ?? []), normalizeMessage(message)]),
+        },
+        groupConversations: isCurrent
+          ? state.groupConversations
+          : state.groupConversations.map((group) =>
+              String(group.id) === String(groupId)
+                ? { ...group, unreadCount: (group.unreadCount || 0) + 1 }
+                : group
+            ),
+      };
+    }),
+  upsertGroupMessage: (groupId, message) =>
+    set((state) => ({
+      groupMessages: {
+        ...state.groupMessages,
+        [groupId]: dedupe([...(state.groupMessages[groupId] ?? []).filter((item) => item.id !== message.id), normalizeMessage(message)]),
+      },
+    })),
+  removeGroupMessage: (groupId, messageId) =>
+    set((state) => ({
+      groupMessages: {
+        ...state.groupMessages,
+        [groupId]: (state.groupMessages[groupId] ?? []).filter((item) => item.id !== messageId),
+      },
+    })),
   upsertDmMessage: (userId, message) =>
     set((state) => ({
       dmMessages: {
@@ -177,6 +217,12 @@ const useChatStore = create((set) => ({
     set((state) => ({
       sharedUsers: state.sharedUsers.map((u) =>
         u.id === userId ? { ...u, unreadCount: 0 } : u
+      ),
+    })),
+  clearGroupUnread: (groupId) =>
+    set((state) => ({
+      groupConversations: state.groupConversations.map((group) =>
+        String(group.id) === String(groupId) ? { ...group, unreadCount: 0 } : group
       ),
     })),
 }));

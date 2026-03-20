@@ -1,8 +1,8 @@
 import api from './api';
 
 const dmRequestService = {
-  async sendRequest(receiverId) {
-    const response = await api.post(`/dm/requests/send/${receiverId}`);
+  async sendRequest(workspaceId, receiverId) {
+    const response = await api.post(`/dm/requests/send/${workspaceId}/${receiverId}`);
     return response.data;
   },
   async acceptRequest(requestId) {

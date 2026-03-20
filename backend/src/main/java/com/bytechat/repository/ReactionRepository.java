@@ -13,4 +13,6 @@ public interface ReactionRepository extends JpaRepository<Reaction, Long> {
     Optional<Reaction> findByMessageIdAndUserIdAndEmoji(Long messageId, Long userId, String emoji);
     List<Reaction> findByDirectMessageId(Long dmId);
     Optional<Reaction> findByDirectMessageIdAndUserIdAndEmoji(Long dmId, Long userId, String emoji);
+    List<Reaction> findByGroupConversationMessageId(Long groupMessageId);
+    Optional<Reaction> findByGroupConversationMessageIdAndUserIdAndEmoji(Long groupMessageId, Long userId, String emoji);
 }

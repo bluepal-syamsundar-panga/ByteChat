@@ -27,6 +27,10 @@ public class Reaction {
     private DirectMessage directMessage;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_conversation_message_id")
+    private GroupConversationMessage groupConversationMessage;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 

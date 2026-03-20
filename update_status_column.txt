@@ -1,0 +1,44 @@
+INSTRUCTIONS TO ADD STATUS COLUMN TO ALL TABLES:
+
+The Status column with "☐ Pass<br>☐ Fail" has been added to the first 15 test cases (TC-001 to TC-015).
+
+For the remaining test cases (TC-016 to TC-100), you need to:
+
+1. Open BYTECHAT_TEST_CASES_TABLE_FORMAT.md in a text editor
+
+2. Find each table header that looks like:
+   | Test Case ID | Test Case Title | Priority | Preconditions | Test Steps | Expected Result |
+
+3. Replace it with:
+   | Test Case ID | Test Case Title | Priority | Preconditions | Test Steps | Expected Result | Status |
+
+4. Find each separator line that looks like:
+   |--------------|----------------|----------|---------------|------------|-----------------|
+
+5. Replace it with:
+   |--------------|----------------|----------|---------------|------------|-----------------|--------|
+
+6. For each test case row (TC-016 to TC-100), add at the end:
+   | ☐ Pass<br>☐ Fail |
+
+EXAMPLE:
+Before:
+| TC-016 | Create Workspace with Valid OTP | High | User logged in | 1. Click... | • Workspace created... |
+
+After:
+| TC-016 | Create Workspace with Valid OTP | High | User logged in | 1. Click... | • Workspace created... | ☐ Pass<br>☐ Fail |
+
+OR USE FIND & REPLACE:
+
+Find: | (without Status column at end)
+Replace: | ☐ Pass<br>☐ Fail | (add Status column)
+
+This needs to be done for sections:
+- Workspace Management (TC-016 to TC-030)
+- Channel Management (TC-031 to TC-045)
+- Messaging Features (TC-046 to TC-060)
+- Direct Messaging (TC-061 to TC-070)
+- Notifications (TC-071 to TC-080)
+- File Upload & Attachments (TC-081 to TC-085)
+- User Profile & Presence (TC-086 to TC-090)
+- Advanced Features (TC-091 to TC-100)
