@@ -1,18 +1,25 @@
-import { MessageSquare, UserPlus, X, Check } from 'lucide-react';
+import { MessageSquare, X, Check } from 'lucide-react';
 import { useState } from 'react';
 import useChatStore from '../../store/chatStore';
 import { formatMessageTimestamp } from '../../utils/formatDate';
 import notificationService from '../../services/notificationService';
 import dmRequestService from '../../services/dmRequestService';
 import userService from '../../services/userService';
-import DMInviteModal from '../Chat/DMInviteModal';
 import { useEffect } from 'react';
 
 const DMPanel = () => {
-  const { notifications, setNotifications, setSharedUsers } = useChatStore();
+  const { notifications, setNotifications, sharedUsers, setSharedUsers } = useChatStore();
   const [isOpen, setIsOpen] = useState(false);
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
+
+  const dmNotifications = (notifications || []).filter(
+    (n) => (n.type === 'DIRECT_MESSAGE' || n.type === 'DM_INVITE') && !n.isRead && !n.read
+  );
+
+  // Calculate total badge count from both persistent notifications (invites)
+  // and real-time user-specific unread counts (messages)
+  const dmUnreadFromMessages = (sharedUsers || []).reduce((sum, u) => sum + (u.unreadCount || 0), 0);
+  const totalUnreadCount = dmNotifications.length + pendingRequests.length + dmUnreadFromMessages;
 
   useEffect(() => {
     let mounted = true;
@@ -33,10 +40,6 @@ const DMPanel = () => {
       };
     }
   }, [isOpen]);
-
-  const dmNotifications = notifications.filter(
-    (n) => (n.type === 'DIRECT_MESSAGE' || n.type === 'DM_INVITE') && !n.isRead && !n.read
-  );
 
   const handleMarkAsRead = async (notificationId) => {
     try {
@@ -82,9 +85,9 @@ const DMPanel = () => {
         title="Direct Messages"
       >
         <MessageSquare size={22} />
-        {(dmNotifications.length + pendingRequests.length) > 0 && (
+        {totalUnreadCount > 0 && (
           <span className="absolute -top-1 -right-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#e01e5a] px-1.5 text-[10px] font-bold text-white pointer-events-none shadow-md shadow-[#e01e5a]/30">
-            {(dmNotifications.length + pendingRequests.length) > 9 ? '9+' : (dmNotifications.length + pendingRequests.length)}
+            {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
           </span>
         )}
       </button>
@@ -99,25 +102,13 @@ const DMPanel = () => {
             <div className="border-b border-black/8 px-4 py-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-[#1d1c1d]">Direct Messages</h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setIsInviteModalOpen(true);
-                      setIsOpen(false);
-                    }}
-                    className="flex items-center gap-1.5 bg-[#3f0e40] text-white px-3 py-1.5 text-xs font-semibold rounded hover:bg-[#350d36] transition"
-                  >
-                    <UserPlus size={14} />
-                    Invite
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsOpen(false)}
-                    className="p-1 text-[#6b6a6b] transition hover:bg-black/5"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 text-[#6b6a6b] transition hover:bg-black/5"
+                >
+                  <X size={16} />
+                </button>
               </div>
             </div>
 
@@ -211,10 +202,6 @@ const DMPanel = () => {
       </>
     )}
 
-      <DMInviteModal 
-        isOpen={isInviteModalOpen} 
-        onClose={() => setIsInviteModalOpen(false)} 
-      />
     </div>
   );
 };

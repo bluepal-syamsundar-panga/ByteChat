@@ -17,17 +17,17 @@ const NotificationPanel = ({ variant = 'light', position = 'right', allowedTypes
   const [loading, setLoading] = useState(false);
 
   // Variant styles: 'light' is for dark backgrounds (sidebar), 'dark' is for light backgrounds (landing page)
-  const styles = variant === 'dark' 
+  const styles = variant === 'dark'
     ? {
-        button: 'text-[#1d1c1d] hover:bg-black/5',
-        active: 'bg-black/5',
-        panel: 'left-full top-0 ml-4'
-      }
+      button: 'text-[#1d1c1d] hover:bg-black/5',
+      active: 'bg-black/5',
+      panel: 'left-full top-0 ml-4'
+    }
     : {
-        button: 'text-white/70 hover:bg-white/10 hover:text-white',
-        active: 'bg-white/10 text-white',
-        panel: 'left-full top-0 ml-4'
-      };
+      button: 'text-white/70 hover:bg-white/10 hover:text-white',
+      active: 'bg-white/10 text-white',
+      panel: 'left-full top-0 ml-4'
+    };
 
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -76,7 +76,7 @@ const NotificationPanel = ({ variant = 'light', position = 'right', allowedTypes
   const handleAccept = async (notificationId) => {
     try {
       await notificationService.accept(notificationId);
-      
+
       // Immediately remove from list locally
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
 
@@ -91,20 +91,20 @@ const NotificationPanel = ({ variant = 'light', position = 'right', allowedTypes
         const workspaces = workspacesRes.data?.data || workspacesRes.data?.content || workspacesRes.data || [];
         useChatStore.getState().setWorkspaces(Array.isArray(workspaces) ? workspaces : []);
         useChatStore.getState().setSharedUsers(usersRes.data || usersRes || []);
-        
+
         // Critical: Fetch channels for the active workspace to show new memberships immediately
         const activeWorkspaceId = useChatStore.getState().activeWorkspaceId;
         console.log('Current active workspace for refresh:', activeWorkspaceId);
-        
+
         if (activeWorkspaceId) {
-            const channelsRes = await channelService.getWorkspaceChannels(activeWorkspaceId);
-            const channelsData = channelsRes.data?.data || channelsRes.data?.content || channelsRes.data || [];
-            console.log('Refreshed channels:', channelsData.length);
-            const normalizedChannels = Array.isArray(channelsData) ? channelsData : [];
-            useChatStore.getState().setChannels(normalizedChannels);
-            useChatStore.getState().setSidebarChannels(normalizedChannels);
+          const channelsRes = await channelService.getWorkspaceChannels(activeWorkspaceId);
+          const channelsData = channelsRes.data?.data || channelsRes.data?.content || channelsRes.data || [];
+          console.log('Refreshed channels:', channelsData.length);
+          const normalizedChannels = Array.isArray(channelsData) ? channelsData : [];
+          useChatStore.getState().setChannels(normalizedChannels);
+          useChatStore.getState().setSidebarChannels(normalizedChannels);
         }
-        
+
         useToastStore.getState().addToast('Invite accepted successfully!', 'success');
       } catch (fetchError) {
         console.error('Failed to refresh data after accept', fetchError);

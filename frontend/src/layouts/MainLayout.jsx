@@ -37,7 +37,7 @@ const MainLayout = () => {
   const displayRole = useMemo(() => {
     if (!user) return 'MEMBER';
     if (activeWorkspace && activeWorkspace.createdById === user.id) {
-        return 'OWNER';
+      return 'OWNER';
     }
     return user.role || 'MEMBER';
   }, [user, activeWorkspace]);
@@ -55,7 +55,7 @@ const MainLayout = () => {
           // Trigger unread count increment in sidebar globally
           const state = useChatStore.getState();
           const isCurrent = state.activeThread?.type === 'channel' && String(state.activeThread?.id) === String(notification.relatedEntityId);
-          
+
           if (!isCurrent) {
             state.incrementChannelUnread(notification.relatedEntityId);
           }
@@ -148,8 +148,8 @@ const MainLayout = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-transparent text-[#1d1c1d]">
-      <AppRail 
-        onCreateRoom={() => setShowCreateWorkspaceModal(true)} 
+      <AppRail
+        onCreateRoom={() => setShowCreateWorkspaceModal(true)}
         onProfileClick={() => setShowProfile(true)}
       />
       <Sidebar onAcceptInvite={handleAcceptInvite} />

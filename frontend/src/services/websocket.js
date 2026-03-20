@@ -44,18 +44,23 @@ function getClient() {
   return client;
 }
 
-export function connectWebSocket(onConnect) {
+export function connectWebSocket(onConnectCallback) {
   const stompClient = getClient();
   if (stompClient.active) {
-    if (stompClient.connected && onConnect) {
-      onConnect(stompClient);
+    if (stompClient.connected) {
+      // Sync any listeners that were registered before the connection was established
+      onConnect();
+      if (onConnectCallback) onConnectCallback(stompClient);
     }
     return stompClient;
   }
 
   stompClient.onConnect = () => {
-    if (onConnect) {
-      onConnect(stompClient);
+    // Sync any listeners that were registered before the connection was established
+    onConnect();
+    
+    if (onConnectCallback) {
+      onConnectCallback(stompClient);
     }
   };
 
@@ -125,39 +130,106 @@ export function subscribeToTyping(workspaceId, callback) {
   return subscription;
 }
 
+// Internal registry to track all active listeners
+const notificationListeners = new Map(); // userId -> Set<callback>
+const dmListeners = new Map(); // userId -> Set<callback>
+
+// Internal registry of STOMP subscriptions
+const activeSubscriptions = new Map(); // topicKey -> stompSubscription
+
+/**
+ * Ensures a subscription is active for a given topic if there are any listeners.
+ */
+function syncSubscriptions() {
+  const stompClient = getClient();
+  if (!stompClient || !stompClient.connected) return;
+
+  // Sync notifications
+  notificationListeners.forEach((callbacks, userId) => {
+    const key = `notifications:${userId}`;
+    if (callbacks.size > 0 && !activeSubscriptions.has(key)) {
+      console.log(`Establishing WebSocket subscription for ${key}`);
+      const sub = stompClient.subscribe(`/topic/user/${userId}/notifications`, (message) => {
+        const data = JSON.parse(message.body);
+        notificationListeners.get(userId)?.forEach(cb => cb(data));
+      });
+      activeSubscriptions.set(key, sub);
+    }
+  });
+
+  // Sync DMs
+  dmListeners.forEach((callbacks, userId) => {
+    const key = `dm:${userId}`;
+    if (callbacks.size > 0 && !activeSubscriptions.has(key)) {
+      console.log(`Establishing WebSocket subscription for ${key}`);
+      const sub = stompClient.subscribe(`/topic/dm/${userId}`, (message) => {
+        const data = JSON.parse(message.body);
+        dmListeners.get(userId)?.forEach(cb => cb(data));
+      });
+      activeSubscriptions.set(key, sub);
+    }
+  });
+}
+
+// Re-sync whenever the client connects
+export function onConnect() {
+  syncSubscriptions();
+}
+
+/**
+ * Subscribe to notifications. Will automatically connect when WebSocket is ready.
+ */
 export function subscribeToNotifications(userId, callback) {
-  const stompClient = getClient();
-  const key = `notifications:${userId}`;
-  
-  if (!stompClient.connected) return null;
-
-  if (subscriptions.has(key)) {
-    subscriptions.get(key).unsubscribe();
+  if (!notificationListeners.has(userId)) {
+    notificationListeners.set(userId, new Set());
   }
+  notificationListeners.get(userId).add(callback);
+  
+  // Try to sync immediately
+  syncSubscriptions();
 
-  const subscription = stompClient.subscribe(`/topic/user/${userId}/notifications`, (message) => {
-    callback(JSON.parse(message.body));
-  });
-  subscriptions.set(key, subscription);
-  return subscription;
+  return {
+    unsubscribe: () => {
+      const callbacks = notificationListeners.get(userId);
+      if (callbacks) {
+        callbacks.delete(callback);
+        if (callbacks.size === 0) {
+          const key = `notifications:${userId}`;
+          activeSubscriptions.get(key)?.unsubscribe();
+          activeSubscriptions.delete(key);
+        }
+      }
+    }
+  };
 }
 
+/**
+ * Subscribe to DMs. Will automatically connect when WebSocket is ready.
+ */
 export function subscribeToDM(userId, callback) {
-  const stompClient = getClient();
-  const key = `dm:${userId}`;
-  
-  if (!stompClient.connected) return null;
-
-  if (subscriptions.has(key)) {
-    subscriptions.get(key).unsubscribe();
+  if (!dmListeners.has(userId)) {
+    dmListeners.set(userId, new Set());
   }
+  dmListeners.get(userId).add(callback);
 
-  const subscription = stompClient.subscribe(`/topic/dm/${userId}`, (message) => {
-    callback(JSON.parse(message.body));
-  });
-  subscriptions.set(key, subscription);
-  return subscription;
+  // Try to sync immediately
+  syncSubscriptions();
+
+  return {
+    unsubscribe: () => {
+      const callbacks = dmListeners.get(userId);
+      if (callbacks) {
+        callbacks.delete(callback);
+        if (callbacks.size === 0) {
+          const key = `dm:${userId}`;
+          activeSubscriptions.get(key)?.unsubscribe();
+          activeSubscriptions.delete(key);
+        }
+      }
+    }
+  };
 }
+
 
 export function publishRoomMessage(roomId, payload) {
   const stompClient = getClient();
