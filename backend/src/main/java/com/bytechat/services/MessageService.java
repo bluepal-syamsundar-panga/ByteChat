@@ -1,13 +1,15 @@
 package com.bytechat.services;
 
+import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.entity.User;
-import org.springframework.data.domain.Page;
+
+import java.time.LocalDateTime;
 
 public interface MessageService {
     MessageResponse sendMessage(Long channelId, MessageRequest request, User sender);
-    Page<MessageResponse> getRoomMessages(Long channelId, int page, int size, User currentUser);
+    CursorPageResponse<MessageResponse> getRoomMessages(Long channelId, LocalDateTime cursorSentAt, Long cursorId, int size, User currentUser);
     MessageResponse getMessageResponse(Long messageId, User currentUser);
     MessageResponse editMessage(Long messageId, MessageRequest request, User currentUser);
     MessageResponse deleteMessage(Long messageId, String scope, User currentUser);

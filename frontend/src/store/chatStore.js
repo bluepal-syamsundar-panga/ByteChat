@@ -90,6 +90,13 @@ const useChatStore = create((set) => ({
     set((state) => ({ roomMessages: { ...state.roomMessages, [roomId]: normalizeMessages(messages) } })),
   setChannelMessages: (channelId, messages) =>
     set((state) => ({ channelMessages: { ...state.channelMessages, [channelId]: normalizeMessages(messages) } })),
+  prependChannelMessages: (channelId, messages) =>
+    set((state) => ({
+      channelMessages: {
+        ...state.channelMessages,
+        [channelId]: dedupe([...(normalizeMessages(messages) ?? []), ...(state.channelMessages[channelId] ?? [])]),
+      },
+    })),
   appendRoomMessage: (roomId, message) =>
     set((state) => ({
       roomMessages: {
@@ -143,6 +150,13 @@ const useChatStore = create((set) => ({
     })),
   setDmMessages: (userId, messages) =>
     set((state) => ({ dmMessages: { ...state.dmMessages, [userId]: normalizeMessages(messages) } })),
+  prependDmMessages: (userId, messages) =>
+    set((state) => ({
+      dmMessages: {
+        ...state.dmMessages,
+        [userId]: dedupe([...(normalizeMessages(messages) ?? []), ...(state.dmMessages[userId] ?? [])]),
+      },
+    })),
   appendDmMessage: (userId, message) =>
     set((state) => {
       const isCurrent = state.activeThread?.type === 'dm' && String(state.activeThread?.id) === String(userId);
@@ -253,6 +267,8 @@ function normalizeMessage(message) {
   if (!message) return message;
   return {
     ...message,
+    sentAt: normalizeDateValue(message.sentAt),
+    editedAt: normalizeDateValue(message.editedAt),
     isDeleted: message.isDeleted ?? message.deleted ?? false,
     isPinned: message.isPinned ?? message.pinned ?? false,
   };
@@ -266,6 +282,15 @@ function normalizeMeetings(meetings) {
       const rightTime = new Date(right?.createdAt ?? 0).getTime() || 0;
       return rightTime - leftTime;
     });
+}
+
+function normalizeDateValue(value) {
+  if (!value) return value;
+  if (Array.isArray(value) && value.length >= 6) {
+    const date = new Date(value[0], value[1] - 1, value[2], value[3], value[4], value[5]);
+    return Number.isNaN(date.getTime()) ? value : date.toISOString();
+  }
+  return value;
 }
 
 export default useChatStore;

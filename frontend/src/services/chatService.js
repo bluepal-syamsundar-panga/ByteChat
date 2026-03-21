@@ -21,9 +21,14 @@ const chatService = {
     const response = await api.get(`/workspaces/${workspaceId}/members`);
     return response.data;
   },
-  async getChannelMessages(channelId, page = 0, size = 50) {
-    const response = await api.get(`/messages/channel/${channelId}?page=${page}&size=${size}`);
-    return response.data;
+  async getChannelMessages(channelId, options = {}) {
+    const { cursorSentAt, cursorId, size = 50 } = options;
+    const params = new URLSearchParams();
+    params.set('size', String(size));
+    if (cursorSentAt) params.set('cursorSentAt', cursorSentAt);
+    if (cursorId !== undefined && cursorId !== null) params.set('cursorId', String(cursorId));
+    const response = await api.get(`/messages/channel/${channelId}?${params.toString()}`);
+    return response.data?.data ?? response.data;
   },
   async sendChannelMessage(channelId, payload) {
     const response = await api.post(`/messages/channel/${channelId}`, payload);

@@ -15,7 +15,7 @@ import useToastStore from '../../store/toastStore';
 
 const DMChatWindow = ({ user }) => {
   const currentUser = useAuthStore((state) => state.user);
-  const { dmMessages, setDmMessages, appendDmMessage, upsertDmMessage, removeDmMessage, sharedUsers, setActiveThread, clearDmUnread } = useChatStore();
+  const { dmMessages, setDmMessages, prependDmMessages, appendDmMessage, upsertDmMessage, removeDmMessage, sharedUsers, setActiveThread, clearDmUnread } = useChatStore();
   const [loading, setLoading] = useState(true);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
@@ -27,6 +27,10 @@ const DMChatWindow = ({ user }) => {
   const [editContent, setEditContent] = useState('');
   const [replyTarget, setReplyTarget] = useState(null);
   const [showPinnedDetails, setShowPinnedDetails] = useState(false);
+  const [historyCursor, setHistoryCursor] = useState(null);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const historyDayRef = useRef(null);
   
   const scrollRef = useRef(null);
   const messageContainerRef = useRef(null);
@@ -39,6 +43,7 @@ const DMChatWindow = ({ user }) => {
   const typingTimeoutRef = useRef(null);
   const remoteTypingTimeoutRef = useRef(null);
   const hadTypingUserRef = useRef(false);
+  const touchStartYRef = useRef(null);
 
   const selectedMessage = useMemo(() => {
     const match = thread.find(m => m.id === selectedMessageId);
@@ -81,6 +86,132 @@ const DMChatWindow = ({ user }) => {
     scrollRef.current?.scrollIntoView({ behavior });
   };
 
+  function normalizeCursorPayload(payload) {
+    if (!payload) {
+      return { items: [], hasMore: false, nextCursorSentAt: null, nextCursorId: null };
+    }
+
+    if (Array.isArray(payload)) {
+      return { items: payload, hasMore: false, nextCursorSentAt: null, nextCursorId: null };
+    }
+
+    if (Array.isArray(payload.content)) {
+      return {
+        items: payload.content,
+        hasMore: Boolean(payload.hasNext),
+        nextCursorSentAt: null,
+        nextCursorId: null,
+      };
+    }
+
+    return {
+      items: payload.items ?? [],
+      hasMore: Boolean(payload.hasMore),
+      nextCursorSentAt: payload.nextCursorSentAt ?? null,
+      nextCursorId: payload.nextCursorId ?? null,
+    };
+  }
+
+  function getMessageDayKey(message) {
+    const sentAt = normalizeTimestamp(message?.sentAt);
+    if (!sentAt) return null;
+    const date = new Date(sentAt);
+    if (Number.isNaN(date.getTime())) return null;
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  }
+
+  function normalizeTimestamp(value) {
+    if (!value) return null;
+    if (Array.isArray(value) && value.length >= 6) {
+      const date = new Date(value[0], value[1] - 1, value[2], value[3], value[4], value[5]);
+      return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    }
+    return value;
+  }
+
+  async function fetchDirectMessageDayChunk(initialCursor = null) {
+    if (!user?.id) {
+      return { messages: [], nextCursor: null, hasMore: false, dayKey: null };
+    }
+
+    let cursor = initialCursor;
+    let loopHasMore = true;
+    let dayKey = null;
+    let nextCursor = null;
+    const collected = [];
+
+    while (loopHasMore) {
+      const response = await dmService.getDirectMessages(user.id, {
+        cursorSentAt: cursor?.sentAt,
+        cursorId: cursor?.id,
+        size: 50,
+      });
+      const history = normalizeCursorPayload(response);
+      const batch = history.items ?? [];
+
+      if (batch.length === 0) {
+        return {
+          messages: collected,
+          nextCursor: null,
+          hasMore: false,
+          dayKey,
+        };
+      }
+
+      let boundaryReached = false;
+
+      for (const message of batch) {
+        const messageDayKey = getMessageDayKey(message);
+        if (!dayKey) {
+          dayKey = messageDayKey;
+        }
+
+        if (messageDayKey !== dayKey) {
+          boundaryReached = true;
+          nextCursor = {
+            sentAt: normalizeTimestamp(message.sentAt),
+            id: message.id,
+          };
+          break;
+        }
+
+        collected.push(message);
+      }
+
+      if (boundaryReached) {
+        return {
+          messages: collected,
+          nextCursor,
+          hasMore: true,
+          dayKey,
+        };
+      }
+
+      if (!history.hasMore) {
+        return {
+          messages: collected,
+          nextCursor: null,
+          hasMore: false,
+          dayKey,
+        };
+      }
+
+      const lastMessage = batch[batch.length - 1];
+      cursor = {
+        sentAt: normalizeTimestamp(lastMessage.sentAt),
+        id: lastMessage.id,
+      };
+      loopHasMore = Boolean(history.hasMore);
+    }
+
+    return {
+      messages: collected,
+      nextCursor,
+      hasMore: false,
+      dayKey,
+    };
+  }
+
   function clearConversationNotifications(messageIds = []) {
     if (!messageIds.length) return;
     const messageIdSet = new Set(messageIds.map((id) => String(id)));
@@ -102,18 +233,16 @@ const DMChatWindow = ({ user }) => {
 
     let mounted = true;
     setIsFirstLoad(true);
+    setHistoryCursor(null);
+    setHasMoreHistory(true);
+    historyDayRef.current = null;
 
     async function loadConversation(isInitial = false) {
       try {
         if (isInitial) setLoading(true);
-        const response = await dmService.getDirectMessages(user.id);
+        const dayChunk = await fetchDirectMessageDayChunk(null);
         if (mounted) {
-          console.log('DM Response:', response);
-          console.log('DM Response Data:', response.data);
-          
-          // Handle ApiResponse wrapper: response.data.data.content
-          const messagesData = response.data?.data || response.data || response;
-          const newMessages = [...(messagesData.content ?? messagesData ?? [])].reverse();
+          const newMessages = [...(dayChunk.messages ?? [])].reverse();
           
           console.log('Processed DM Messages:', newMessages);
           console.log('DM Messages Count:', newMessages.length);
@@ -123,6 +252,9 @@ const DMChatWindow = ({ user }) => {
           const isAtBottom = container ? (container.scrollHeight - container.scrollTop <= container.clientHeight + 100) : true;
 
           setDmMessages(user.id, newMessages);
+          setHasMoreHistory(Boolean(dayChunk.hasMore));
+          setHistoryCursor(dayChunk.nextCursor);
+          historyDayRef.current = dayChunk.dayKey;
           await dmService.markAsRead(user.id);
           clearDmUnread(user.id);
           clearConversationNotifications(newMessages.map((message) => message.id));
@@ -197,6 +329,67 @@ const DMChatWindow = ({ user }) => {
       setActiveThread(null);
     };
   }, [setDmMessages, appendDmMessage, user?.id, currentUser?.id, setActiveThread, clearDmUnread]);
+
+  async function loadOlderDirectMessages() {
+    if (!user?.id || loadingOlder || !hasMoreHistory || !historyCursor) return;
+
+    const container = messageContainerRef.current;
+    const previousScrollHeight = container?.scrollHeight ?? 0;
+    const previousScrollTop = container?.scrollTop ?? 0;
+    setLoadingOlder(true);
+
+    try {
+      const history = await fetchDirectMessageDayChunk(historyCursor);
+      const olderMessages = [...(history.messages ?? [])].reverse();
+
+      if (olderMessages.length > 0) {
+        prependDmMessages(user.id, olderMessages);
+        requestAnimationFrame(() => {
+          if (!container) return;
+          const nextScrollHeight = container.scrollHeight;
+          container.scrollTop = nextScrollHeight - previousScrollHeight + previousScrollTop;
+        });
+      }
+
+      setHasMoreHistory(Boolean(history.hasMore));
+      setHistoryCursor(history.nextCursor);
+    } catch (error) {
+      console.error('Failed to load older DMs', error);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
+
+  function handleMessageScroll(event) {
+    if (event.currentTarget.scrollTop > 120) return;
+    if (loading || loadingOlder) return;
+    loadOlderDirectMessages();
+  }
+
+  function handleMessageWheel(event) {
+    const container = messageContainerRef.current;
+    if (!container) return;
+    if (event.deltaY >= 0) return;
+    if (container.scrollTop > 8) return;
+    if (loading || loadingOlder) return;
+    loadOlderDirectMessages();
+  }
+
+  function handleTouchStart(event) {
+    touchStartYRef.current = event.touches?.[0]?.clientY ?? null;
+  }
+
+  function handleTouchMove(event) {
+    const container = messageContainerRef.current;
+    if (!container) return;
+    const currentY = event.touches?.[0]?.clientY ?? null;
+    if (currentY == null || touchStartYRef.current == null) return;
+    const deltaY = currentY - touchStartYRef.current;
+    if (deltaY <= 12) return;
+    if (container.scrollTop > 8) return;
+    if (loading || loadingOlder) return;
+    loadOlderDirectMessages();
+  }
 
   async function handleSend(content, file) {
     try {
@@ -588,7 +781,21 @@ const DMChatWindow = ({ user }) => {
         </div>
       )}
 
-      <div ref={messageContainerRef} className="scrollbar-thin flex-1 overflow-y-auto">
+      <div
+        ref={messageContainerRef}
+        onScroll={handleMessageScroll}
+        onWheel={handleMessageWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        className="scrollbar-thin flex-1 overflow-y-auto"
+      >
+        {!loading && (
+          <div className="px-8 pt-4 text-center">
+            <div className="text-xs font-bold tracking-wide text-gray-400">
+              {loadingOlder ? 'Loading older messages...' : hasMoreHistory ? 'Scroll up to load older messages' : 'Start of conversation'}
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="flex flex-col gap-8 p-10">
             {[1, 2].map(i => (

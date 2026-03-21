@@ -41,6 +41,7 @@ const ChatWindow = ({ room, channel }) => {
     typingByWorkspace,
     setRoomMessages,
     setChannelMessages,
+    prependChannelMessages,
     appendRoomMessage,
     appendChannelMessage,
     upsertChannelMessage,
@@ -82,7 +83,12 @@ const ChatWindow = ({ room, channel }) => {
   const [editContent, setEditContent] = useState('');
   const [replyTarget, setReplyTarget] = useState(null);
   const [showPinnedDetails, setShowPinnedDetails] = useState(false);
+  const [historyCursor, setHistoryCursor] = useState(null);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const historyDayRef = useRef(null);
   const previousMemberCountRef = useRef(null);
+  const touchStartYRef = useRef(null);
   
   useEffect(() => {
     if (room && !channel) {
@@ -133,15 +139,173 @@ const ChatWindow = ({ room, channel }) => {
     scrollRef.current?.scrollIntoView({ behavior });
   };
 
+  function normalizeCursorPayload(payload) {
+    if (!payload) {
+      return { items: [], hasMore: false, nextCursorSentAt: null, nextCursorId: null };
+    }
+
+    if (Array.isArray(payload)) {
+      return { items: payload, hasMore: false, nextCursorSentAt: null, nextCursorId: null };
+    }
+
+    if (Array.isArray(payload.content)) {
+      return {
+        items: payload.content,
+        hasMore: Boolean(payload.hasNext),
+        nextCursorSentAt: null,
+        nextCursorId: null,
+      };
+    }
+
+    return {
+      items: payload.items ?? [],
+      hasMore: Boolean(payload.hasMore),
+      nextCursorSentAt: payload.nextCursorSentAt ?? null,
+      nextCursorId: payload.nextCursorId ?? null,
+    };
+  }
+
+  function getMessageDayKey(message) {
+    const sentAt = normalizeTimestamp(message?.sentAt);
+    if (!sentAt) return null;
+    const date = new Date(sentAt);
+    if (Number.isNaN(date.getTime())) return null;
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  }
+
+  function normalizeTimestamp(value) {
+    if (!value) return null;
+    if (Array.isArray(value) && value.length >= 6) {
+      const date = new Date(value[0], value[1] - 1, value[2], value[3], value[4], value[5]);
+      return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    }
+    return value;
+  }
+
+  async function fetchChannelDayChunk(initialCursor = null) {
+    if (!channelId) {
+      return { messages: [], nextCursor: null, hasMore: false, dayKey: null };
+    }
+
+    let cursor = initialCursor;
+    let loopHasMore = true;
+    let dayKey = null;
+    let nextCursor = null;
+    const collected = [];
+
+    while (loopHasMore) {
+      const response = await chatService.getChannelMessages(channelId, {
+        cursorSentAt: cursor?.sentAt,
+        cursorId: cursor?.id,
+        size: 50,
+      });
+      const history = normalizeCursorPayload(response);
+      const batch = history.items ?? [];
+
+      if (batch.length === 0) {
+        return {
+          messages: collected,
+          nextCursor: null,
+          hasMore: false,
+          dayKey,
+        };
+      }
+
+      let boundaryReached = false;
+
+      for (const message of batch) {
+        const messageDayKey = getMessageDayKey(message);
+        if (!dayKey) {
+          dayKey = messageDayKey;
+        }
+
+        if (messageDayKey !== dayKey) {
+          boundaryReached = true;
+          nextCursor = {
+            sentAt: normalizeTimestamp(message.sentAt),
+            id: message.id,
+          };
+          break;
+        }
+
+        collected.push(message);
+      }
+
+      if (boundaryReached) {
+        return {
+          messages: collected,
+          nextCursor,
+          hasMore: true,
+          dayKey,
+        };
+      }
+
+      if (!history.hasMore) {
+        return {
+          messages: collected,
+          nextCursor: null,
+          hasMore: false,
+          dayKey,
+        };
+      }
+
+      const lastMessage = batch[batch.length - 1];
+      cursor = {
+        sentAt: normalizeTimestamp(lastMessage.sentAt),
+        id: lastMessage.id,
+      };
+      loopHasMore = Boolean(history.hasMore);
+    }
+
+    return {
+      messages: collected,
+      nextCursor,
+      hasMore: false,
+      dayKey,
+    };
+  }
+
   async function refreshChannelMessages() {
     if (!channelId) return;
     try {
-      const messagesResponse = await chatService.getChannelMessages(channelId);
-      const messagesData = messagesResponse?.data?.data || messagesResponse?.data || messagesResponse;
-      const nextMessages = [...(messagesData.content ?? messagesData ?? [])].reverse();
+      const dayChunk = await fetchChannelDayChunk(null);
+      const nextMessages = [...(dayChunk.messages ?? [])].reverse();
       setChannelMessages(channelId, nextMessages);
+      setHasMoreHistory(Boolean(dayChunk.hasMore));
+      setHistoryCursor(dayChunk.nextCursor);
+      historyDayRef.current = dayChunk.dayKey;
     } catch (error) {
       console.error('Failed to refresh channel messages', error);
+    }
+  }
+
+  async function loadOlderChannelMessages() {
+    if (!channelId || loadingOlder || !hasMoreHistory || !historyCursor) return;
+
+    const container = messageContainerRef.current;
+    const previousScrollHeight = container?.scrollHeight ?? 0;
+    const previousScrollTop = container?.scrollTop ?? 0;
+    setLoadingOlder(true);
+
+    try {
+      const history = await fetchChannelDayChunk(historyCursor);
+      const olderMessages = [...(history.messages ?? [])].reverse();
+
+      if (olderMessages.length > 0) {
+        prependChannelMessages(channelId, olderMessages);
+        requestAnimationFrame(() => {
+          if (!container) return;
+          const nextScrollHeight = container.scrollHeight;
+          container.scrollTop = nextScrollHeight - previousScrollHeight + previousScrollTop;
+        });
+      }
+
+      setHasMoreHistory(Boolean(history.hasMore));
+      setHistoryCursor(history.nextCursor);
+    } catch (error) {
+      console.error('Failed to load older channel messages', error);
+    } finally {
+      setLoadingOlder(false);
     }
   }
 
@@ -257,19 +421,23 @@ const ChatWindow = ({ room, channel }) => {
     async function loadData() {
       try {
         setMembers([]); // Clear previous members
+        setHistoryCursor(null);
+        setHasMoreHistory(true);
+        historyDayRef.current = null;
         if (entityType !== 'channel') {
            setLoading(false);
            return;
         }
 
-        const messagesResponse = await chatService.getChannelMessages(entityId);
+        const dayChunk = await fetchChannelDayChunk(null);
         if (!mounted) return;
 
-        // chatService returns response.data (ApiResponse { data: Page<MessageResponse> })
-        const messagesData = messagesResponse?.data?.data || messagesResponse?.data || messagesResponse;
-        const newMessages = [...(messagesData.content ?? messagesData ?? [])].reverse();
+        const newMessages = [...(dayChunk.messages ?? [])].reverse();
         console.log('Loaded', newMessages.length, 'messages for channel', entityId);
         setChannelMessages(entityId, newMessages);
+        setHasMoreHistory(Boolean(dayChunk.hasMore));
+        setHistoryCursor(dayChunk.nextCursor);
+        historyDayRef.current = dayChunk.dayKey;
 
         // Fetch members separately Ã¢â‚¬â€ failure here must NOT block message display
         try {
@@ -394,6 +562,40 @@ const ChatWindow = ({ room, channel }) => {
       setActiveThread(null);
     };
   }, [entityId, entityType, appendChannelMessage, appendRoomMessage, setChannelMessages, setRoomMessages, setTyping, setActiveThread, clearChannelUnread]);
+
+  function handleMessageScroll(event) {
+    if (entityType !== 'channel') return;
+    if (event.currentTarget.scrollTop > 120) return;
+    if (loading || loadingOlder) return;
+    loadOlderChannelMessages();
+  }
+
+  function handleMessageWheel(event) {
+    if (entityType !== 'channel') return;
+    const container = messageContainerRef.current;
+    if (!container) return;
+    if (event.deltaY >= 0) return;
+    if (container.scrollTop > 8) return;
+    if (loading || loadingOlder) return;
+    loadOlderChannelMessages();
+  }
+
+  function handleTouchStart(event) {
+    touchStartYRef.current = event.touches?.[0]?.clientY ?? null;
+  }
+
+  function handleTouchMove(event) {
+    if (entityType !== 'channel') return;
+    const container = messageContainerRef.current;
+    if (!container) return;
+    const currentY = event.touches?.[0]?.clientY ?? null;
+    if (currentY == null || touchStartYRef.current == null) return;
+    const deltaY = currentY - touchStartYRef.current;
+    if (deltaY <= 12) return;
+    if (container.scrollTop > 8) return;
+    if (loading || loadingOlder) return;
+    loadOlderChannelMessages();
+  }
 
   useEffect(() => {
     if (!channelId) return;
@@ -1155,7 +1357,21 @@ const ChatWindow = ({ room, channel }) => {
         </div>
       )}
 
-      <div ref={messageContainerRef} className="scrollbar-thin flex-1 overflow-y-auto">
+      <div
+        ref={messageContainerRef}
+        onScroll={handleMessageScroll}
+        onWheel={handleMessageWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        className="scrollbar-thin flex-1 overflow-y-auto"
+      >
+        {!loading && entityType === 'channel' && (
+          <div className="px-8 pt-4 text-center">
+            <div className="text-xs font-bold tracking-wide text-gray-400">
+              {loadingOlder ? 'Loading older messages...' : hasMoreHistory ? 'Scroll up to load older messages' : 'Start of conversation'}
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="flex flex-col gap-8 p-10">
             {[1, 2, 3, 4].map(i => (

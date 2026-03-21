@@ -1,6 +1,7 @@
 package com.bytechat.serviceimpl;
 
 import com.bytechat.dto.request.MessageRequest;
+import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.response.MessageReadUserResponse;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.dto.response.ReactionResponse;
@@ -25,14 +26,13 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -103,8 +103,8 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
-    public Page<MessageResponse> getRoomMessages(Long channelId, int page, int size, User currentUser) {
-        log.info("Fetching messages for channel {} (page: {}, size: {})", channelId, page, size);
+    public CursorPageResponse<MessageResponse> getRoomMessages(Long channelId, LocalDateTime cursorSentAt, Long cursorId, int size, User currentUser) {
+        log.info("Fetching messages for channel {} (cursorSentAt: {}, cursorId: {}, size: {})", channelId, cursorSentAt, cursorId, size);
         Channel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new ResourceNotFoundException("Channel not found"));
         
@@ -115,14 +115,28 @@ public class MessageServiceImpl implements MessageService {
              throw new UnauthorizedException("User is not a member of this workspace");
         }
         
-        Page<Message> pageResult = messageRepository.findByChannelIdOrderBySentAtDesc(channelId, PageRequest.of(page, size));
-        List<MessageResponse> visibleMessages = pageResult.getContent().stream()
-                .filter(message -> !message.getHiddenForUserIds().contains(currentUser.getId()))
+        List<Message> pageResult;
+        if (cursorSentAt == null || cursorId == null) {
+            pageResult = messageRepository.findByChannelIdOrderBySentAtDesc(channelId, PageRequest.of(0, size + 1)).getContent();
+        } else {
+            pageResult = messageRepository.findHistoryPage(channelId, cursorSentAt, cursorId, PageRequest.of(0, size + 1));
+        }
+        boolean hasMore = pageResult.size() > size;
+        List<Message> limitedMessages = hasMore ? pageResult.subList(0, size) : pageResult;
+
+        List<MessageResponse> visibleMessages = limitedMessages.stream()
+                .filter(message -> !getHiddenUserIds(message).contains(currentUser.getId()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
-        Page<MessageResponse> messages = new PageImpl<>(visibleMessages, pageResult.getPageable(), visibleMessages.size());
-        log.debug("Returned {} messages for channel {}", messages.getNumberOfElements(), channelId);
-        return messages;
+
+        MessageResponse nextCursorSource = visibleMessages.isEmpty() ? null : visibleMessages.get(visibleMessages.size() - 1);
+        log.debug("Returned {} messages for channel {}", visibleMessages.size(), channelId);
+        return CursorPageResponse.<MessageResponse>builder()
+                .items(visibleMessages)
+                .hasMore(hasMore)
+                .nextCursorSentAt(nextCursorSource != null ? nextCursorSource.getSentAt() : null)
+                .nextCursorId(nextCursorSource != null ? nextCursorSource.getId() : null)
+                .build();
     }
 
     @Override
@@ -165,8 +179,9 @@ public class MessageServiceImpl implements MessageService {
             if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(message.getChannel().getWorkspace().getId(), currentUser.getId())) {
                 throw new UnauthorizedException("Must be a member of the workspace to hide messages");
             }
-            if (!message.getHiddenForUserIds().contains(currentUser.getId())) {
-                message.getHiddenForUserIds().add(currentUser.getId());
+            List<Long> hiddenUserIds = ensureHiddenUserIds(message);
+            if (!hiddenUserIds.contains(currentUser.getId())) {
+                hiddenUserIds.add(currentUser.getId());
             }
             return mapToResponse(messageRepository.save(message));
         }
@@ -379,5 +394,16 @@ public class MessageServiceImpl implements MessageService {
 
     private String normalize(String value) {
         return value == null ? "" : value.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+    }
+
+    private List<Long> getHiddenUserIds(Message message) {
+        return message.getHiddenForUserIds() != null ? message.getHiddenForUserIds() : Collections.emptyList();
+    }
+
+    private List<Long> ensureHiddenUserIds(Message message) {
+        if (message.getHiddenForUserIds() == null) {
+            message.setHiddenForUserIds(new ArrayList<>());
+        }
+        return message.getHiddenForUserIds();
     }
 }

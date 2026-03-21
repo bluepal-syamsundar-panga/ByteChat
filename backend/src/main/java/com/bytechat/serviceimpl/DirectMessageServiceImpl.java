@@ -1,6 +1,7 @@
 package com.bytechat.serviceimpl;
 
 import com.bytechat.dto.request.MessageRequest;
+import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.dto.response.ReactionResponse;
 import com.bytechat.entity.DMRequestStatus;
@@ -17,13 +18,13 @@ import com.bytechat.services.DirectMessageService;
 import com.bytechat.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -94,14 +95,38 @@ public class DirectMessageServiceImpl implements DirectMessageService {
     }
 
     @Override
-    public Page<MessageResponse> getDirectMessages(Long otherUserId, int page, int size, User currentUser) {
-        log.info("Fetching DM conversation between {} and user ID {} (page: {}, size: {})", currentUser.getEmail(), otherUserId, page, size);
-        Page<DirectMessage> pageResult = directMessageRepository.findConversation(currentUser.getId(), otherUserId, PageRequest.of(page, size));
-        List<MessageResponse> visibleMessages = pageResult.getContent().stream()
-                .filter(dm -> !dm.getHiddenForUserIds().contains(currentUser.getId()))
+    public CursorPageResponse<MessageResponse> getDirectMessages(Long otherUserId, LocalDateTime cursorSentAt, Long cursorId, int size, User currentUser) {
+        log.info("Fetching DM conversation between {} and user ID {} (cursorSentAt: {}, cursorId: {}, size: {})", currentUser.getEmail(), otherUserId, cursorSentAt, cursorId, size);
+        List<DirectMessage> pageResult;
+        if (cursorSentAt == null || cursorId == null) {
+            pageResult = directMessageRepository.findConversation(
+                    currentUser.getId(),
+                    otherUserId,
+                    PageRequest.of(0, size + 1)
+            ).getContent();
+        } else {
+            pageResult = directMessageRepository.findConversationHistory(
+                    currentUser.getId(),
+                    otherUserId,
+                    cursorSentAt,
+                    cursorId,
+                    PageRequest.of(0, size + 1)
+            );
+        }
+        boolean hasMore = pageResult.size() > size;
+        List<DirectMessage> limitedMessages = hasMore ? pageResult.subList(0, size) : pageResult;
+
+        List<MessageResponse> visibleMessages = limitedMessages.stream()
+                .filter(dm -> !getHiddenUserIds(dm).contains(currentUser.getId()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
-        return new PageImpl<>(visibleMessages, pageResult.getPageable(), visibleMessages.size());
+        MessageResponse nextCursorSource = visibleMessages.isEmpty() ? null : visibleMessages.get(visibleMessages.size() - 1);
+        return CursorPageResponse.<MessageResponse>builder()
+                .items(visibleMessages)
+                .hasMore(hasMore)
+                .nextCursorSentAt(nextCursorSource != null ? nextCursorSource.getSentAt() : null)
+                .nextCursorId(nextCursorSource != null ? nextCursorSource.getId() : null)
+                .build();
     }
 
     @Override
@@ -149,8 +174,9 @@ public class DirectMessageServiceImpl implements DirectMessageService {
             if (!dm.getFromUser().getId().equals(currentUser.getId()) && !dm.getToUser().getId().equals(currentUser.getId())) {
                 throw new UnauthorizedException("Unauthorized to hide this message");
             }
-            if (!dm.getHiddenForUserIds().contains(currentUser.getId())) {
-                dm.getHiddenForUserIds().add(currentUser.getId());
+            List<Long> hiddenUserIds = ensureHiddenUserIds(dm);
+            if (!hiddenUserIds.contains(currentUser.getId())) {
+                hiddenUserIds.add(currentUser.getId());
             }
             return mapToResponse(directMessageRepository.save(dm));
         }
@@ -255,5 +281,16 @@ public class DirectMessageServiceImpl implements DirectMessageService {
         
         response.setReadCount(dm.getReadAt() != null ? 1 : 0);
         return response;
+    }
+
+    private List<Long> getHiddenUserIds(DirectMessage dm) {
+        return dm.getHiddenForUserIds() != null ? dm.getHiddenForUserIds() : Collections.emptyList();
+    }
+
+    private List<Long> ensureHiddenUserIds(DirectMessage dm) {
+        if (dm.getHiddenForUserIds() == null) {
+            dm.setHiddenForUserIds(new ArrayList<>());
+        }
+        return dm.getHiddenForUserIds();
     }
 }

@@ -2,13 +2,14 @@ package com.bytechat.controllers;
 
 import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.ApiResponse;
+import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.entity.User;
 import com.bytechat.services.DirectMessageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/dm")
@@ -30,13 +33,14 @@ public class DirectMessageController {
 
     @Operation(summary = "Get direct messages", description = "Retrieves a paginated list of direct messages between the current user and another user.")
     @GetMapping("/{otherUserId}")
-    public ResponseEntity<ApiResponse<Page<MessageResponse>>> getDirectMessages(
+    public ResponseEntity<ApiResponse<CursorPageResponse<MessageResponse>>> getDirectMessages(
             @Parameter(description = "ID of the other user in the conversation") @PathVariable(name = "otherUserId") Long otherUserId,
-            @Parameter(description = "Page number (0-indexed)") @RequestParam(name = "page", defaultValue = "0") int page,
+            @Parameter(description = "Fetch messages older than this timestamp") @RequestParam(name = "cursorSentAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorSentAt,
+            @Parameter(description = "Tie-breaker cursor for messages with identical timestamps") @RequestParam(name = "cursorId", required = false) Long cursorId,
             @Parameter(description = "Number of items per page") @RequestParam(name = "size", defaultValue = "50") int size,
             @AuthenticationPrincipal User currentUser) {
         log.info("Fetching DMs for user {} by user {}", otherUserId, currentUser.getEmail());
-        Page<MessageResponse> messages = directMessageService.getDirectMessages(otherUserId, page, size, currentUser);
+        CursorPageResponse<MessageResponse> messages = directMessageService.getDirectMessages(otherUserId, cursorSentAt, cursorId, size, currentUser);
         return ResponseEntity.ok(ApiResponse.success(messages, "DMs fetched successfully"));
     }
 

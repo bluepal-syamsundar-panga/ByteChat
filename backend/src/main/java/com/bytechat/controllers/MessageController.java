@@ -1,6 +1,7 @@
 package com.bytechat.controllers;
 
 import com.bytechat.dto.response.ApiResponse;
+import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.entity.User;
@@ -8,7 +9,6 @@ import com.bytechat.services.MessageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/messages")
@@ -30,13 +34,14 @@ public class MessageController {
 
     @GetMapping("/channel/{channelId}") 
     @Operation(summary = "Get channel messages", description = "Retrieves a paginated list of messages for a specific channel.")
-    public ResponseEntity<ApiResponse<Page<MessageResponse>>> getChannelMessages(
+    public ResponseEntity<ApiResponse<CursorPageResponse<MessageResponse>>> getChannelMessages(
             @Parameter(description = "ID of the channel") @PathVariable(name = "channelId") Long channelId,
-            @Parameter(description = "Page number (0-indexed)") @RequestParam(name = "page", defaultValue = "0") int page,
+            @Parameter(description = "Fetch messages older than this timestamp") @RequestParam(name = "cursorSentAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorSentAt,
+            @Parameter(description = "Tie-breaker cursor for messages with identical timestamps") @RequestParam(name = "cursorId", required = false) Long cursorId,
             @Parameter(description = "Number of items per page") @RequestParam(name = "size", defaultValue = "50") int size,
             @AuthenticationPrincipal User currentUser) {
         log.info("Fetching messages for channel ID: {}", channelId);
-        Page<MessageResponse> messages = messageService.getRoomMessages(channelId, page, size, currentUser);
+        CursorPageResponse<MessageResponse> messages = messageService.getRoomMessages(channelId, cursorSentAt, cursorId, size, currentUser);
         return ResponseEntity.ok(ApiResponse.success(messages, "Messages fetched successfully"));
     }
 

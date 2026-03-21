@@ -1,9 +1,14 @@
 import api from './api';
 
 const dmService = {
-  async getDirectMessages(userId, page = 0, size = 50) {
-    const response = await api.get(`/dm/${userId}?page=${page}&size=${size}`);
-    return response.data;
+  async getDirectMessages(userId, options = {}) {
+    const { cursorSentAt, cursorId, size = 50 } = options;
+    const params = new URLSearchParams();
+    params.set('size', String(size));
+    if (cursorSentAt) params.set('cursorSentAt', cursorSentAt);
+    if (cursorId !== undefined && cursorId !== null) params.set('cursorId', String(cursorId));
+    const response = await api.get(`/dm/${userId}?${params.toString()}`);
+    return response.data?.data ?? response.data;
   },
   async sendDirectMessage(userId, content) {
     const payload = typeof content === 'string' ? { content, type: 'TEXT' } : content;

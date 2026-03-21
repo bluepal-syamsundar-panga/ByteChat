@@ -1,13 +1,15 @@
 package com.bytechat.services;
 
+import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.entity.User;
-import org.springframework.data.domain.Page;
+
+import java.time.LocalDateTime;
 
 public interface DirectMessageService {
     MessageResponse sendDirectMessage(Long toUserId, MessageRequest request, User sender);
-    Page<MessageResponse> getDirectMessages(Long otherUserId, int page, int size, User currentUser);
+    CursorPageResponse<MessageResponse> getDirectMessages(Long otherUserId, LocalDateTime cursorSentAt, Long cursorId, int size, User currentUser);
     void markAsRead(Long otherUserId, User currentUser);
 	MessageResponse reactToMessage(Long dmId, String emoji, User currentUser);
 	MessageResponse pinMessage(Long dmId, User currentUser);
