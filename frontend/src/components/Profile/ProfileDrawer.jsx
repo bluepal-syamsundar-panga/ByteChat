@@ -1,4 +1,4 @@
-import { Camera, Mail, Save, UserRound, X } from 'lucide-react';
+import { Camera, Mail, Save, UserRound, X, Shield } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import notificationService from '../../services/notificationService';
 import userService from '../../services/userService';
@@ -6,7 +6,7 @@ import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
 import useToastStore from '../../store/toastStore';
 
-const ProfileDrawer = ({ isOpen, onClose }) => {
+const ProfileDrawer = ({ isOpen, onClose, workspaceRole = 'MEMBER' }) => {
   const { user, updateUser } = useAuthStore();
   const { onlineUsers, setOnlineUsers, notifications, setNotifications } = useChatStore();
   const { addToast } = useToastStore();
@@ -159,6 +159,19 @@ const ProfileDrawer = ({ isOpen, onClose }) => {
                     disabled
                     className="w-full bg-transparent text-sm font-bold text-[#1d1c1d] outline-none placeholder:text-gray-300"
                     placeholder="Mail"
+                  />
+                </div>
+              </label>
+
+              <label className="block">
+                <span className="text-[11px] font-black uppercase tracking-wider text-[#6b6a6b] ml-1">Role In Workspace</span>
+                <div className="mt-2 relative flex h-12 items-center gap-3 rounded-xl bg-[#fafafa] px-4 border border-black/5">
+                  <Shield size={16} className="text-[#2c0b2e]/40" />
+                  <input
+                    value={workspaceRole}
+                    disabled
+                    className="w-full bg-transparent text-sm font-bold uppercase tracking-wide text-[#1d1c1d] outline-none"
+                    placeholder="Role"
                   />
                 </div>
               </label>

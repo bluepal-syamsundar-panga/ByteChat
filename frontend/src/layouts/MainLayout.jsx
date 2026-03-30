@@ -235,7 +235,7 @@ const MainLayout = () => {
       />
       <Sidebar onAcceptInvite={handleAcceptInvite} />
       <CreateChannelModal />
-      <ProfileDrawer isOpen={showProfile} onClose={() => setShowProfile(false)} />
+      <ProfileDrawer isOpen={showProfile} onClose={() => setShowProfile(false)} workspaceRole={displayRole} />
 
       <div className="flex min-w-0 flex-1 flex-col">
 

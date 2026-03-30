@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell } from 'lucide-react';
 import useChatStore from '../store/chatStore';
 import useAuthStore from '../store/authStore';
 import chatService from '../services/chatService';
 import NotificationPanel from '../components/Common/NotificationPanel';
 import { connectWebSocket, disconnectWebSocket, subscribeToNotifications } from '../services/websocket';
 import logo3 from '../assets/logo3.png';
-import { ArrowRight, Sparkles, X, Layout, MessageCircle, Users, Link as LinkIcon, Search, Zap, Shield, Globe, Cpu } from 'lucide-react';
+import { ArrowRight, Layout, MessageCircle, Users, Link as LinkIcon, Search, Zap, UserCircle2, ChevronDown, LogOut } from 'lucide-react';
 import CreateWorkspaceModal from '../components/Workspaces/CreateWorkspaceModal';
 
 
@@ -16,7 +15,9 @@ const LandingPage = () => {
   const { workspaces, setWorkspaces } = useChatStore();
   const { user } = useAuthStore();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const logout = useAuthStore((state) => state.logout);
+  const profileMenuRef = useRef(null);
 
   useEffect(() => {
     const fetchWorkspaces = async () => {
@@ -47,6 +48,17 @@ const LandingPage = () => {
 
     return () => disconnectWebSocket();
   }, [user?.id]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const features = [
     {
@@ -94,20 +106,54 @@ const LandingPage = () => {
             </div>
           )}
 
+          {user && (
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+                className="flex items-center gap-3 px-1 py-1 text-left text-white transition-all hover:opacity-85 active:scale-95"
+              >
+                <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/15 text-white">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.displayName} className="h-full w-full object-cover" />
+                  ) : (
+                    <UserCircle2 size={20} />
+                  )}
+                </div>
+                <div className="hidden sm:block">
+                  <div className="max-w-[140px] truncate text-sm font-bold">
+                    {user.displayName || 'Profile'}
+                  </div>
+                </div>
+                <ChevronDown size={16} className={`transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isProfileMenuOpen && (
+                <div className="absolute right-0 top-full mt-3 w-72 overflow-hidden rounded-2xl border border-white/10 bg-white shadow-2xl">
+                  <div className="border-b border-black/5 bg-[#f8f5f9] px-4 py-4">
+                    <div className="text-sm font-black text-[#1d1c1d]">{user.displayName}</div>
+                    <div className="mt-1 break-all text-xs font-semibold text-[#6b6a6b]">{user.email}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      logout();
+                      navigate('/login');
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-[#e01e5a] transition-colors hover:bg-[#fff1f4]"
+                  >
+                    <LogOut size={16} />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="bg-white px-5 py-2 text-sm font-bold text-[#3f0e40] rounded-lg transition-all hover:bg-white/90 shadow-lg active:scale-95"
           >
             Create Workspace
-          </button>
-          <button
-            onClick={() => {
-              logout();
-              navigate('/login');
-            }}
-            className="border border-white/20 bg-white/10 px-5 py-2 text-sm font-bold text-white rounded-lg transition-all hover:bg-white/15 active:scale-95"
-          >
-            Sign out
           </button>
         </div>
       </header>
