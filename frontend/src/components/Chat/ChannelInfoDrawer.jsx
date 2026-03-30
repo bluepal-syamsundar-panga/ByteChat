@@ -1,7 +1,7 @@
 import { X, UserMinus, Shield, User, Calendar, Hash, Lock, MoreVertical } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import channelService from '../../services/channelService';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import useToastStore from '../../store/toastStore';
 import Modal from '../Shared/Modal';
 
@@ -12,6 +12,8 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
   const menuRef = useRef(null);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
+  const [showMakeAdminConfirm, setShowMakeAdminConfirm] = useState(false);
+  const [makeAdminTarget, setMakeAdminTarget] = useState(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -22,10 +24,23 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+  const isChannelAdmin = channel?.role === 'ADMIN';
+  const sortedMembers = useMemo(() => {
+    const memberList = Array.isArray(members) ? [...members] : [];
 
+    return memberList.sort((left, right) => {
+      const leftIsAdmin = left?.role === 'ADMIN';
+      const rightIsAdmin = right?.role === 'ADMIN';
 
+      if (leftIsAdmin !== rightIsAdmin) {
+        return leftIsAdmin ? -1 : 1;
+      }
 
-  const isAdmin = channel?.role === 'ADMIN' || isWorkspaceOwner;
+      return (left?.displayName || '').localeCompare(right?.displayName || '', undefined, {
+        sensitivity: 'base',
+      });
+    });
+  }, [members]);
 
   const handleRemove = async (userId, displayName) => {
     const isDefault = channel?.isDefault || channel?.name === 'general';
@@ -55,15 +70,25 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
     }
   };
 
-  const handleMakeAdmin = async (userId) => {
+  const handleMakeAdmin = (userId, displayName) => {
+    setMakeAdminTarget({ userId, displayName });
+    setShowMakeAdminConfirm(true);
+    setActiveMenu(null);
+  };
+
+  const confirmMakeAdmin = async () => {
+    if (!makeAdminTarget) return;
+
     try {
-      await channelService.makeAdmin(channel.id, userId);
-      onMemberPromoted?.(userId);
-      setActiveMenu(null);
+      await channelService.makeAdmin(channel.id, makeAdminTarget.userId);
+      onMemberPromoted?.(makeAdminTarget.userId);
       addToast('Member promoted to admin', 'success');
     } catch (error) {
       console.error('Failed to promote member:', error);
       addToast(error.response?.data?.message || 'Failed to make member admin', 'error');
+    } finally {
+      setShowMakeAdminConfirm(false);
+      setMakeAdminTarget(null);
     }
   };
 
@@ -130,7 +155,7 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
             </div>
             
             <div className="space-y-3">
-              {members.map((member) => (
+              {sortedMembers.map((member) => (
                 <div key={member.id} className="flex items-center justify-between group">
                   <div className="flex items-center gap-3">
                     <div className="relative">
@@ -164,7 +189,7 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
                       <span className="text-[10px] font-black text-[#3f0e40] bg-[#3f0e40]/10 px-2 py-0.5 rounded-full">YOU</span>
                     )}
                     
-                    {isAdmin && member.id !== currentUser?.id && (
+                    {isChannelAdmin && member.id !== currentUser?.id && (
                       <div className="relative">
                         <button 
                           onClick={(e) => {
@@ -183,7 +208,7 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
                           >
                             {member.role !== 'ADMIN' && (
                               <button
-                                onClick={() => handleMakeAdmin(member.id)}
+                                onClick={() => handleMakeAdmin(member.id, member.displayName)}
                                 className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-amber-600 hover:bg-amber-50 transition-colors font-medium"
                               >
                                 <Shield size={16} />
@@ -220,6 +245,38 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
       </div>
     </div>
       {/* Remove Member Confirmation Modal */}
+      <Modal
+        isOpen={showMakeAdminConfirm}
+        onClose={() => {
+          setShowMakeAdminConfirm(false);
+          setMakeAdminTarget(null);
+        }}
+        title="Make Admin"
+        rounded="rounded-none"
+      >
+        <div className="p-1">
+          <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+            Are you sure you want to make <span className="font-bold text-gray-700">{makeAdminTarget?.displayName}</span> an admin in <span className="font-bold text-gray-700">#{channel?.name}</span>?
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setShowMakeAdminConfirm(false);
+                setMakeAdminTarget(null);
+              }}
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-none text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmMakeAdmin}
+              className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-none font-bold text-sm hover:bg-amber-600 transition-all shadow-md active:scale-95"
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </Modal>
       <Modal
         isOpen={showRemoveConfirm}
         onClose={() => setShowRemoveConfirm(false)}
