@@ -175,6 +175,7 @@ public class ChannelServiceImpl implements ChannelService {
                 .email(user.getEmail())
                 .displayName(user.getDisplayName())
                 .avatarUrl(user.getAvatarUrl())
+                .lastSeen(user.getLastSeen())
                 .online(user.isOnline())
                 .role(user.getRole() != null ? user.getRole().name() : "MEMBER")
                 .build();

@@ -185,7 +185,7 @@ const LoginPage = () => {
                 <p className="mt-2 text-[#6b6a6b] font-medium">Sign in to continue chatting</p>
               </div>
 
-              <form className="space-y-4" onSubmit={handleLogin} autoComplete="off">
+              <form className="space-y-4" onSubmit={handleLogin} autoComplete="off" noValidate>
                 <Field
                   icon={<Mail size={18} />}
                   label="Email address"
@@ -253,7 +253,7 @@ const LoginPage = () => {
                 </p>
               </div>
 
-              <form className="space-y-4" onSubmit={handleSendResetOtp} autoComplete="off">
+              <form className="space-y-4" onSubmit={handleSendResetOtp} autoComplete="off" noValidate>
                 <Field
                   icon={<Mail size={18} />}
                   label="Email address"
@@ -293,7 +293,7 @@ const LoginPage = () => {
                 </p>
               </div>
 
-              <form className="space-y-4" onSubmit={handleVerifyOtp} autoComplete="off">
+              <form className="space-y-4" onSubmit={handleVerifyOtp} autoComplete="off" noValidate>
                 <Field
                   icon={<KeyRound size={18} />}
                   label="Verification Code"
@@ -337,7 +337,7 @@ const LoginPage = () => {
                 </p>
               </div>
 
-              <form className="space-y-4" onSubmit={handleResetPassword} autoComplete="off">
+              <form className="space-y-4" onSubmit={handleResetPassword} autoComplete="off" noValidate>
                 <Field
                   icon={<LockKeyhole size={18} />}
                   label="New Password"
@@ -426,7 +426,7 @@ const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error
       `}>
         <span className={`${error ? 'text-rose-400' : 'text-[#6b6a6b] group-focus-within:text-[#3f0e40]'} transition-colors`}>{icon}</span>
         <input
-          type={inputType}
+          type={type === 'email' ? 'text' : inputType}
           name={`${label.replace(/\s+/g, '-').toLowerCase()}-${type}`}
           value={value}
           placeholder={placeholder}
@@ -434,6 +434,7 @@ const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="none"
+          inputMode={type === 'email' ? 'email' : undefined}
           spellCheck={false}
           onChange={(event) => onChange(event.target.value)}
           className="w-full h-14 bg-transparent outline-none text-[#1d1c1d] font-medium placeholder:text-[#6b6a6b]/40"

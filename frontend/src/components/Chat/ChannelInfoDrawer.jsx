@@ -258,7 +258,7 @@ function formatPresenceTooltip(member) {
 
   const lastSeen = normalizePresenceDate(member?.lastSeen);
   if (!lastSeen) {
-    return 'Offline';
+    return 'Last seen unavailable';
   }
 
   return `Last seen ${lastSeen.toLocaleString([], {
