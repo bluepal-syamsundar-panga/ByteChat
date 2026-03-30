@@ -2,7 +2,9 @@ package com.bytechat.controllers;
 
 import com.bytechat.config.TestWebSocketConfig;
 import com.bytechat.dto.request.MessageRequest;
+import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.response.MessageResponse;
+import com.bytechat.dto.response.UserResponse;
 import com.bytechat.entity.Role;
 import com.bytechat.entity.User;
 import com.bytechat.services.DirectMessageService;
@@ -75,15 +77,31 @@ class DirectMessageControllerIntegrationTest {
 
     @Test
     void getDirectMessages_Success() throws Exception {
-        when(directMessageService.getDirectMessages(anyLong(), anyInt(), anyInt(), any()))
-                .thenReturn(new org.springframework.data.domain.PageImpl<>(Collections.emptyList()));
+        when(directMessageService.getDirectMessages(anyLong(), any(), any(), anyInt(), any()))
+                .thenReturn(CursorPageResponse.<MessageResponse>builder().items(Collections.emptyList()).build());
 
         mockMvc.perform(get("/api/dm/2")
                         .with(user(testUser))
-                        .param("page", "0")
                         .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void getConversationParticipant_Success() throws Exception {
+        when(directMessageService.getConversationParticipant(anyLong(), any()))
+                .thenReturn(UserResponse.builder()
+                        .id(2L)
+                        .email("other@example.com")
+                        .displayName("Other User")
+                        .online(false)
+                        .build());
+
+        mockMvc.perform(get("/api/dm/2/participant")
+                        .with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.displayName").value("Other User"));
     }
 
     @Test

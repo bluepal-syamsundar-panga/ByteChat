@@ -1,4 +1,4 @@
-import { MessageSquareShare, Sparkles, MoreVertical, SmilePlus, Pencil, Trash2, Pin, Paperclip, X, Users2, Reply } from 'lucide-react';
+import { MessageSquareShare, Sparkles, MoreVertical, SmilePlus, Pencil, Trash2, Pin, Paperclip, X, Users2, Reply, Mail, Clock3 } from 'lucide-react';
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import dmService from '../../services/dmService';
@@ -15,8 +15,10 @@ import useToastStore from '../../store/toastStore';
 
 const DMChatWindow = ({ user }) => {
   const currentUser = useAuthStore((state) => state.user);
-  const { dmMessages, setDmMessages, prependDmMessages, appendDmMessage, upsertDmMessage, removeDmMessage, sharedUsers, setActiveThread, clearDmUnread } = useChatStore();
+  const { dmMessages, setDmMessages, prependDmMessages, appendDmMessage, upsertDmMessage, removeDmMessage, sharedUsers, setSharedUsers, setActiveThread, clearDmUnread } = useChatStore();
   const [loading, setLoading] = useState(true);
+  const [participant, setParticipant] = useState(user ?? null);
+  const [showContactInfo, setShowContactInfo] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -49,6 +51,11 @@ const DMChatWindow = ({ user }) => {
     const match = thread.find(m => m.id === selectedMessageId);
     return match && !match.isDeleted ? match : null;
   }, [thread, selectedMessageId]);
+  const activeParticipant = useMemo(() => {
+    const sharedMatch = sharedUsers.find((item) => String(item.id) === String(user?.id));
+    return sharedMatch || participant || user || null;
+  }, [sharedUsers, participant, user]);
+  const presenceLabel = useMemo(() => formatParticipantPresence(activeParticipant), [activeParticipant]);
 
   const pinnedMessages = useMemo(() => 
     thread.filter(m => m.isPinned),
@@ -59,6 +66,58 @@ const DMChatWindow = ({ user }) => {
     () => pinnedMessages.filter((message) => message.id !== latestPinnedMessage?.id),
     [pinnedMessages, latestPinnedMessage?.id]
   );
+
+  useEffect(() => {
+    setParticipant(user ?? null);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setParticipant(null);
+      return;
+    }
+
+    let active = true;
+
+    const syncParticipant = (nextParticipant) => {
+      if (!nextParticipant || !active) return;
+      setParticipant(nextParticipant);
+      setSharedUsers((prevUsers) => {
+        const users = Array.isArray(prevUsers) ? prevUsers : [];
+        const existingIndex = users.findIndex((item) => String(item.id) === String(nextParticipant.id));
+        if (existingIndex === -1) {
+          return users;
+        }
+
+        const existing = users[existingIndex];
+        const merged = {
+          ...existing,
+          ...nextParticipant,
+          unreadCount: nextParticipant.unreadCount ?? existing.unreadCount ?? 0,
+        };
+        const nextUsers = [...users];
+        nextUsers[existingIndex] = merged;
+        return nextUsers;
+      });
+    };
+
+    const loadParticipant = async () => {
+      try {
+        const response = await dmService.getParticipantDetails(user.id);
+        syncParticipant(response);
+      } catch (error) {
+        console.error('Failed to load DM participant details', error);
+      }
+    };
+
+    loadParticipant();
+    const intervalId = window.setInterval(loadParticipant, 15000);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [user?.id, setSharedUsers]);
 
   useEffect(() => {
     if (!selectedMessageId) return;
@@ -598,19 +657,25 @@ const DMChatWindow = ({ user }) => {
             <div className="h-full bg-indigo-500 skeleton-loading" style={{ width: '40%' }}></div>
           </div>
         )}
-        <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => setShowContactInfo(true)}
+          className="flex items-center gap-4 rounded-2xl px-2 py-1 text-left transition hover:bg-black/5"
+        >
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#611f69] to-[#3f0e40] text-white font-extrabold text-lg shadow-md shadow-purple-900/10 overflow-hidden">
-            {user.avatarUrl ? (
-              <img src={user.avatarUrl} alt={user.displayName} className="h-full w-full object-cover" />
+            {activeParticipant?.avatarUrl ? (
+              <img src={activeParticipant.avatarUrl} alt={activeParticipant.displayName} className="h-full w-full object-cover" />
             ) : (
-              user.displayName?.[0]?.toUpperCase() ?? 'U'
+              activeParticipant?.displayName?.[0]?.toUpperCase() ?? 'U'
             )}
           </div>
           <div>
-            <div className="text-lg font-black tracking-tight text-gray-900 leading-none">{user.displayName}</div>
-            <div className="mt-1 text-[11px] font-bold text-gray-400">{user.email}</div>
+            <div className="text-lg font-black tracking-tight text-gray-900 leading-none">{activeParticipant?.displayName}</div>
+            <div className={`mt-1 text-[11px] font-bold ${activeParticipant?.online ? 'text-emerald-600' : 'text-gray-400'}`}>
+              {presenceLabel}
+            </div>
           </div>
-        </div>
+        </button>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-4 py-1.5 rounded-full text-xs font-bold text-indigo-600 shadow-sm">
             <Sparkles size={14} />
@@ -815,10 +880,10 @@ const DMChatWindow = ({ user }) => {
             </div>
             <div className="text-2xl font-black text-gray-900 tracking-tight">Start a conversation</div>
             <div className="mt-3 max-w-sm text-gray-500 font-medium leading-relaxed">
-              Direct messages are private between you and {user.displayName}.
+              Direct messages are private between you and {activeParticipant?.displayName ?? user.displayName}.
             </div>
             <button 
-              onClick={() => handleSend(`Hey ${user.displayName?.split(' ')[0] || 'there'}! 👋`)}
+              onClick={() => handleSend(`Hey ${activeParticipant?.displayName?.split(' ')[0] || user.displayName?.split(' ')[0] || 'there'}! 👋`)}
               className="mt-8 bg-[#2c0b2e] text-white px-6 py-3 rounded-2xl font-bold transition-smooth hover:bg-[#1a061b] hover:scale-110 active:scale-95 shadow-lg shadow-[#2c0b2e]/20"
             >
               Say Hi! 👋
@@ -887,10 +952,10 @@ const DMChatWindow = ({ user }) => {
       </div>
 
       <MessageInput 
-        placeholder={`Message ${user.displayName}`} 
+        placeholder={`Message ${activeParticipant?.displayName ?? user.displayName}`} 
         onSendMessage={editTarget ? confirmEditMessage : handleSend} 
         onTyping={handleTyping}
-        mentionSuggestions={[user]}
+        mentionSuggestions={[activeParticipant ?? user]}
         currentUserId={currentUser.id}
         editMode={Boolean(editTarget)}
         editValue={editContent}
@@ -936,6 +1001,58 @@ const DMChatWindow = ({ user }) => {
           </div>
         </div>
       </Modal>
+
+      <div className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-300 ${showContactInfo ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`} onClick={() => setShowContactInfo(false)} />
+      <aside className={`fixed inset-y-0 right-0 z-50 w-80 border-l border-gray-100 bg-white shadow-2xl transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${showContactInfo ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex h-full flex-col">
+          <header className="flex items-center justify-between border-b border-gray-50 px-6 py-5">
+            <h2 className="text-lg font-black tracking-tight text-gray-900">Contact Info</h2>
+            <button
+              type="button"
+              onClick={() => setShowContactInfo(false)}
+              className="rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            >
+              <X size={20} />
+            </button>
+          </header>
+
+          <div className="flex-1 overflow-y-auto scrollbar-thin">
+            <div className="border-b border-gray-50 bg-gray-50/30 p-6 text-center">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-[#611f69] to-[#3f0e40] text-2xl font-extrabold text-white shadow-md">
+                {activeParticipant?.avatarUrl ? (
+                  <img src={activeParticipant.avatarUrl} alt={activeParticipant.displayName} className="h-full w-full object-cover" />
+                ) : (
+                  activeParticipant?.displayName?.[0]?.toUpperCase() ?? 'U'
+                )}
+              </div>
+              <h3 className="mt-4 text-xl font-black tracking-tight text-[#1d1c1d]">{activeParticipant?.displayName}</h3>
+              <p className={`mt-2 text-sm font-bold ${activeParticipant?.online ? 'text-emerald-600' : 'text-gray-500'}`}>{presenceLabel}</p>
+            </div>
+
+            <div className="space-y-4 px-6 py-6">
+              <div className="rounded-none border border-black/5 bg-[#fafafa] px-4 py-3">
+                <div className="mb-1 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] text-gray-400">
+                  <Mail size={13} />
+                  Email
+                </div>
+                <div className="break-all text-sm font-semibold text-[#1d1c1d]">
+                  {activeParticipant?.email || 'Not available'}
+                </div>
+              </div>
+
+              <div className="rounded-none border border-black/5 bg-[#fafafa] px-4 py-3">
+                <div className="mb-1 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] text-gray-400">
+                  <Clock3 size={13} />
+                  Last Seen
+                </div>
+                <div className="text-sm font-semibold text-[#1d1c1d]">
+                  {activeParticipant?.online ? 'Online now' : formatLastSeenFull(activeParticipant?.lastSeen)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </section>
   );
 };
@@ -950,5 +1067,66 @@ const EmptyState = ({ title, description }) => (
     </div>
   </div>
 );
+
+function formatParticipantPresence(participant) {
+  if (!participant) {
+    return '';
+  }
+
+  if (participant.online) {
+    return 'Online';
+  }
+
+  const lastSeen = normalizePresenceDate(participant.lastSeen);
+  if (!lastSeen) {
+    return 'Offline';
+  }
+
+  return `Last seen ${formatLastSeenValue(lastSeen)}`;
+}
+
+function normalizePresenceDate(value) {
+  if (!value) return null;
+  if (Array.isArray(value) && value.length >= 6) {
+    const date = new Date(value[0], value[1] - 1, value[2], value[3], value[4], value[5]);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatLastSeenValue(date) {
+  const now = new Date();
+  const isSameDay = date.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+  const timeLabel = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+  if (isSameDay) {
+    return `today at ${timeLabel}`;
+  }
+
+  if (isYesterday) {
+    return `yesterday at ${timeLabel}`;
+  }
+
+  return `${date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })} at ${timeLabel}`;
+}
+
+function formatLastSeenFull(value) {
+  const date = normalizePresenceDate(value);
+  if (!date) {
+    return 'Offline';
+  }
+
+  return date.toLocaleString([], {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
 
 export default DMChatWindow;

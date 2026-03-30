@@ -10,6 +10,10 @@ const dmService = {
     const response = await api.get(`/dm/${userId}?${params.toString()}`);
     return response.data?.data ?? response.data;
   },
+  async getParticipantDetails(userId) {
+    const response = await api.get(`/dm/${userId}/participant`);
+    return response.data?.data ?? response.data;
+  },
   async sendDirectMessage(userId, content) {
     const payload = typeof content === 'string' ? { content, type: 'TEXT' } : content;
     const response = await api.post(`/dm/${userId}`, payload);

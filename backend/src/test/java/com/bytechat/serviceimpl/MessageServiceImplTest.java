@@ -1,6 +1,7 @@
 package com.bytechat.serviceimpl;
 
 import com.bytechat.dto.request.MessageRequest;
+import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.entity.*;
 import com.bytechat.exception.UnauthorizedException;
@@ -114,12 +115,12 @@ class MessageServiceImplTest {
 
         when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
         when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).thenReturn(true);
-        when(messageRepository.findByChannelIdOrderBySentAtDesc(eq(1L), any(PageRequest.class)))
+        when(messageRepository.findByChannelIdOrderBySentAtDesc(eq(1L), any(Pageable.class)))
                 .thenReturn(page);
 
-        Page<MessageResponse> responses = messageService.getRoomMessages(1L, 0, 10, sender);
+        CursorPageResponse<MessageResponse> responses = messageService.getRoomMessages(1L, null, null, 10, sender);
 
-        assertEquals(1, responses.getContent().size());
+        assertEquals(1, responses.getItems().size());
     }
 
     // ================= EDIT =================

@@ -4,6 +4,7 @@ import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.ApiResponse;
 import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.response.MessageResponse;
+import com.bytechat.dto.response.UserResponse;
 import com.bytechat.entity.User;
 import com.bytechat.services.DirectMessageService;
 import jakarta.validation.Valid;
@@ -42,6 +43,15 @@ public class DirectMessageController {
         log.info("Fetching DMs for user {} by user {}", otherUserId, currentUser.getEmail());
         CursorPageResponse<MessageResponse> messages = directMessageService.getDirectMessages(otherUserId, cursorSentAt, cursorId, size, currentUser);
         return ResponseEntity.ok(ApiResponse.success(messages, "DMs fetched successfully"));
+    }
+
+    @Operation(summary = "Get DM participant details", description = "Retrieves the profile and presence details for the other user in a direct message conversation.")
+    @GetMapping("/{otherUserId}/participant")
+    public ResponseEntity<ApiResponse<UserResponse>> getConversationParticipant(
+            @Parameter(description = "ID of the other user in the conversation") @PathVariable(name = "otherUserId") Long otherUserId,
+            @AuthenticationPrincipal User currentUser) {
+        UserResponse participant = directMessageService.getConversationParticipant(otherUserId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(participant, "DM participant fetched successfully"));
     }
 
     @Operation(summary = "Send direct message", description = "Sends a new direct message to another user.")

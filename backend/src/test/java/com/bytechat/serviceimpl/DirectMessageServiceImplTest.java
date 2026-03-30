@@ -1,7 +1,9 @@
 package com.bytechat.serviceimpl;
 
 import com.bytechat.dto.request.MessageRequest;
+import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.response.MessageResponse;
+import com.bytechat.dto.response.UserResponse;
 import com.bytechat.entity.DirectMessage;
 import com.bytechat.entity.User;
 import com.bytechat.exception.UnauthorizedException;
@@ -19,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import java.time.LocalDateTime;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -83,11 +86,29 @@ class DirectMessageServiceImplTest {
     @Test
     void getDirectMessages_ReturnsPage() {
         Page<DirectMessage> dmPage = new PageImpl<>(Collections.singletonList(dm));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
+        when(userRepository.findUsersSharingRoomWith(anyLong(), any())).thenReturn(Collections.singletonList(recipient));
         when(directMessageRepository.findConversation(eq(1L), eq(2L), any(PageRequest.class))).thenReturn(dmPage);
 
-        Page<MessageResponse> responses = directMessageService.getDirectMessages(2L, 0, 10, sender);
+        CursorPageResponse<MessageResponse> responses = directMessageService.getDirectMessages(2L, null, null, 10, sender);
 
-        assertEquals(1, responses.getContent().size());
+        assertEquals(1, responses.getItems().size());
+    }
+
+    @Test
+    void getConversationParticipant_ReturnsPresenceDetails() {
+        recipient.setOnline(false);
+        recipient.setLastSeen(LocalDateTime.of(2026, 3, 30, 9, 45));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
+        when(userRepository.findUsersSharingRoomWith(anyLong(), any())).thenReturn(Collections.singletonList(recipient));
+        when(directMessageRepository.countUnreadBySender(1L, 2L)).thenReturn(3L);
+
+        UserResponse response = directMessageService.getConversationParticipant(2L, sender);
+
+        assertEquals("Recipient", response.getDisplayName());
+        assertEquals(3L, response.getUnreadCount());
+        assertEquals(recipient.getLastSeen(), response.getLastSeen());
+        assertFalse(response.isOnline());
     }
 
     @Test

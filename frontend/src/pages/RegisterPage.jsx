@@ -116,7 +116,7 @@ const RegisterPage = () => {
 
           <div className="w-full">
             {step === 1 ? (
-              <form className="space-y-5" onSubmit={handleSendOtp}>
+              <form className="space-y-5" onSubmit={handleSendOtp} autoComplete="off">
                 <Field
                   icon={<UserRound size={18} />}
                   label="What should we call you?"
@@ -163,7 +163,7 @@ const RegisterPage = () => {
                 </button>
               </form>
             ) : (
-              <form className="space-y-5 animate-in slide-in-from-right-4 duration-300" onSubmit={handleSubmit}>
+              <form className="space-y-5 animate-in slide-in-from-right-4 duration-300" onSubmit={handleSubmit} autoComplete="off">
                 <div className="mb-4">
                   <p className="text-sm text-[#6b6a6b] mb-1">We sent a 6-digit code to</p>
                   <p className="font-bold text-[#1d1c1d]">{form.email}</p>
@@ -267,9 +267,14 @@ const Field = ({ icon, label, value, onChange, type = 'text', placeholder, error
           <span className={`${error ? 'text-rose-400' : 'text-[#6b6a6b] group-focus-within:text-[#3f0e40]'} transition-colors`}>{icon}</span>
           <input
             type={inputType}
+            name={`${label.replace(/\s+/g, '-').toLowerCase()}-${type}`}
             value={value}
             placeholder={placeholder}
             maxLength={maxLength}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
             onChange={(event) => onChange(event.target.value)}
             className={`w-full h-14 bg-transparent outline-none text-[#1d1c1d] font-medium placeholder:text-[#6b6a6b]/40 ${isPassword ? 'hide-password-reveal' : ''}`}
           />

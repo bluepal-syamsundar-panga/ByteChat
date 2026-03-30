@@ -2,6 +2,7 @@ package com.bytechat.controllers;
 
 import com.bytechat.config.TestWebSocketConfig;
 import com.bytechat.dto.request.MessageRequest;
+import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.entity.User;
 import com.bytechat.services.MessageService;
@@ -13,7 +14,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -60,7 +60,8 @@ class MessageControllerIntegrationTest {
 
     @Test
     void getChannelMessages_Success() throws Exception {
-        when(messageService.getRoomMessages(anyLong(), anyInt(), anyInt(), any())).thenReturn(new PageImpl<>(Collections.emptyList()));
+        when(messageService.getRoomMessages(anyLong(), any(), any(), anyInt(), any()))
+                .thenReturn(CursorPageResponse.<MessageResponse>builder().items(Collections.emptyList()).build());
 
         mockMvc.perform(get("/api/messages/channel/1").with(user(testUser)))
                 .andExpect(status().isOk())

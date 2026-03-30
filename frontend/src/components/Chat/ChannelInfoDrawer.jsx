@@ -145,7 +145,7 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
                           <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-[#2bac76] border-2 border-white" />
                         )}
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 relative">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-bold text-gray-900 truncate max-w-[120px]">{member.displayName}</span>
                         {member.role === 'ADMIN' && (
@@ -153,6 +153,9 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
                         )}
                       </div>
                       <div className="text-[10px] text-gray-400 font-bold truncate">{member.email}</div>
+                      <div className="pointer-events-none absolute left-0 top-full z-10 mt-1 whitespace-nowrap rounded-lg bg-[#1d1c1d] px-2.5 py-1.5 text-[10px] font-bold text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+                        {formatPresenceTooltip(member)}
+                      </div>
                     </div>
                   </div>
 
@@ -247,5 +250,34 @@ const ChannelInfoDrawer = ({ isOpen, onClose, channel, members, onMemberRemoved,
     </div>
   );
 };
+
+function formatPresenceTooltip(member) {
+  if (member?.online) {
+    return 'Online';
+  }
+
+  const lastSeen = normalizePresenceDate(member?.lastSeen);
+  if (!lastSeen) {
+    return 'Offline';
+  }
+
+  return `Last seen ${lastSeen.toLocaleString([], {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`;
+}
+
+function normalizePresenceDate(value) {
+  if (!value) return null;
+  if (Array.isArray(value) && value.length >= 6) {
+    const date = new Date(value[0], value[1] - 1, value[2], value[3], value[4], value[5]);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
 
 export default ChannelInfoDrawer;

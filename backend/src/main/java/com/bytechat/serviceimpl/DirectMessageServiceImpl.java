@@ -4,6 +4,7 @@ import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.dto.response.ReactionResponse;
+import com.bytechat.dto.response.UserResponse;
 import com.bytechat.entity.DMRequestStatus;
 import com.bytechat.entity.DirectMessage;
 import com.bytechat.entity.Reaction;
@@ -43,22 +44,7 @@ public class DirectMessageServiceImpl implements DirectMessageService {
     @Transactional
     public MessageResponse sendDirectMessage(Long toUserId, MessageRequest request, User sender) {
         log.info("Sending direct message from {} to user ID {}", sender.getEmail(), toUserId);
-        User toUser = userRepository.findById(toUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Recipient user not found with ID: " + toUserId));
-
-        // Check permission: Shared room OR accepted DM request
-        boolean sharesRoom = userRepository.findUsersSharingRoomWith(sender.getId(), DMRequestStatus.ACCEPTED).stream()
-                .anyMatch(u -> u.getId().equals(toUserId));
-        
-        if (!sharesRoom) {
-            boolean hasAcceptedRequest = dmRequestRepository.existsBySenderAndReceiverAndStatus(sender, toUser, DMRequestStatus.ACCEPTED) ||
-                                         dmRequestRepository.existsBySenderAndReceiverAndStatus(toUser, sender, DMRequestStatus.ACCEPTED);
-            
-            if (!hasAcceptedRequest) {
-                log.warn("DM denied: User {} and {} do not share a room or have an accepted DM request", sender.getEmail(), toUser.getEmail());
-                throw new UnauthorizedException("You do not have permission to send direct messages to this user.");
-            }
-        }
+        User toUser = getAccessibleConversationUser(toUserId, sender);
 
         DirectMessage dm = DirectMessage.builder()
                 .fromUser(sender)
@@ -97,6 +83,7 @@ public class DirectMessageServiceImpl implements DirectMessageService {
     @Override
     public CursorPageResponse<MessageResponse> getDirectMessages(Long otherUserId, LocalDateTime cursorSentAt, Long cursorId, int size, User currentUser) {
         log.info("Fetching DM conversation between {} and user ID {} (cursorSentAt: {}, cursorId: {}, size: {})", currentUser.getEmail(), otherUserId, cursorSentAt, cursorId, size);
+        getAccessibleConversationUser(otherUserId, currentUser);
         List<DirectMessage> pageResult;
         if (cursorSentAt == null || cursorId == null) {
             pageResult = directMessageRepository.findConversation(
@@ -126,6 +113,22 @@ public class DirectMessageServiceImpl implements DirectMessageService {
                 .hasMore(hasMore)
                 .nextCursorSentAt(nextCursorSource != null ? nextCursorSource.getSentAt() : null)
                 .nextCursorId(nextCursorSource != null ? nextCursorSource.getId() : null)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponse getConversationParticipant(Long otherUserId, User currentUser) {
+        User otherUser = getAccessibleConversationUser(otherUserId, currentUser);
+        return UserResponse.builder()
+                .id(otherUser.getId())
+                .email(otherUser.getEmail())
+                .displayName(otherUser.getDisplayName())
+                .avatarUrl(otherUser.getAvatarUrl())
+                .lastSeen(otherUser.getLastSeen())
+                .online(otherUser.isOnline())
+                .role(otherUser.getRole() != null ? otherUser.getRole().name() : "MEMBER")
+                .unreadCount(directMessageRepository.countUnreadBySender(currentUser.getId(), otherUser.getId()))
                 .build();
     }
 
@@ -292,5 +295,31 @@ public class DirectMessageServiceImpl implements DirectMessageService {
             dm.setHiddenForUserIds(new ArrayList<>());
         }
         return dm.getHiddenForUserIds();
+    }
+
+    private User getAccessibleConversationUser(Long otherUserId, User currentUser) {
+        User otherUser = userRepository.findById(otherUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Recipient user not found with ID: " + otherUserId));
+
+        if (currentUser.getId().equals(otherUserId)) {
+            return otherUser;
+        }
+
+        boolean sharesRoom = userRepository.findUsersSharingRoomWith(currentUser.getId(), DMRequestStatus.ACCEPTED).stream()
+                .anyMatch(user -> user.getId().equals(otherUserId));
+
+        if (sharesRoom) {
+            return otherUser;
+        }
+
+        boolean hasAcceptedRequest = dmRequestRepository.existsBySenderAndReceiverAndStatus(currentUser, otherUser, DMRequestStatus.ACCEPTED)
+                || dmRequestRepository.existsBySenderAndReceiverAndStatus(otherUser, currentUser, DMRequestStatus.ACCEPTED);
+
+        if (!hasAcceptedRequest) {
+            log.warn("DM denied: User {} and {} do not share a room or have an accepted DM request", currentUser.getEmail(), otherUser.getEmail());
+            throw new UnauthorizedException("You do not have permission to access direct messages with this user.");
+        }
+
+        return otherUser;
     }
 }
