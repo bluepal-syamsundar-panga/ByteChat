@@ -57,15 +57,6 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
           <Plus size={22} />
         </button>
 
-        {/* Archive */}
-        <button
-          onClick={() => setSidebarMode('archive')}
-          className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-smooth hover:scale-110 ${sidebarMode === 'archive' ? 'bg-white/20 text-white shadow-md ring-1 ring-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
-          title="Archived Channels"
-        >
-          <Archive size={22} />
-        </button>
-
         <button
           onClick={() => setSidebarMode('meetings')}
           className={`relative flex h-12 w-12 items-center justify-center rounded-2xl transition-smooth hover:scale-110 ${sidebarMode === 'meetings' ? 'bg-white/20 text-white shadow-md ring-1 ring-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
@@ -79,6 +70,23 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
           )}
         </button>
 
+        {/* Notifications */}
+        <div className="relative">
+          <NotificationPanel allowedTypes={['MENTION', 'CHANNEL_INVITE', 'ROOM_INVITE', 'MEETING_INVITE']} />
+        </div>
+
+        {/* Direct Messages Hub */}
+        <DMPanel />
+
+        {/* Archive */}
+        <button
+          onClick={() => setSidebarMode('archive')}
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-smooth hover:scale-110 ${sidebarMode === 'archive' ? 'bg-white/20 text-white shadow-md ring-1 ring-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
+          title="Archived Channels"
+        >
+          <Archive size={22} />
+        </button>
+
         {/* Trash */}
         <button
           onClick={() => setSidebarMode('trash')}
@@ -87,14 +95,6 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
         >
           <Trash2 size={22} />
         </button>
-
-        {/* Notifications */}
-        <div className="relative">
-          <NotificationPanel allowedTypes={['MENTION', 'CHANNEL_INVITE', 'ROOM_INVITE', 'MEETING_INVITE']} />
-        </div>
-
-        {/* Direct Messages Hub */}
-        <DMPanel />
       </div>
 
       <div className="mt-auto flex flex-col items-center gap-1 pb-2">
@@ -115,7 +115,7 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
 
         <button
           onClick={() => navigate('/')}
-          className="flex min-h-0 items-center justify-center rounded-full bg-white/8 px-2 py-1 text-white/70 transition-smooth hover:bg-white/14 hover:text-white"
+          className="flex min-h-0 items-center justify-center px-2 py-1 text-white/70 transition-smooth hover:text-white"
           style={{ fontSize: '7px', lineHeight: '7px' }}
           title="Back to landing page"
         >

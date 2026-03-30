@@ -1,6 +1,6 @@
 import { Bell, Hash, Lock, Mail, MessageCircleMore, Plus, Check, X, Users2, Trash2, Video } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
 import userService from '../../services/userService';
@@ -166,7 +166,17 @@ const Sidebar = ({ onAcceptInvite }) => {
     };
   }, [activeWorkspaceId, setSharedUsers]);
 
-  const visibleDMs = sharedUsers.filter(u => u.id !== user?.id);
+  const visibleDMs = useMemo(
+    () =>
+      sharedUsers
+        .filter((u) => u.id !== user?.id)
+        .sort((left, right) =>
+          (left?.displayName || '').localeCompare(right?.displayName || '', undefined, {
+            sensitivity: 'base',
+          })
+        ),
+    [sharedUsers, user?.id]
+  );
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');

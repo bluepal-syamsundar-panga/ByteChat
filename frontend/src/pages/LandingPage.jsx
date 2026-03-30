@@ -106,6 +106,13 @@ const LandingPage = () => {
             </div>
           )}
 
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-white px-5 py-2 text-sm font-bold text-[#3f0e40] rounded-lg transition-all hover:bg-white/90 shadow-lg active:scale-95"
+          >
+            Create Workspace
+          </button>
+
           {user && (
             <div className="relative" ref={profileMenuRef}>
               <button
@@ -148,13 +155,6 @@ const LandingPage = () => {
               )}
             </div>
           )}
-
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="bg-white px-5 py-2 text-sm font-bold text-[#3f0e40] rounded-lg transition-all hover:bg-white/90 shadow-lg active:scale-95"
-          >
-            Create Workspace
-          </button>
         </div>
       </header>
 
