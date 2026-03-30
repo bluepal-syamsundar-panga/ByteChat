@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import useChatStore from '../../store/chatStore';
 import channelService from '../../services/channelService';
 import useToastStore from '../../store/toastStore';
+import UnsavedChangesModal from '../Shared/UnsavedChangesModal';
 
 const CreateChannelModal = () => {
     const { 
@@ -20,8 +21,27 @@ const CreateChannelModal = () => {
     const [newChannelDesc, setNewChannelDesc] = useState('');
     const [isPrivate, setIsPrivate] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [showDiscardWarning, setShowDiscardWarning] = useState(false);
 
     if (!isCreateChannelModalOpen) return null;
+
+    const hasUnsavedChanges = Boolean(newChannelName.trim() || newChannelDesc.trim() || isPrivate);
+
+    const closeModal = () => {
+        setIsCreateChannelModalOpen(false);
+        setNewChannelName('');
+        setNewChannelDesc('');
+        setIsPrivate(false);
+        setShowDiscardWarning(false);
+    };
+
+    const requestClose = () => {
+        if (hasUnsavedChanges) {
+            setShowDiscardWarning(true);
+            return;
+        }
+        closeModal();
+    };
 
     const handleCreateChannel = async (e) => {
         e.preventDefault();
@@ -34,10 +54,7 @@ const CreateChannelModal = () => {
             setChannels([...(channels || []), createdChannel]);
             setSidebarChannels([...(sidebarChannels || []), createdChannel]);
             addToast('Channel created successfully!', 'success');
-            setIsCreateChannelModalOpen(false);
-            setNewChannelName('');
-            setNewChannelDesc('');
-            setIsPrivate(false);
+            closeModal();
         } catch (err) {
             console.error('Failed to create channel', err);
             addToast('Failed to create channel.', 'error');
@@ -47,12 +64,19 @@ const CreateChannelModal = () => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-[#3f0e40] p-8 border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200 rounded-none text-white">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                    requestClose();
+                }
+            }}
+        >
+            <div className="w-full max-w-md bg-[#3f0e40] p-8 border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200 rounded-none text-white" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-white">Create a channel</h2>
                     <button 
-                        onClick={() => setIsCreateChannelModalOpen(false)} 
+                        onClick={requestClose} 
                         className="text-white/60 hover:text-white transition-colors"
                     >
                         <X size={24} />
@@ -120,6 +144,11 @@ const CreateChannelModal = () => {
                     </div>
                 </form>
             </div>
+            <UnsavedChangesModal
+                isOpen={showDiscardWarning}
+                onCancel={() => setShowDiscardWarning(false)}
+                onConfirm={closeModal}
+            />
         </div>
     );
 };

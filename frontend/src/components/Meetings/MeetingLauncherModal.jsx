@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import meetingService from '../../services/meetingService';
 import useChatStore from '../../store/chatStore';
 import useToastStore from '../../store/toastStore';
+import UnsavedChangesModal from '../Shared/UnsavedChangesModal';
 
 const initialForm = { title: '', password: '' };
 
@@ -21,6 +22,7 @@ const MeetingLauncherModal = ({
   const [joinPassword, setJoinPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showDiscardWarning, setShowDiscardWarning] = useState(false);
 
   const activeMeeting = useMemo(
     () => selectedMeeting || (meetings || []).find((meeting) => String(meeting.channelId) === String(channel?.id) && meeting.isActive),
@@ -59,10 +61,31 @@ const MeetingLauncherModal = ({
       setForm(initialForm);
       setJoinPassword('');
       setSubmitting(false);
+      setShowDiscardWarning(false);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const hasUnsavedChanges = mode === 'create'
+    ? Boolean(form.title.trim() || form.password.trim())
+    : Boolean(joinPassword.trim());
+
+  const closeModal = () => {
+    setForm(initialForm);
+    setJoinPassword('');
+    setSubmitting(false);
+    setShowDiscardWarning(false);
+    onClose?.();
+  };
+
+  const requestClose = () => {
+    if (hasUnsavedChanges) {
+      setShowDiscardWarning(true);
+      return;
+    }
+    closeModal();
+  };
 
   const handleCreateMeeting = async (event) => {
     event.preventDefault();
@@ -78,7 +101,7 @@ const MeetingLauncherModal = ({
       upsertMeeting(meeting);
       onMeetingJoined?.(meeting);
       addToast('Meeting started successfully.', 'success');
-      onClose?.();
+      closeModal();
     } catch (error) {
       console.error('Failed to create meeting', error);
       addToast(error?.response?.data?.message || 'Unable to start meeting.', 'error');
@@ -101,7 +124,7 @@ const MeetingLauncherModal = ({
       upsertMeeting(meeting);
       onMeetingJoined?.(meeting);
       addToast('Joined meeting.', 'success');
-      onClose?.();
+      closeModal();
     } catch (error) {
       console.error('Failed to join meeting', error);
       addToast(error?.response?.data?.message || 'Unable to join meeting.', 'error');
@@ -111,8 +134,15 @@ const MeetingLauncherModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg overflow-hidden rounded-none bg-white shadow-2xl">
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          requestClose();
+        }
+      }}
+    >
+      <div className="w-full max-w-lg overflow-hidden rounded-none bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="border-b border-black/5 bg-gradient-to-r from-[#2c0b2e] to-[#5e1a61] px-6 py-5 text-white">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -123,7 +153,7 @@ const MeetingLauncherModal = ({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="text-white transition hover:text-white/75"
               title="Close"
             >
@@ -210,6 +240,11 @@ const MeetingLauncherModal = ({
           )}
         </div>
       </div>
+      <UnsavedChangesModal
+        isOpen={showDiscardWarning}
+        onCancel={() => setShowDiscardWarning(false)}
+        onConfirm={closeModal}
+      />
     </div>
   );
 };

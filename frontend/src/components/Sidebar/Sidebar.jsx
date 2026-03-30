@@ -10,6 +10,7 @@ import workspaceService from '../../services/workspaceService';
 import meetingService from '../../services/meetingService';
 import useToastStore from '../../store/toastStore';
 import Modal from '../Shared/Modal';
+import UnsavedChangesModal from '../Shared/UnsavedChangesModal';
 
 const Sidebar = ({ onAcceptInvite }) => {
   const location = useLocation();
@@ -159,6 +160,7 @@ const Sidebar = ({ onAcceptInvite }) => {
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [showInviteDiscardWarning, setShowInviteDiscardWarning] = useState(false);
 
   const handleInviteMember = async (e) => {
     e.preventDefault();
@@ -167,12 +169,27 @@ const Sidebar = ({ onAcceptInvite }) => {
       await workspaceService.inviteToWorkspace(activeWorkspaceId, inviteEmail);
       setShowInviteModal(false);
       setInviteEmail('');
+      setShowInviteDiscardWarning(false);
       addToast('Invitation sent successfully!', 'success');
     } catch (error) {
       console.error('Failed to send invitation:', error);
       const errorMsg = error.response?.data?.message || 'Failed to send invitation.';
       addToast(errorMsg, 'error');
     }
+  };
+
+  const closeInviteModal = () => {
+    setShowInviteModal(false);
+    setInviteEmail('');
+    setShowInviteDiscardWarning(false);
+  };
+
+  const requestInviteModalClose = () => {
+    if (inviteEmail.trim()) {
+      setShowInviteDiscardWarning(true);
+      return;
+    }
+    closeInviteModal();
   };
 
   const handlePermanentDelete = (e, channelId) => {
@@ -389,11 +406,18 @@ const Sidebar = ({ onAcceptInvite }) => {
 
       {/* Invite Member Modal */}
       {showInviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-sm bg-[#2c0b2d] p-8 rounded-none border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md p-4 animate-in fade-in duration-300"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              requestInviteModalClose();
+            }
+          }}
+        >
+          <div className="w-full max-w-sm bg-[#2c0b2d] p-8 rounded-none border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-xl font-extrabold text-white tracking-tight">Invite Team</h2>
-              <button onClick={() => setShowInviteModal(false)} className="text-white/40 hover:text-white transition-smooth p-1">
+              <button onClick={requestInviteModalClose} className="text-white/40 hover:text-white transition-smooth p-1">
                 <X size={20} />
               </button>
             </div>
@@ -419,6 +443,11 @@ const Sidebar = ({ onAcceptInvite }) => {
               </div>
             </form>
           </div>
+          <UnsavedChangesModal
+            isOpen={showInviteDiscardWarning}
+            onCancel={() => setShowInviteDiscardWarning(false)}
+            onConfirm={closeInviteModal}
+          />
         </div>
       )}
 

@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import workspaceService from '../../services/workspaceService';
 import useAuthStore from '../../store/authStore';
 import useChatStore from '../../store/chatStore';
+import UnsavedChangesModal from '../Shared/UnsavedChangesModal';
 
 const CreateWorkspaceModal = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -14,8 +15,35 @@ const CreateWorkspaceModal = ({ isOpen, onClose }) => {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showDiscardWarning, setShowDiscardWarning] = useState(false);
 
   if (!isOpen) return null;
+
+  const hasUnsavedChanges = Boolean(email.trim() || otp.trim() || name.trim() || description.trim());
+
+  const resetState = () => {
+    setStep(1);
+    setEmail('');
+    setOtp('');
+    setName('');
+    setDescription('');
+    setLoading(false);
+    setError('');
+    setShowDiscardWarning(false);
+  };
+
+  const closeSafely = () => {
+    resetState();
+    onClose?.();
+  };
+
+  const requestClose = () => {
+    if (hasUnsavedChanges) {
+      setShowDiscardWarning(true);
+      return;
+    }
+    closeSafely();
+  };
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -83,7 +111,7 @@ const CreateWorkspaceModal = ({ isOpen, onClose }) => {
 
         // Navigate to the newly created workspace
         navigate(`/chat/workspace/${workspace.id}`);
-        onClose();
+        closeSafely();
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create workspace');
@@ -93,14 +121,21 @@ const CreateWorkspaceModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          requestClose();
+        }
+      }}
+    >
       <div 
         className="relative w-full max-w-lg bg-white rounded-none shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button 
-          onClick={onClose}
+          onClick={requestClose}
           className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-none transition-all z-10"
         >
           <X size={24} />
@@ -215,6 +250,11 @@ const CreateWorkspaceModal = ({ isOpen, onClose }) => {
           )}
         </div>
       </div>
+      <UnsavedChangesModal
+        isOpen={showDiscardWarning}
+        onCancel={() => setShowDiscardWarning(false)}
+        onConfirm={closeSafely}
+      />
     </div>
   );
 };
