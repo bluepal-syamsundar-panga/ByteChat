@@ -91,7 +91,9 @@ const NotificationPanel = ({ variant = 'light', position = 'right', allowedTypes
           const channelsData = channelsRes.data?.data || channelsRes.data?.content || channelsRes.data || [];
           const normalizedChannels = Array.isArray(channelsData) ? channelsData : [];
           useChatStore.getState().setChannels(normalizedChannels);
-          useChatStore.getState().setSidebarChannels(normalizedChannels);
+          if (useChatStore.getState().sidebarMode === 'channels') {
+            useChatStore.getState().setSidebarChannels(normalizedChannels);
+          }
         }
 
         useToastStore.getState().addToast('Invite accepted successfully!', 'success');

@@ -4,6 +4,7 @@ import useAuthStore from '../store/authStore';
 
 let client = null;
 let subscriptions = new Map();
+let connectCallbacks = new Set();
 
 function getWebSocketUrl() {
   const configuredUrl = import.meta.env.VITE_WS_URL;
@@ -46,11 +47,14 @@ function getClient() {
 
 export function connectWebSocket(onConnectCallback) {
   const stompClient = getClient();
+  if (onConnectCallback) {
+    connectCallbacks.add(onConnectCallback);
+  }
   if (stompClient.active) {
     if (stompClient.connected) {
       // Sync any listeners that were registered before the connection was established
       onConnect();
-      if (onConnectCallback) onConnectCallback(stompClient);
+      onConnectCallback?.(stompClient);
     }
     return stompClient;
   }
@@ -58,10 +62,8 @@ export function connectWebSocket(onConnectCallback) {
   stompClient.onConnect = () => {
     // Sync any listeners that were registered before the connection was established
     onConnect();
-    
-    if (onConnectCallback) {
-      onConnectCallback(stompClient);
-    }
+
+    connectCallbacks.forEach((callback) => callback(stompClient));
   };
 
   stompClient.activate();
@@ -71,6 +73,7 @@ export function connectWebSocket(onConnectCallback) {
 export function disconnectWebSocket() {
   subscriptions.forEach((subscription) => subscription.unsubscribe());
   subscriptions = new Map();
+  connectCallbacks = new Set();
 
   if (client) {
     client.deactivate();

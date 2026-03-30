@@ -347,7 +347,7 @@ const DMChatWindow = ({ user }) => {
         if (mounted && (message.senderId === user.id || message.senderId === currentUser.id)) {
           const container = messageContainerRef.current;
           const isAtBottom = container ? (container.scrollHeight - container.scrollTop <= container.clientHeight + 100) : true;
-          appendDmMessage(user.id, message);
+          appendDmMessage(user.id, message, { incrementUnread: false });
           if (message.senderId === user.id) {
             clearDmUnread(user.id);
             dmService.markAsRead(user.id).catch((error) => {
@@ -476,7 +476,7 @@ const DMChatWindow = ({ user }) => {
         const fileApiResponse = await dmService.sendDirectMessage(user.id, { content: fileUrl, type: fileMessageType, replyToMessageId: replyTarget?.id ?? null });
         const sentFileMessage = fileApiResponse?.data ?? fileApiResponse;
         if (sentFileMessage?.id) {
-          appendDmMessage(user.id, sentFileMessage);
+          appendDmMessage(user.id, sentFileMessage, { incrementUnread: false });
         }
       }
 
@@ -485,7 +485,7 @@ const DMChatWindow = ({ user }) => {
         const textApiResponse = await dmService.sendDirectMessage(user.id, { content, type: 'TEXT', replyToMessageId: replyTarget?.id ?? null });
         const sentTextMessage = textApiResponse?.data ?? textApiResponse;
         if (sentTextMessage?.id) {
-          appendDmMessage(user.id, sentTextMessage);
+          appendDmMessage(user.id, sentTextMessage, { incrementUnread: false });
         }
       }
 

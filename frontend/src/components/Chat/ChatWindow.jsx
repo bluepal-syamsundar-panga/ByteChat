@@ -130,6 +130,10 @@ const ChatWindow = ({ room, channel }) => {
   );
   const isWorkspaceOwner = String(activeWorkspace?.ownerId ?? activeWorkspace?.createdById) === String(currentUser?.id);
   const isDefaultChannel = Boolean(effectiveChannel?.isDefault || effectiveChannel?.name === 'general');
+  const isChannelMember = useMemo(
+    () => members.some((member) => String(member.id) === String(currentUser?.id)),
+    [members, currentUser?.id]
+  );
   const selectedMessage = useMemo(() => {
     const match = messages.find(m => m.id === selectedMessageId);
     return match && !match.isDeleted ? match : null;
@@ -324,7 +328,9 @@ const ChatWindow = ({ room, channel }) => {
       const channelsData = channelsResponse?.data?.data || channelsResponse?.data || channelsResponse;
       const nextChannels = Array.isArray(channelsData) ? channelsData : (Array.isArray(channelsData?.content) ? channelsData.content : []);
       setChannels(nextChannels);
-      setSidebarChannels(nextChannels);
+      if (useChatStore.getState().sidebarMode === 'channels') {
+        setSidebarChannels(nextChannels);
+      }
     } catch (error) {
       console.error('Failed to refresh channel context', error);
     }
@@ -344,13 +350,44 @@ const ChatWindow = ({ room, channel }) => {
       });
 
     setChannels((prev) => applyMemberDelta(prev));
-    setSidebarChannels((prev = []) => applyMemberDelta(prev));
+    if (useChatStore.getState().sidebarMode === 'channels') {
+      setSidebarChannels((prev = []) => applyMemberDelta(prev));
+    }
   }
 
   function removeCurrentChannelFromStore() {
     if (!channelId) return;
     setChannels((prev) => prev.filter((item) => item.id !== channelId));
-    setSidebarChannels((prev = []) => prev.filter((item) => item.id !== channelId));
+    if (useChatStore.getState().sidebarMode === 'channels') {
+      setSidebarChannels((prev = []) => prev.filter((item) => item.id !== channelId));
+    }
+  }
+
+  async function navigateToWorkspaceDefaultChannel() {
+    if (!workspaceId) {
+      navigate('/');
+      return;
+    }
+
+    try {
+      const response = await channelService.getWorkspaceChannels(workspaceId);
+      const channelsData = response?.data?.data || response?.data || [];
+      const visibleChannels = Array.isArray(channelsData) ? channelsData : [];
+
+      setChannels(visibleChannels);
+      setSidebarChannels(visibleChannels);
+      useChatStore.getState().setSidebarMode('channels');
+
+      const fallbackChannel = visibleChannels.find((item) => item.name === 'general' || item.isDefault) || visibleChannels[0];
+      if (fallbackChannel?.id) {
+        navigate(`/chat/channel/${fallbackChannel.id}`);
+        return;
+      }
+    } catch (error) {
+      console.error('Failed to load fallback channel', error);
+    }
+
+    navigate(`/chat/workspace/${workspaceId}`);
   }
 
   function removeMemberFromLocalState(matcher) {
@@ -827,14 +864,11 @@ const ChatWindow = ({ room, channel }) => {
   const confirmArchive = async () => {
     try {
       await channelService.archiveChannel(channelId);
-      // Update store so sidebar reflects change immediately
-      const { channels, sidebarChannels, setChannels, setSidebarChannels } = useChatStore.getState();
-      setChannels(channels.map(c => c.id === channelId ? { ...c, isArchived: true } : c));
-      setSidebarChannels((sidebarChannels || []).map(c => c.id === channelId ? { ...c, isArchived: true } : c));
+      removeCurrentChannelFromStore();
       
       setShowArchiveConfirmModal(false);
       addToast('Channel archived successfuly', 'success');
-      navigate(`/chat/workspace/${workspaceId}`);
+      await navigateToWorkspaceDefaultChannel();
     } catch (e) {
       console.error('Failed to archive channel', e);
       addToast('Failed to archive channel', 'error');
@@ -871,7 +905,11 @@ const ChatWindow = ({ room, channel }) => {
         removeCurrentChannelFromStore();
       }
       setShowLeaveModal(false);
-      navigate('/');
+      if (isDefaultChannel) {
+        navigate('/');
+      } else {
+        await navigateToWorkspaceDefaultChannel();
+      }
     } catch (error) {
       console.error('Failed to leave channel:', error);
       addToast(error.response?.data?.message || 'Failed to leave channel.', 'error');
@@ -907,15 +945,16 @@ const ChatWindow = ({ room, channel }) => {
         setSidebarChannels((sidebarChannels || []).filter((item) => String(item.workspaceId) !== String(workspaceId)));
       } else {
         await channelService.deleteChannel(channelId);
-        // Update store
-        const { channels, sidebarChannels, setChannels, setSidebarChannels } = useChatStore.getState();
-        setChannels(channels.map(c => c.id === channelId ? { ...c, isDeleted: true } : c));
-        setSidebarChannels((sidebarChannels || []).map(c => c.id === channelId ? { ...c, isDeleted: true } : c));
+        removeCurrentChannelFromStore();
       }
       
       setShowChannelDeleteModal(false);
       addToast(isDefaultChannel ? 'Workspace deleted successfully' : 'Channel moved to trash', 'success');
-      navigate('/');
+      if (isDefaultChannel) {
+        navigate('/');
+      } else {
+        await navigateToWorkspaceDefaultChannel();
+      }
     } catch (error) {
       console.error('Failed to delete channel:', error);
       addToast(
@@ -1189,7 +1228,7 @@ const ChatWindow = ({ room, channel }) => {
                       </button>
                     )}
 
-                    {(!isDefaultChannel || !isWorkspaceOwner) && (
+                    {isChannelMember && (!isDefaultChannel || !isWorkspaceOwner) && (
                       <button 
                         onClick={() => {
                           handleLeaveChannel();

@@ -157,17 +157,22 @@ const useChatStore = create((set) => ({
         [userId]: dedupe([...(normalizeMessages(messages) ?? []), ...(state.dmMessages[userId] ?? [])]),
       },
     })),
-  appendDmMessage: (userId, message) =>
+  appendDmMessage: (userId, message, options = {}) =>
     set((state) => {
       const isCurrent = state.activeThread?.type === 'dm' && String(state.activeThread?.id) === String(userId);
+      const shouldIncrementUnread = Boolean(options.incrementUnread) && !isCurrent;
       return {
         dmMessages: {
           ...state.dmMessages,
           [userId]: dedupe([...(state.dmMessages[userId] ?? []), normalizeMessage(message)]),
         },
-        sharedUsers: isCurrent
-          ? state.sharedUsers
-          : state.sharedUsers.map(u => u.id === userId ? { ...u, unreadCount: (u.unreadCount || 0) + 1 } : u)
+        sharedUsers: shouldIncrementUnread
+          ? state.sharedUsers.map((u) =>
+              String(u.id) === String(userId)
+                ? { ...u, unreadCount: (u.unreadCount || 0) + 1 }
+                : u
+            )
+          : state.sharedUsers
       };
     }),
   upsertDmMessage: (userId, message) =>
@@ -212,7 +217,7 @@ const useChatStore = create((set) => ({
   clearDmUnread: (userId) =>
     set((state) => ({
       sharedUsers: state.sharedUsers.map((u) =>
-        u.id === userId ? { ...u, unreadCount: 0 } : u
+        String(u.id) === String(userId) ? { ...u, unreadCount: 0 } : u
       ),
     })),
 }));

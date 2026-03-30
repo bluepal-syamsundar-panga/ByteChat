@@ -26,6 +26,7 @@ const MainLayout = () => {
     setUsers,
     setOnlineUsers,
     setNotifications,
+    setSharedUsers,
     workspaces,
     activeWorkspaceId,
     meetingLauncher,
@@ -128,7 +129,58 @@ const MainLayout = () => {
         // Determine the other user in the DM to update their unread count in sidebar
         const otherUserId = message.senderId === user.id ? message.recipientId : message.senderId;
         if (otherUserId) {
-          state.appendDmMessage(otherUserId, message);
+          state.appendDmMessage(otherUserId, message, {
+            incrementUnread: message.senderId !== user.id,
+          });
+        }
+
+        if (message.senderId !== user.id) {
+          state.setSharedUsers((prevUsers) => {
+            const users = Array.isArray(prevUsers) ? prevUsers : [];
+            const existingIndex = users.findIndex((item) => String(item.id) === String(otherUserId));
+
+            if (existingIndex === -1) {
+              return [
+                {
+                  id: otherUserId,
+                  displayName: message.senderName || 'Unknown user',
+                  avatarUrl: message.senderAvatar || null,
+                  unreadCount: message.senderId !== user.id ? 1 : 0,
+                  online: false,
+                },
+                ...users,
+              ];
+            }
+            return users;
+          });
+
+          const isCurrentDmThread = state.activeThread?.type === 'dm' && String(state.activeThread?.id) === String(otherUserId);
+          if (!isCurrentDmThread) {
+            state.setNotifications((prev) => {
+              const alreadyExists = prev.some(
+                (item) =>
+                  String(item?.relatedEntityId) === String(message.id) &&
+                  (item?.type === 'DIRECT_MESSAGE' || item?.type === 'MENTION')
+              );
+
+              if (alreadyExists) {
+                return prev;
+              }
+
+              return [
+                {
+                  id: `dm-local-${message.id}`,
+                  type: 'DIRECT_MESSAGE',
+                  content: `${message.senderName || 'Someone'} sent you a direct message`,
+                  relatedEntityId: message.id,
+                  createdAt: message.sentAt,
+                  isRead: false,
+                  read: false,
+                },
+                ...prev,
+              ];
+            });
+          }
         }
       });
     });

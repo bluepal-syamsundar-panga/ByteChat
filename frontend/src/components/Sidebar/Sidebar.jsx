@@ -142,7 +142,17 @@ const Sidebar = ({ onAcceptInvite }) => {
         const usersResp = await workspaceService.getWorkspaceMembers(activeWorkspaceId);
         const usersData = usersResp?.data?.data || usersResp?.data || usersResp;
         if (mounted) {
-          setSharedUsers(Array.isArray(usersData) ? usersData : []);
+          setSharedUsers((prevUsers) => {
+            const nextUsers = Array.isArray(usersData) ? usersData : [];
+            return nextUsers.map((userItem) => {
+              const previous = (Array.isArray(prevUsers) ? prevUsers : []).find((item) => String(item.id) === String(userItem.id));
+              return {
+                ...previous,
+                ...userItem,
+                unreadCount: previous?.unreadCount ?? userItem.unreadCount ?? 0,
+              };
+            });
+          });
         }
       } catch (e) {
         console.error('Failed to load sidebar data', e);

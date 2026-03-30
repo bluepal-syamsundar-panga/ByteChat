@@ -15,11 +15,12 @@ const DMPanel = () => {
   const dmNotifications = (notifications || []).filter(
     (n) => (n.type === 'DIRECT_MESSAGE' || n.type === 'DM_INVITE') && !n.isRead && !n.read
   );
+  const dmInviteNotifications = dmNotifications.filter((notification) => notification.type === 'DM_INVITE');
 
   // Calculate total badge count from both persistent notifications (invites)
   // and real-time user-specific unread counts (messages)
   const dmUnreadFromMessages = (sharedUsers || []).reduce((sum, u) => sum + (u.unreadCount || 0), 0);
-  const totalUnreadCount = dmNotifications.length + pendingRequests.length + dmUnreadFromMessages;
+  const totalUnreadCount = dmInviteNotifications.length + pendingRequests.length + dmUnreadFromMessages;
 
   useEffect(() => {
     let mounted = true;
