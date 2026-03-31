@@ -275,10 +275,10 @@ const Sidebar = ({ onAcceptInvite }) => {
               {sidebarMode === 'channels' && (
                 <button
                   onClick={() => setShowInviteModal(true)}
-                  className="flex items-center justify-center p-1 text-white/40 hover:text-white transition-smooth hover:scale-110"
+                  className="inline-flex h-8 items-center justify-center rounded-[999px] bg-white px-4 text-[10px] font-medium tracking-[0.02em] text-[#3f0e40] transition-smooth hover:scale-[1.03] hover:bg-white/90 shadow-sm"
                   title="Invite Members"
                 >
-                  <Plus size={20} />
+                  Invite
                 </button>
               )}
             </div>

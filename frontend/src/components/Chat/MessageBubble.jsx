@@ -4,7 +4,7 @@ import EmojiPicker from 'emoji-picker-react';
 import useAuthStore from '../../store/authStore';
 import { formatMessageTimestamp, formatJustTime } from '../../utils/formatDate';
 
-const MessageBubble = ({ message, isSelected, onClick, onReact, participants = [] }) => {
+const MessageBubble = ({ message, isSelected, showReactionPicker = true, onClick, onReact, participants = [] }) => {
   const currentUser = useAuthStore((state) => state.user);
   const [showFullPicker, setShowFullPicker] = useState(false);
   
@@ -14,27 +14,41 @@ const MessageBubble = ({ message, isSelected, onClick, onReact, participants = [
   // Highlight mentions in the message content
   const renderContent = (content) => {
     if (!content) return content;
-    
-    const mentionRegex = /@([A-Za-z0-9._-]+)/g;
+
+    const tokenRegex = /(@[A-Za-z0-9._-]+|https?:\/\/[^\s]+)/g;
     const parts = [];
     let lastIndex = 0;
     let match;
 
-    while ((match = mentionRegex.exec(content)) !== null) {
-      // Add text before mention
+    while ((match = tokenRegex.exec(content)) !== null) {
       if (match.index > lastIndex) {
         parts.push(content.substring(lastIndex, match.index));
       }
-      // Add highlighted mention
-      parts.push(
-        <span key={match.index} className="mx-0.5 font-bold text-blue-600">
-          {match[0]}
-        </span>
-      );
+
+      if (match[0].startsWith('@')) {
+        parts.push(
+          <span key={`mention-${match.index}`} className="mx-0.5 font-bold text-blue-600">
+            {match[0]}
+          </span>
+        );
+      } else {
+        parts.push(
+          <a
+            key={`link-${match.index}`}
+            href={match[0]}
+            target="_blank"
+            rel="noreferrer"
+            className="break-all text-[#1164a3] underline underline-offset-2"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {match[0]}
+          </a>
+        );
+      }
+
       lastIndex = match.index + match[0].length;
     }
 
-    // Add remaining text
     if (lastIndex < content.length) {
       parts.push(content.substring(lastIndex));
     }
@@ -46,7 +60,10 @@ const MessageBubble = ({ message, isSelected, onClick, onReact, participants = [
     if (message.isDeleted) return <div className="italic text-[#6b6a6b]">{message.content}</div>;
 
     const isServerFile = typeof message.content === 'string'
-      && (message.content.startsWith('/uploads/') || message.content.startsWith('http'));
+      && (
+        message.content.startsWith('/uploads/')
+        || (['FILE', 'VIDEO', 'AUDIO', 'DOCUMENT'].includes(message.type) && message.content.startsWith('http'))
+      );
 
     if ((['FILE', 'VIDEO', 'AUDIO', 'DOCUMENT'].includes(message.type) || isServerFile) && message.content) {
       if (!isServerFile) {
@@ -195,7 +212,7 @@ const MessageBubble = ({ message, isSelected, onClick, onReact, participants = [
           </div>
 
           <div className={`mt-0.5 relative inline-block text-[14px] tracking-tight leading-relaxed ${message.reactions?.length > 0 ? 'pb-3' : ''} ${isFileMessage ? 'bg-transparent px-0 py-0' : `px-4 py-2 rounded-[22px] shadow-sm ring-1 ${isMine ? 'bg-gradient-to-br from-[#4a154b] to-[#611f69] text-white ring-[#4a154b]/30' : 'bg-white text-gray-800 ring-black/5'}`}`}>
-            {isSelected && (
+            {isSelected && showReactionPicker && (
               <div className={`absolute bottom-full mb-2 flex items-center gap-1.5 bg-white border border-black/5 p-1 rounded-full shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300 z-50 ${isMine ? 'right-0' : 'left-0'}`}>
                 {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
                   <button

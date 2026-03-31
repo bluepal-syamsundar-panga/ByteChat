@@ -57,7 +57,7 @@ const ChatWindow = ({ room, channel }) => {
   } = useChatStore();
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState([]);
-  const [selectedMessageId, setSelectedMessageId] = useState(null);
+  const [selectedMessageIds, setSelectedMessageIds] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -135,9 +135,33 @@ const ChatWindow = ({ room, channel }) => {
     [members, currentUser?.id]
   );
   const selectedMessage = useMemo(() => {
-    const match = messages.find(m => m.id === selectedMessageId);
+    if (selectedMessageIds.length !== 1) return null;
+    const match = messages.find((m) => String(m.id) === String(selectedMessageIds[0]));
     return match && !match.isDeleted ? match : null;
-  }, [messages, selectedMessageId]);
+  }, [messages, selectedMessageIds]);
+  const selectedMessages = useMemo(
+    () => messages.filter((m) => selectedMessageIds.some((id) => String(id) === String(m.id)) && !m.isDeleted),
+    [messages, selectedMessageIds]
+  );
+  const hasMultipleSelectedMessages = selectedMessageIds.length > 1;
+
+  const clearSelectedMessages = () => setSelectedMessageIds([]);
+
+  const selectSingleMessage = (messageId) => {
+    setSelectedMessageIds([messageId]);
+  };
+
+  const toggleMessageSelection = (messageId, allowMultiSelect = false) => {
+    setSelectedMessageIds((current) => {
+      const exists = current.some((id) => String(id) === String(messageId));
+      if (allowMultiSelect) {
+        return exists
+          ? current.filter((id) => String(id) !== String(messageId))
+          : [...current, messageId];
+      }
+      return exists && current.length === 1 ? [] : [messageId];
+    });
+  };
 
   const scrollToBottom = (behavior = 'smooth') => {
     scrollRef.current?.scrollIntoView({ behavior });
@@ -698,16 +722,15 @@ const ChatWindow = ({ room, channel }) => {
     hadTypingUsersRef.current = hasTypingUsers;
   }, [typingUsers]);
 
-  async function handleSend(content, file) {
+  async function handleSend(content, files = []) {
     try {
-      let fileUrl = null;
-      let fileMessageType = 'FILE';
-      
-      // 1. Upload file if present
-      if (file) {
+      const normalizedFiles = Array.isArray(files) ? files : files ? [files] : [];
+
+      for (const file of normalizedFiles) {
+        let fileMessageType = 'FILE';
         const resp = await chatService.uploadFile(file);
         const attachment = resp?.data ?? resp;
-        fileUrl = attachment?.fileUrl ?? attachment?.url ?? null;
+        const fileUrl = attachment?.fileUrl ?? attachment?.url ?? null;
         if (file.type?.startsWith('image/')) {
           fileMessageType = 'FILE';
         } else if (file.type?.startsWith('video/')) {
@@ -717,19 +740,16 @@ const ChatWindow = ({ room, channel }) => {
         } else {
           fileMessageType = 'DOCUMENT';
         }
-      }
-
-      // 2. Send file message if file was uploaded
-      if (fileUrl) {
-        const filePayload = { content: fileUrl, type: fileMessageType, replyToMessageId: replyTarget?.id ?? null };
-        const fileApiResponse = await chatService.sendChannelMessage(entityId, filePayload);
-        const sentFileMessage = fileApiResponse?.data ?? fileApiResponse;
-        if (sentFileMessage?.id) {
-          appendChannelMessage(entityId, sentFileMessage);
+        if (fileUrl) {
+          const filePayload = { content: fileUrl, type: fileMessageType, replyToMessageId: replyTarget?.id ?? null };
+          const fileApiResponse = await chatService.sendChannelMessage(entityId, filePayload);
+          const sentFileMessage = fileApiResponse?.data ?? fileApiResponse;
+          if (sentFileMessage?.id) {
+            appendChannelMessage(entityId, sentFileMessage);
+          }
         }
       }
 
-      // 3. Send text message if content is present
       if (content && content.trim()) {
         const textPayload = { content, type: 'TEXT', replyToMessageId: replyTarget?.id ?? null };
         const textApiResponse = await chatService.sendChannelMessage(entityId, textPayload);
@@ -803,36 +823,51 @@ const ChatWindow = ({ room, channel }) => {
     setShowMessageDeleteModal(true);
   }
 
+  async function handleBulkDelete(messagesToDelete) {
+    const normalizedMessages = Array.isArray(messagesToDelete) ? messagesToDelete.filter(Boolean) : [];
+    if (normalizedMessages.length === 0) return;
+    setDeleteTarget(normalizedMessages);
+    setShowMessageDeleteModal(true);
+  }
+
   const confirmDeleteMessage = async (scope = 'everyone') => {
     if (!deleteTarget) return;
-    const message = deleteTarget;
     try {
-      await chatService.deleteMessage(message.id, scope);
-      if (scope === 'self') {
-        if (entityType === 'channel') {
-          removeChannelMessage(entityId, message.id);
-        } else {
-          removeRoomMessage(entityId, message.id);
+      const targets = Array.isArray(deleteTarget) ? deleteTarget : [deleteTarget];
+
+      for (const message of targets) {
+        await chatService.deleteMessage(message.id, scope);
+        if (scope === 'self') {
+          if (entityType === 'channel') {
+            removeChannelMessage(entityId, message.id);
+          } else {
+            removeRoomMessage(entityId, message.id);
+          }
+          continue;
         }
-        addToast('Message removed from your view', 'success');
-        return;
+        const deletedMsg = {
+          ...message,
+          content: 'This message was deleted.',
+          isDeleted: true,
+        };
+        if (entityType === 'channel') {
+          upsertChannelMessage(entityId, deletedMsg);
+        } else {
+          upsertRoomMessage(entityId, deletedMsg);
+        }
       }
-      const deletedMsg = {
-        ...message,
-        content: 'This message was deleted.',
-        isDeleted: true,
-      };
-      if (entityType === 'channel') {
-        upsertChannelMessage(entityId, deletedMsg);
-      } else {
-        upsertRoomMessage(entityId, deletedMsg);
-      }
-      addToast('Message deleted', 'success');
+      addToast(
+        scope === 'self'
+          ? targets.length > 1 ? 'Messages removed from your view' : 'Message removed from your view'
+          : targets.length > 1 ? 'Messages deleted' : 'Message deleted',
+        'success'
+      );
     } catch (error) {
       addToast('Failed to delete message', 'error');
     } finally {
       setShowMessageDeleteModal(false);
       setDeleteTarget(null);
+      clearSelectedMessages();
     }
   };
 
@@ -1006,7 +1041,7 @@ const ChatWindow = ({ room, channel }) => {
       } else {
         upsertRoomMessage(entityId, serverMessage);
       }
-      setSelectedMessageId(null);
+      clearSelectedMessages();
       setShowMenu(false);
     } catch (e) {
       console.error('Failed to react', e);
@@ -1029,14 +1064,16 @@ const ChatWindow = ({ room, channel }) => {
   );
 
   useEffect(() => {
-    if (!selectedMessageId) return;
-    const current = messages.find((m) => m.id === selectedMessageId);
-    if (!current || current.isDeleted) {
-      setSelectedMessageId(null);
+    if (selectedMessageIds.length === 0) return;
+    const nextSelectedIds = selectedMessageIds.filter((selectedId) =>
+      messages.some((m) => String(m.id) === String(selectedId) && !m.isDeleted)
+    );
+    if (nextSelectedIds.length !== selectedMessageIds.length) {
+      setSelectedMessageIds(nextSelectedIds);
       setShowMenu(false);
       setShowEmojiPicker(false);
     }
-  }, [messages, selectedMessageId]);
+  }, [messages, selectedMessageIds]);
 
   function handleTyping(isTyping) {
     if (!workspaceId || !currentUser?.id) return;
@@ -1144,13 +1181,19 @@ const ChatWindow = ({ room, channel }) => {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => {
+                if (!selectedMessage && !hasMultipleSelectedMessages) {
+                  return;
+                }
                 if (!showMenu) {
                   refreshChannelContext();
                 }
                 setShowMenu(!showMenu);
               }}
+              disabled={!selectedMessage && !hasMultipleSelectedMessages}
               className={`h-9 w-9 rounded-lg transition-smooth flex items-center justify-center ${
-                showMenu ? 'bg-black/5 text-gray-900' : 'text-gray-400 hover:text-gray-900 hover:bg-black/5'
+                showMenu ? 'bg-black/5 text-gray-900' : 
+                (selectedMessage || hasMultipleSelectedMessages) ? 'text-gray-400 hover:text-gray-900 hover:bg-black/5' :
+                'text-gray-200 cursor-not-allowed opacity-50'
               }`}
             >
               <MoreVertical size={20} />
@@ -1159,14 +1202,26 @@ const ChatWindow = ({ room, channel }) => {
             {showMenu && (
               <div className="absolute right-0 top-full mt-3 w-56 bg-white rounded-2xl shadow-2xl z-50 py-2 border border-black/5 animate-in fade-in slide-in-from-top-4 duration-300 origin-top-right">
                 
-                {selectedMessage ? (
+                {hasMultipleSelectedMessages ? (
+                  <>
+                    <button 
+                      onClick={() => {
+                        handleBulkDelete(selectedMessages);
+                        setShowMenu(false);
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10"
+                    >
+                      <Trash2 size={16} className="text-[#e01e5a]" /> Delete
+                    </button>
+                  </>
+                ) : selectedMessage ? (
                   /* --- MESSAGE OPTIONS --- */
                   <>
                     <button 
                       onClick={() => {
                         setReplyTarget(selectedMessage);
                         setShowMenu(false);
-                        setSelectedMessageId(null);
+                        clearSelectedMessages();
                       }}
                       className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
                     >
@@ -1177,7 +1232,7 @@ const ChatWindow = ({ room, channel }) => {
                       onClick={() => {
                         handlePin(selectedMessage);
                         setShowMenu(false);
-                        setSelectedMessageId(null);
+                        clearSelectedMessages();
                       }}
                       className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
                     >
@@ -1191,7 +1246,7 @@ const ChatWindow = ({ room, channel }) => {
                           onClick={() => {
                             handleEdit(selectedMessage);
                             setShowMenu(false);
-                            setSelectedMessageId(null);
+                            clearSelectedMessages();
                           }}
                           className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
                         >
@@ -1201,7 +1256,7 @@ const ChatWindow = ({ room, channel }) => {
                           onClick={() => {
                             handleDelete(selectedMessage);
                             setShowMenu(false);
-                            setSelectedMessageId(null);
+                            clearSelectedMessages();
                           }}
                           className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10"
                         >
@@ -1308,7 +1363,7 @@ const ChatWindow = ({ room, channel }) => {
             <button
               type="button"
               onClick={() => {
-                setSelectedMessageId(latestPinnedMessage.id);
+                selectSingleMessage(latestPinnedMessage.id);
                 setShowMenu(false);
               }}
               className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff3bf] text-[#8c5b00]"
@@ -1328,7 +1383,7 @@ const ChatWindow = ({ room, channel }) => {
                   setShowPinnedDetails((prev) => !prev);
                   return;
                 }
-                setSelectedMessageId(latestPinnedMessage.id);
+                selectSingleMessage(latestPinnedMessage.id);
                 setShowMenu(false);
               }}
               className="min-w-0 flex-1 text-left"
@@ -1357,7 +1412,7 @@ const ChatWindow = ({ room, channel }) => {
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedMessageId(message.id);
+                        selectSingleMessage(message.id);
                         setShowPinnedDetails(false);
                         setShowMenu(false);
                       }}
@@ -1369,7 +1424,7 @@ const ChatWindow = ({ room, channel }) => {
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedMessageId(message.id);
+                        selectSingleMessage(message.id);
                         setShowPinnedDetails(false);
                         setShowMenu(false);
                       }}
@@ -1474,24 +1529,19 @@ const ChatWindow = ({ room, channel }) => {
                 )}
                 <MessageBubble
                   message={message}
-                  isSelected={!message.isDeleted && selectedMessageId === message.id}
+                  isSelected={!message.isDeleted && selectedMessageIds.some((id) => String(id) === String(message.id))}
+                  showReactionPicker={!hasMultipleSelectedMessages}
                   participants={members}
-                  onClick={() => {
+                  onClick={(event) => {
                     if (message.isDeleted) {
-                      setSelectedMessageId(null);
+                      clearSelectedMessages();
                       setShowMenu(false);
                       setShowEmojiPicker(false);
                       return;
                     }
-                    if (selectedMessageId === message.id) {
-                      setSelectedMessageId(null);
-                      setShowMenu(false);
-                      setShowEmojiPicker(false);
-                    } else {
-                      setSelectedMessageId(message.id);
-                      setShowMenu(false);
-                      setShowEmojiPicker(false);
-                    }
+                    toggleMessageSelection(message.id, event?.ctrlKey || event?.metaKey);
+                    setShowMenu(false);
+                    setShowEmojiPicker(false);
                   }}
                   onReact={(emoji) => handleReact(message, emoji)}
                 />
@@ -1648,7 +1698,9 @@ const ChatWindow = ({ room, channel }) => {
       >
         <div className="p-1">
           <p className="mb-6 text-sm leading-relaxed text-gray-500">
-            Choose how you want to delete this message.
+            {Array.isArray(deleteTarget) && deleteTarget.length > 1
+              ? `Choose how you want to delete these ${deleteTarget.length} messages.`
+              : 'Choose how you want to delete this message.'}
           </p>
           <div className="flex flex-col gap-3">
             <button
@@ -1657,7 +1709,9 @@ const ChatWindow = ({ room, channel }) => {
             >
               Delete from me
             </button>
-            {deleteTarget?.senderId === currentUser?.id && (
+            {(Array.isArray(deleteTarget)
+              ? deleteTarget.length > 0 && deleteTarget.every((message) => String(message?.senderId) === String(currentUser?.id))
+              : String(deleteTarget?.senderId) === String(currentUser?.id)) && (
               <button
                 onClick={() => confirmDeleteMessage('everyone')}
                 className="w-full rounded-none bg-red-600 px-4 py-3 text-left text-sm font-bold text-white transition-all hover:bg-red-700"

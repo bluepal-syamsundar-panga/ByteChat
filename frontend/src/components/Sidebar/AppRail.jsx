@@ -72,7 +72,7 @@ const AppRail = ({ onCreateRoom, onProfileClick }) => {
 
         {/* Notifications */}
         <div className="relative">
-          <NotificationPanel allowedTypes={['MENTION', 'CHANNEL_INVITE', 'ROOM_INVITE', 'MEETING_INVITE']} />
+          <NotificationPanel allowedTypes={['MENTION', 'CHANNEL_INVITE', 'ROOM_INVITE', 'CHANNEL_REMOVED', 'MEETING_INVITE', 'MEETING_ENDED']} />
         </div>
 
         {/* Direct Messages Hub */}

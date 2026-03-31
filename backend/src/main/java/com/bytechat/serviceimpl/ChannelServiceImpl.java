@@ -376,6 +376,12 @@ public class ChannelServiceImpl implements ChannelService {
         channel.getMemberships().remove(membership);
         channelMemberRepository.delete(membership);
         log.info("Member {} removed from channel {}", userToRemove.getEmail(), channel.getName());
+        notificationService.sendNotification(
+                userToRemove.getId(),
+                "CHANNEL_REMOVED",
+                "You were removed from #" + channel.getName() + " by " + currentUser.getDisplayName(),
+                channel.getId()
+        );
         publishSystemMessageAfterCommit(channel.getId(), currentUser.getId(), userToRemove.getDisplayName() + " was removed from #" + channel.getName());
     }
 

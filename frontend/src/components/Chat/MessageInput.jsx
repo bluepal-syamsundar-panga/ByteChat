@@ -20,7 +20,7 @@ const MessageInput = ({
 }) => {
   const currentUserLabel = replyTarget && String(replyTarget.senderId) === String(currentUserId) ? 'You' : replyTarget?.senderName;
   const [content, setContent] = useState('');
-  const [pendingFile, setPendingFile] = useState(null);
+  const [pendingFiles, setPendingFiles] = useState([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
@@ -36,7 +36,7 @@ const MessageInput = ({
   const recordingTimerRef = useRef(null);
   const shouldSaveRecordingRef = useRef(true);
 
-  const canSend = useMemo(() => (content.trim().length > 0 || pendingFile) && !disabled, [content, pendingFile, disabled]);
+  const canSend = useMemo(() => (content.trim().length > 0 || pendingFiles.length > 0) && !disabled, [content, pendingFiles, disabled]);
 
   useEffect(() => {
     if (editMode) {
@@ -84,36 +84,39 @@ const MessageInput = ({
   }, [onTyping]);
 
   useEffect(() => () => {
-    if (pendingFile?.previewUrl) {
-      URL.revokeObjectURL(pendingFile.previewUrl);
-    }
+    pendingFiles.forEach((pendingFile) => {
+      if (pendingFile?.previewUrl) {
+        URL.revokeObjectURL(pendingFile.previewUrl);
+      }
+    });
     window.clearInterval(recordingTimerRef.current);
     mediaRecorderRef.current?.stop?.();
     mediaStreamRef.current?.getTracks?.().forEach((track) => track.stop());
-  }, [pendingFile]);
+  }, [pendingFiles]);
 
   function handleEmojiClick(emojiData) {
     setContent((prev) => prev + emojiData.emoji);
   }
 
   function handleFileChange(event) {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (pendingFile?.previewUrl) {
-        URL.revokeObjectURL(pendingFile.previewUrl);
-      }
-      const isImage = file.type.startsWith('image/');
-      const isVideo = file.type.startsWith('video/');
-      const isAudio = file.type.startsWith('audio/');
-      const previewUrl = (isImage || isVideo || isAudio) ? URL.createObjectURL(file) : null;
-      setPendingFile({
-        file,
-        name: file.name,
-        isImage,
-        isVideo,
-        isAudio,
-        previewUrl
+    const files = Array.from(event.target.files || []);
+    if (files.length > 0) {
+      const nextPendingFiles = files.map((file) => {
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        const isAudio = file.type.startsWith('audio/');
+        const previewUrl = (isImage || isVideo || isAudio) ? URL.createObjectURL(file) : null;
+        return {
+          file,
+          id: `${file.name}-${file.size}-${file.lastModified}`,
+          name: file.name,
+          isImage,
+          isVideo,
+          isAudio,
+          previewUrl,
+        };
       });
+      setPendingFiles((current) => [...current, ...nextPendingFiles]);
       requestAnimationFrame(() => {
         textareaRef.current?.focus();
       });
@@ -125,14 +128,22 @@ const MessageInput = ({
   }
 
   function handleRemoveFile() {
-    if (pendingFile?.previewUrl) {
-      URL.revokeObjectURL(pendingFile.previewUrl);
-    }
-    setPendingFile(null);
+    setPendingFiles([]);
+  }
+
+  function handleRemoveSingleFile(fileId) {
+    setPendingFiles((current) =>
+      current.filter((pendingFile) => {
+        if (pendingFile.id === fileId && pendingFile.previewUrl) {
+          URL.revokeObjectURL(pendingFile.previewUrl);
+        }
+        return pendingFile.id !== fileId;
+      })
+    );
   }
 
   async function handleStartVoiceRecording() {
-    if (disabled || editMode || pendingFile) return;
+    if (disabled || editMode || pendingFiles.length > 0) return;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -160,14 +171,15 @@ const MessageInput = ({
           const extension = recorder.mimeType?.includes('ogg') ? 'ogg' : 'webm';
           const audioFile = new File([audioBlob], `voice-note-${Date.now()}.${extension}`, { type: audioBlob.type });
           const previewUrl = URL.createObjectURL(audioBlob);
-          setPendingFile({
+          setPendingFiles([{
             file: audioFile,
+            id: `${audioFile.name}-${audioFile.size}-${audioFile.lastModified}`,
             name: 'Voice message',
             isImage: false,
             isVideo: false,
             isAudio: true,
             previewUrl,
-          });
+          }]);
         }
 
         mediaStreamRef.current?.getTracks?.().forEach((track) => track.stop());
@@ -224,20 +236,20 @@ const MessageInput = ({
   async function handleSubmit(event) {
     if (event) event.preventDefault();
     const value = content.trim();
-    if (!value && !pendingFile) {
+    if (!value && pendingFiles.length === 0) {
       return;
     }
 
     try {
-      // Pass both content and the pending file to the parent handler
-      await onSendMessage(value, pendingFile?.file);
+      await onSendMessage(value, pendingFiles.map((pendingFile) => pendingFile.file));
       
-      // Clear state after successful send
       setContent('');
-      if (pendingFile?.previewUrl) {
-        URL.revokeObjectURL(pendingFile.previewUrl);
-      }
-      setPendingFile(null);
+      pendingFiles.forEach((pendingFile) => {
+        if (pendingFile?.previewUrl) {
+          URL.revokeObjectURL(pendingFile.previewUrl);
+        }
+      });
+      setPendingFiles([]);
       if (wasTypingRef.current) {
         onTyping?.(false);
         wasTypingRef.current = false;
@@ -363,38 +375,42 @@ const MessageInput = ({
             </div>
           )}
 
-          {pendingFile && (
-            <div className="mb-2 flex items-center gap-3 border border-gray-100 bg-gray-50 p-2 rounded-xl shadow-sm animate-in slide-in-from-bottom-2 duration-300 overflow-hidden">
-              {pendingFile.isImage && pendingFile.previewUrl ? (
-                <div className="h-8 w-8 shrink-0 border border-black/5 rounded-lg overflow-hidden shadow-sm">
-                  <img src={pendingFile.previewUrl} alt="Preview" className="h-full w-full object-cover" />
-                </div>
-              ) : pendingFile.isVideo && pendingFile.previewUrl ? (
-                <div className="h-8 w-8 shrink-0 border border-black/5 rounded-lg overflow-hidden shadow-sm bg-black">
-                  <video src={pendingFile.previewUrl} className="h-full w-full object-cover" muted />
-                </div>
-              ) : pendingFile.isAudio && pendingFile.previewUrl ? (
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-emerald-50 rounded-lg border border-emerald-100 text-emerald-600 shadow-sm">
-                    <Mic size={16} />
+          {pendingFiles.length > 0 && (
+            <div className="mb-2 space-y-2">
+              {pendingFiles.map((pendingFile) => (
+                <div key={pendingFile.id} className="flex items-center gap-3 border border-gray-100 bg-gray-50 p-2 rounded-xl shadow-sm animate-in slide-in-from-bottom-2 duration-300 overflow-hidden">
+                  {pendingFile.isImage && pendingFile.previewUrl ? (
+                    <div className="h-8 w-8 shrink-0 border border-black/5 rounded-lg overflow-hidden shadow-sm">
+                      <img src={pendingFile.previewUrl} alt="Preview" className="h-full w-full object-cover" />
+                    </div>
+                  ) : pendingFile.isVideo && pendingFile.previewUrl ? (
+                    <div className="h-8 w-8 shrink-0 border border-black/5 rounded-lg overflow-hidden shadow-sm bg-black">
+                      <video src={pendingFile.previewUrl} className="h-full w-full object-cover" muted />
+                    </div>
+                  ) : pendingFile.isAudio && pendingFile.previewUrl ? (
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-emerald-50 rounded-lg border border-emerald-100 text-emerald-600 shadow-sm">
+                        <Mic size={16} />
+                      </div>
+                      <audio controls src={pendingFile.previewUrl} className="h-8 max-w-[240px]" />
+                    </div>
+                  ) : (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-white rounded-lg border border-gray-100 text-blue-500 shadow-sm">
+                      <Paperclip size={16} />
+                    </div>
+                  )}
+                  <div className="flex-1 overflow-hidden">
+                    <div className="truncate text-xs font-bold text-gray-800">{pendingFile.name}</div>
                   </div>
-                  <audio controls src={pendingFile.previewUrl} className="h-8 max-w-[240px]" />
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemoveSingleFile(pendingFile.id)}
+                    className="p-1.5 text-gray-400 hover:bg-white hover:text-red-500 rounded-lg transition-smooth"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
-              ) : (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-white rounded-lg border border-gray-100 text-blue-500 shadow-sm">
-                  <Paperclip size={16} />
-                </div>
-              )}
-              <div className="flex-1 overflow-hidden">
-                <div className="truncate text-xs font-bold text-gray-800">{pendingFile.name}</div>
-              </div>
-              <button 
-                type="button" 
-                onClick={handleRemoveFile}
-                className="p-1.5 text-gray-400 hover:bg-white hover:text-red-500 rounded-lg transition-smooth"
-              >
-                <X size={16} />
-              </button>
+              ))}
             </div>
           )}
 
@@ -491,6 +507,7 @@ const MessageInput = ({
                   type="file" 
                   ref={fileInputRef} 
                   onChange={handleFileChange} 
+                  multiple
                   className="hidden"
                 />
                 
@@ -527,7 +544,7 @@ const MessageInput = ({
                         : 'text-gray-400 hover:text-[#3f0e40]'
                     }`}
                     title={isRecordingVoice ? 'Stop recording' : 'Record voice message'}
-                    disabled={disabled || Boolean(pendingFile)}
+                    disabled={disabled || pendingFiles.length > 0}
                   >
                     {isRecordingVoice ? <Square size={18} fill="currentColor" /> : <Mic size={18} />}
                   </button>

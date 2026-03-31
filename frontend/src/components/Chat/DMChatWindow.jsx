@@ -19,7 +19,7 @@ const DMChatWindow = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const [participant, setParticipant] = useState(user ?? null);
   const [showContactInfo, setShowContactInfo] = useState(false);
-  const [selectedMessageId, setSelectedMessageId] = useState(null);
+  const [selectedMessageIds, setSelectedMessageIds] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const { addToast } = useToastStore();
@@ -48,9 +48,33 @@ const DMChatWindow = ({ user }) => {
   const touchStartYRef = useRef(null);
 
   const selectedMessage = useMemo(() => {
-    const match = thread.find(m => m.id === selectedMessageId);
+    if (selectedMessageIds.length !== 1) return null;
+    const match = thread.find((m) => String(m.id) === String(selectedMessageIds[0]));
     return match && !match.isDeleted ? match : null;
-  }, [thread, selectedMessageId]);
+  }, [thread, selectedMessageIds]);
+  const selectedMessages = useMemo(
+    () => thread.filter((m) => selectedMessageIds.some((id) => String(id) === String(m.id)) && !m.isDeleted),
+    [thread, selectedMessageIds]
+  );
+  const hasMultipleSelectedMessages = selectedMessageIds.length > 1;
+
+  const clearSelectedMessages = () => setSelectedMessageIds([]);
+
+  const selectSingleMessage = (messageId) => {
+    setSelectedMessageIds([messageId]);
+  };
+
+  const toggleMessageSelection = (messageId, allowMultiSelect = false) => {
+    setSelectedMessageIds((current) => {
+      const exists = current.some((id) => String(id) === String(messageId));
+      if (allowMultiSelect) {
+        return exists
+          ? current.filter((id) => String(id) !== String(messageId))
+          : [...current, messageId];
+      }
+      return exists && current.length === 1 ? [] : [messageId];
+    });
+  };
   const activeParticipant = useMemo(() => {
     const sharedMatch = sharedUsers.find((item) => String(item.id) === String(user?.id));
     return sharedMatch || participant || user || null;
@@ -120,13 +144,15 @@ const DMChatWindow = ({ user }) => {
   }, [user?.id, setSharedUsers]);
 
   useEffect(() => {
-    if (!selectedMessageId) return;
-    const current = thread.find((m) => m.id === selectedMessageId);
-    if (!current || current.isDeleted) {
-      setSelectedMessageId(null);
+    if (selectedMessageIds.length === 0) return;
+    const nextSelectedIds = selectedMessageIds.filter((selectedId) =>
+      thread.some((m) => String(m.id) === String(selectedId) && !m.isDeleted)
+    );
+    if (nextSelectedIds.length !== selectedMessageIds.length) {
+      setSelectedMessageIds(nextSelectedIds);
       setShowMenu(false);
     }
-  }, [thread, selectedMessageId]);
+  }, [thread, selectedMessageIds]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -450,16 +476,15 @@ const DMChatWindow = ({ user }) => {
     loadOlderDirectMessages();
   }
 
-  async function handleSend(content, file) {
+  async function handleSend(content, files = []) {
     try {
-      let fileUrl = null;
-      let fileMessageType = 'FILE';
-      
-      // 1. Upload file if present (using chatService as it has the upload logic)
-      if (file) {
+      const normalizedFiles = Array.isArray(files) ? files : files ? [files] : [];
+
+      for (const file of normalizedFiles) {
+        let fileMessageType = 'FILE';
         const resp = await chatService.uploadFile(file);
         const attachment = resp?.data ?? resp;
-        fileUrl = attachment?.fileUrl ?? attachment?.url ?? null;
+        const fileUrl = attachment?.fileUrl ?? attachment?.url ?? null;
         if (file.type?.startsWith('image/')) {
           fileMessageType = 'FILE';
         } else if (file.type?.startsWith('video/')) {
@@ -469,18 +494,15 @@ const DMChatWindow = ({ user }) => {
         } else {
           fileMessageType = 'DOCUMENT';
         }
-      }
-
-      // 2. Send file message if file was uploaded
-      if (fileUrl) {
-        const fileApiResponse = await dmService.sendDirectMessage(user.id, { content: fileUrl, type: fileMessageType, replyToMessageId: replyTarget?.id ?? null });
-        const sentFileMessage = fileApiResponse?.data ?? fileApiResponse;
-        if (sentFileMessage?.id) {
-          appendDmMessage(user.id, sentFileMessage, { incrementUnread: false });
+        if (fileUrl) {
+          const fileApiResponse = await dmService.sendDirectMessage(user.id, { content: fileUrl, type: fileMessageType, replyToMessageId: replyTarget?.id ?? null });
+          const sentFileMessage = fileApiResponse?.data ?? fileApiResponse;
+          if (sentFileMessage?.id) {
+            appendDmMessage(user.id, sentFileMessage, { incrementUnread: false });
+          }
         }
       }
 
-      // 3. Send text message if content is present
       if (content && content.trim()) {
         const textApiResponse = await dmService.sendDirectMessage(user.id, { content, type: 'TEXT', replyToMessageId: replyTarget?.id ?? null });
         const sentTextMessage = textApiResponse?.data ?? textApiResponse;
@@ -534,23 +556,39 @@ const DMChatWindow = ({ user }) => {
     setShowDeleteConfirmModal(true);
   }
 
+  async function handleBulkDelete(messagesToDelete) {
+    const normalizedMessages = Array.isArray(messagesToDelete) ? messagesToDelete.filter(Boolean) : [];
+    if (normalizedMessages.length === 0) return;
+    setDeleteTarget(normalizedMessages);
+    setShowDeleteConfirmModal(true);
+  }
+
   const confirmDeleteMessage = async (scope = 'everyone') => {
     if (!deleteTarget) return;
     try {
-      const response = await dmService.deleteMessage(deleteTarget.id, scope);
-      if (scope === 'self') {
-        removeDmMessage(user.id, deleteTarget.id);
-        addToast('Message removed from your view', 'success');
-      } else {
-        upsertDmMessage(user.id, response.data || response);
-        addToast('Message deleted', 'success');
+      const targets = Array.isArray(deleteTarget) ? deleteTarget : [deleteTarget];
+
+      for (const message of targets) {
+        const response = await dmService.deleteMessage(message.id, scope);
+        if (scope === 'self') {
+          removeDmMessage(user.id, message.id);
+        } else {
+          upsertDmMessage(user.id, response.data || response);
+        }
       }
+      addToast(
+        scope === 'self'
+          ? targets.length > 1 ? 'Messages removed from your view' : 'Message removed from your view'
+          : targets.length > 1 ? 'Messages deleted' : 'Message deleted',
+        'success'
+      );
     } catch (err) {
       console.error('Failed to delete DM', err);
       addToast('Failed to delete message', 'error');
     } finally {
       setShowDeleteConfirmModal(false);
       setDeleteTarget(null);
+      clearSelectedMessages();
     }
   };
 
@@ -592,7 +630,7 @@ const DMChatWindow = ({ user }) => {
     try {
       const response = await dmService.reactToMessage(message.id, emoji);
       upsertDmMessage(user.id, response.data || response);
-      setSelectedMessageId(null);
+      clearSelectedMessages();
       setShowMenu(false);
     } catch (err) {
       console.error('Failed to react to DM', err);
@@ -684,65 +722,83 @@ const DMChatWindow = ({ user }) => {
           
           <div className="relative" ref={menuRef}>
             <button
-              onClick={() => setShowMenu(!showMenu)}
-              disabled={!selectedMessage}
+              onClick={() => {
+                if (!selectedMessage && !hasMultipleSelectedMessages) {
+                  return;
+                }
+                setShowMenu(!showMenu);
+              }}
+              disabled={!selectedMessage && !hasMultipleSelectedMessages}
               className={`h-9 w-9 rounded-lg transition-smooth flex items-center justify-center ${
                 showMenu ? 'bg-black/5 text-gray-900' : 
-                selectedMessage ? 'text-gray-400 hover:text-gray-900 hover:bg-black/5' : 
+                (selectedMessage || hasMultipleSelectedMessages) ? 'text-gray-400 hover:text-gray-900 hover:bg-black/5' : 
                 'text-gray-200 cursor-not-allowed opacity-50'
               }`}
             >
               <MoreVertical size={20} />
             </button>
             
-            {showMenu && selectedMessage && (
+            {showMenu && (selectedMessage || hasMultipleSelectedMessages) && (
               <div className="absolute right-0 top-full mt-3 w-64 bg-white rounded-2xl shadow-2xl z-50 py-2 border border-black/5 animate-in fade-in slide-in-from-top-4 duration-300 origin-top-right">
-                <button 
-                  onClick={() => {
-                    setReplyTarget(selectedMessage);
-                    setShowMenu(false);
-                    setSelectedMessageId(null);
-                  }}
-                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
-                >
-                  <Reply size={16} className="text-[#6b6a6b]" />
-                  Reply
-                </button>
-
-                <button 
-                  onClick={() => {
-                    handlePin(selectedMessage);
-                    setShowMenu(false);
-                    setSelectedMessageId(null);
-                  }}
-                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
-                >
-                  <Pin size={16} className="text-[#6b6a6b]" /> 
-                  {selectedMessage.isPinned ? 'Unpin' : 'Pin'}
-                </button>
-
-                {selectedMessage.senderId === currentUser?.id && !selectedMessage.isDeleted && (
+                {hasMultipleSelectedMessages ? (
+                  <button 
+                    onClick={() => {
+                      handleBulkDelete(selectedMessages);
+                      setShowMenu(false);
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10"
+                  >
+                    <Trash2 size={16} className="text-[#e01e5a]" /> Delete
+                  </button>
+                ) : (
                   <>
                     <button 
                       onClick={() => {
-                        handleEdit(selectedMessage);
+                        setReplyTarget(selectedMessage);
                         setShowMenu(false);
-                        setSelectedMessageId(null);
+                        clearSelectedMessages();
                       }}
                       className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
                     >
-                      <Pencil size={16} className="text-[#6b6a6b]" /> Edit
+                      <Reply size={16} className="text-[#6b6a6b]" />
+                      Reply
                     </button>
+
                     <button 
                       onClick={() => {
-                        handleDelete(selectedMessage);
+                        handlePin(selectedMessage);
                         setShowMenu(false);
-                        setSelectedMessageId(null);
+                        clearSelectedMessages();
                       }}
-                      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10"
+                      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
                     >
-                      <Trash2 size={16} className="text-[#e01e5a]" /> Delete
+                      <Pin size={16} className="text-[#6b6a6b]" /> 
+                      {selectedMessage.isPinned ? 'Unpin' : 'Pin'}
                     </button>
+                    {selectedMessage.senderId === currentUser?.id && !selectedMessage.isDeleted && (
+                      <>
+                        <button 
+                          onClick={() => {
+                            handleEdit(selectedMessage);
+                            setShowMenu(false);
+                            clearSelectedMessages();
+                          }}
+                          className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#1d1c1d] transition hover:bg-black/5"
+                        >
+                          <Pencil size={16} className="text-[#6b6a6b]" /> Edit
+                        </button>
+                        <button 
+                          onClick={() => {
+                            handleDelete(selectedMessage);
+                            setShowMenu(false);
+                            clearSelectedMessages();
+                          }}
+                          className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-[#e01e5a] transition hover:bg-[#e01e5a]/10"
+                        >
+                          <Trash2 size={16} className="text-[#e01e5a]" /> Delete
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
               </div>
@@ -758,7 +814,7 @@ const DMChatWindow = ({ user }) => {
             <button
               type="button"
               onClick={() => {
-                setSelectedMessageId(latestPinnedMessage.id);
+                selectSingleMessage(latestPinnedMessage.id);
                 setShowMenu(false);
               }}
               className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff3bf] text-[#8c5b00]"
@@ -778,7 +834,7 @@ const DMChatWindow = ({ user }) => {
                   setShowPinnedDetails((prev) => !prev);
                   return;
                 }
-                setSelectedMessageId(latestPinnedMessage.id);
+                selectSingleMessage(latestPinnedMessage.id);
                 setShowMenu(false);
               }}
               className="min-w-0 flex-1 text-left"
@@ -807,7 +863,7 @@ const DMChatWindow = ({ user }) => {
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedMessageId(message.id);
+                        selectSingleMessage(message.id);
                         setShowPinnedDetails(false);
                         setShowMenu(false);
                       }}
@@ -819,7 +875,7 @@ const DMChatWindow = ({ user }) => {
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedMessageId(message.id);
+                        selectSingleMessage(message.id);
                         setShowPinnedDetails(false);
                         setShowMenu(false);
                       }}
@@ -925,20 +981,16 @@ const DMChatWindow = ({ user }) => {
                   )}
                   <MessageBubble 
                     message={message} 
-                    isSelected={!message.isDeleted && selectedMessageId === message.id}
-                    onClick={() => {
+                    isSelected={!message.isDeleted && selectedMessageIds.some((id) => String(id) === String(message.id))}
+                    showReactionPicker={!hasMultipleSelectedMessages}
+                    onClick={(event) => {
                       if (message.isDeleted) {
-                        setSelectedMessageId(null);
+                        clearSelectedMessages();
                         setShowMenu(false);
                         return;
                       }
-                      if (selectedMessageId === message.id) {
-                        setSelectedMessageId(null);
-                        setShowMenu(false);
-                      } else {
-                        setSelectedMessageId(message.id);
-                        setShowMenu(false);
-                      }
+                      toggleMessageSelection(message.id, event?.ctrlKey || event?.metaKey);
+                      setShowMenu(false);
                     }}
                     onReact={(emoji) => handleReact(message, emoji)}
                   />
@@ -975,7 +1027,9 @@ const DMChatWindow = ({ user }) => {
       >
         <div className="p-1">
           <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-            Choose how you want to delete this message.
+            {Array.isArray(deleteTarget) && deleteTarget.length > 1
+              ? `Choose how you want to delete these ${deleteTarget.length} messages.`
+              : 'Choose how you want to delete this message.'}
           </p>
           <div className="flex flex-col gap-3">
             <button
@@ -984,7 +1038,9 @@ const DMChatWindow = ({ user }) => {
             >
               Delete from me
             </button>
-            {deleteTarget?.senderId === currentUser?.id && (
+            {(Array.isArray(deleteTarget)
+              ? deleteTarget.length > 0 && deleteTarget.every((message) => String(message?.senderId) === String(currentUser?.id))
+              : String(deleteTarget?.senderId) === String(currentUser?.id)) && (
               <button
                 onClick={() => confirmDeleteMessage('everyone')}
                 className="w-full px-4 py-3 bg-red-600 text-left text-white rounded-none font-bold text-sm hover:bg-red-700 transition-all shadow-md active:scale-95"
