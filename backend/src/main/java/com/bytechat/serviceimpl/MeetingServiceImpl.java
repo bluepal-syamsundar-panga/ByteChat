@@ -15,6 +15,7 @@ import com.bytechat.repository.MeetingRepository;
 import com.bytechat.repository.MessageRepository;
 import com.bytechat.repository.WorkspaceMemberRepository;
 import com.bytechat.services.MeetingService;
+import com.bytechat.services.EmailService;
 import com.bytechat.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,7 @@ public class MeetingServiceImpl implements MeetingService {
     private final ChannelMemberRepository channelMemberRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final NotificationService notificationService;
+    private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final MessageRepository messageRepository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -73,6 +75,17 @@ public class MeetingServiceImpl implements MeetingService {
                         currentUser.getDisplayName() + " started \"" + savedMeeting.getTitle() + "\" in #" + channel.getName(),
                         savedMeeting.getId()
                 );
+                try {
+                    emailService.sendMeetingInvite(
+                            member.getUser().getEmail(),
+                            currentUser.getDisplayName(),
+                            savedMeeting.getTitle(),
+                            channel.getName(),
+                            channel.getWorkspace().getName()
+                    );
+                } catch (Exception exception) {
+                    log.error("Failed to send meeting invite email to {}: {}", member.getUser().getEmail(), exception.getMessage());
+                }
             }
         }
 
@@ -94,6 +107,14 @@ public class MeetingServiceImpl implements MeetingService {
                 .filter(meeting -> channelMemberRepository.existsByChannelIdAndUserId(meeting.getChannel().getId(), currentUser.getId()))
                 .map(MeetingResponse::fromEntity)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MeetingResponse getMeeting(Long meetingId, User currentUser) {
+        Meeting meeting = getActiveMeeting(meetingId);
+        ensureChannelMembership(meeting.getChannel().getId(), currentUser.getId());
+        return MeetingResponse.fromEntity(meeting);
     }
 
     @Override

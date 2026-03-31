@@ -3,11 +3,13 @@ import { Search, UserPlus, Loader2, Check } from 'lucide-react';
 import Modal from '../Shared/Modal';
 import workspaceService from '../../services/workspaceService';
 import channelService from '../../services/channelService';
+import userService from '../../services/userService';
 import useToastStore from '../../store/toastStore';
 import useAuthStore from '../../store/authStore';
 
 const ChannelInviteModal = ({ isOpen, onClose, channelId, workspaceId, channelName }) => {
     const [members, setMembers] = useState([]);
+    const [channelMembers, setChannelMembers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [invitingEmails, setInvitingEmails] = useState(new Set());
@@ -15,18 +17,23 @@ const ChannelInviteModal = ({ isOpen, onClose, channelId, workspaceId, channelNa
     const currentUser = useAuthStore((state) => state.user);
 
     useEffect(() => {
-        if (isOpen && workspaceId) {
-            loadWorkspaceMembers();
+        if (isOpen && workspaceId && channelId) {
+            loadInviteCandidates();
         }
-    }, [isOpen, workspaceId]);
+    }, [isOpen, workspaceId, channelId]);
 
-    const loadWorkspaceMembers = async () => {
+    const loadInviteCandidates = async () => {
         setLoading(true);
         try {
-            const res = await workspaceService.getWorkspaceMembers(workspaceId);
-            setMembers(res.data.data || []);
+            const [workspaceRes, channelRes] = await Promise.all([
+                workspaceService.getWorkspaceMembers(workspaceId),
+                userService.getChannelMembers(channelId),
+            ]);
+
+            setMembers(workspaceRes?.data?.data || []);
+            setChannelMembers(channelRes?.data?.data || channelRes?.data || []);
         } catch (err) {
-            console.error('Failed to load workspace members', err);
+            console.error('Failed to load invite candidates', err);
         } finally {
             setLoading(false);
         }
@@ -51,12 +58,14 @@ const ChannelInviteModal = ({ isOpen, onClose, channelId, workspaceId, channelNa
     };
 
     const normalizedQuery = searchQuery.toLowerCase();
+    const channelMemberIds = new Set((channelMembers || []).map((member) => String(member.id)));
     const filteredMembers = members.filter((member) => {
         const isCurrentUser =
             String(member.id) === String(currentUser?.id) ||
             String(member.email).toLowerCase() === String(currentUser?.email).toLowerCase();
+        const isAlreadyInChannel = channelMemberIds.has(String(member.id));
 
-        if (isCurrentUser) {
+        if (isCurrentUser || isAlreadyInChannel) {
             return false;
         }
 

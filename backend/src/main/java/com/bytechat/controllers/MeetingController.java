@@ -52,6 +52,17 @@ public class MeetingController {
         ));
     }
 
+    @GetMapping("/{meetingId}")
+    @Operation(summary = "Get an active meeting by ID")
+    public ResponseEntity<ApiResponse<MeetingResponse>> getMeeting(
+            @Parameter(description = "Meeting ID") @PathVariable Long meetingId,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(
+                meetingService.getMeeting(meetingId, currentUser),
+                "Meeting fetched"
+        ));
+    }
+
     @PostMapping("/{meetingId}/join")
     @Operation(summary = "Join a meeting with password")
     public ResponseEntity<ApiResponse<MeetingResponse>> joinMeeting(

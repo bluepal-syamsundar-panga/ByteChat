@@ -35,6 +35,7 @@ const MainLayout = () => {
     setActiveMeeting,
     clearActiveMeeting,
     setMeetings,
+    upsertMeeting,
     removeMeeting,
   } = useChatStore();
   const { addToast } = useToastStore();
@@ -83,6 +84,89 @@ const MainLayout = () => {
     setMeetings(results.flat());
   };
 
+  const refreshSharedUsers = async () => {
+    try {
+      const usersResponse = await userService.getSharedRoomUsers();
+      const usersData = usersResponse?.data ?? usersResponse ?? [];
+      setSharedUsers((prevUsers) => {
+        const previousUsers = Array.isArray(prevUsers) ? prevUsers : [];
+        const nextUsers = Array.isArray(usersData) ? usersData : [];
+
+        return nextUsers.map((userItem) => {
+          const previous = previousUsers.find((item) => String(item.id) === String(userItem.id));
+          return {
+            ...previous,
+            ...userItem,
+            unreadCount: userItem.unreadCount ?? previous?.unreadCount ?? 0,
+          };
+        });
+      });
+    } catch (error) {
+      console.error('Failed to refresh shared DM users', error);
+    }
+  };
+
+  const fetchMeetingById = async (meetingId) => {
+    if (!meetingId) return null;
+    try {
+      const response = await meetingService.getMeeting(meetingId);
+      return response?.data?.data || response?.data || null;
+    } catch (error) {
+      console.error(`Failed to fetch meeting ${meetingId}`, error);
+      return null;
+    }
+  };
+
+  const refreshMeetingsUntilPresent = async (meetingId, attempts = 4, delayMs = 400) => {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const directMeeting = await fetchMeetingById(meetingId);
+      if (directMeeting) {
+        useChatStore.getState().upsertMeeting(directMeeting);
+        return true;
+      }
+
+      const workspaceList = useChatStore.getState().workspaces || [];
+      if (workspaceList.length === 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      await refreshAllMeetings();
+      const hasMeeting = (useChatStore.getState().meetings || []).some(
+        (meeting) => String(meeting.id) === String(meetingId)
+      );
+
+      if (hasMeeting) {
+        return true;
+      }
+
+      if (attempt < attempts - 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+      }
+    }
+
+    return false;
+  };
+
+  const syncUnreadMeetingNotifications = async () => {
+    const state = useChatStore.getState();
+    const unreadMeetingNotifications = (state.notifications || []).filter(
+      (notification) =>
+        notification?.type === 'MEETING_INVITE' &&
+        !(notification?.isRead ?? notification?.read)
+    );
+
+    if (unreadMeetingNotifications.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      unreadMeetingNotifications.map((notification) =>
+        refreshMeetingsUntilPresent(notification.relatedEntityId, 6, 500)
+      )
+    );
+  };
+
   useEffect(() => {
     if (!user?.id) return;
 
@@ -101,7 +185,12 @@ const MainLayout = () => {
 
         if (notification.type === 'MEETING_INVITE') {
           setNotifications((prev) => [notification, ...prev]);
-          refreshAllMeetings();
+          void fetchMeetingById(notification.relatedEntityId).then((meeting) => {
+            if (meeting) {
+              upsertMeeting(meeting);
+            }
+          });
+          void refreshMeetingsUntilPresent(notification.relatedEntityId);
           return;
         }
 
@@ -116,7 +205,13 @@ const MainLayout = () => {
           if (currentMeeting && String(currentMeeting.id) === String(notification.relatedEntityId)) {
             useChatStore.getState().clearActiveMeeting();
           }
-          refreshAllMeetings();
+          void refreshAllMeetings();
+          return;
+        }
+
+        if (notification.type === 'DIRECT_MESSAGE') {
+          setNotifications((prev) => [notification, ...prev]);
+          void refreshSharedUsers();
           return;
         }
 
@@ -186,7 +281,7 @@ const MainLayout = () => {
     });
     loadAppContent();
     return () => disconnectWebSocket();
-  }, [user?.id, setMeetings, removeMeeting, setNotifications]);
+  }, [user?.id, setMeetings, setSharedUsers, upsertMeeting, removeMeeting, setNotifications]);
 
   useEffect(() => {
     let mounted = true;
@@ -202,6 +297,7 @@ const MainLayout = () => {
       );
       if (mounted) {
         setMeetings(results.flat());
+        void syncUnreadMeetingNotifications();
       }
     };
 

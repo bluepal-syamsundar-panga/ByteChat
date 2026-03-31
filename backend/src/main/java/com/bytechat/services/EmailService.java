@@ -6,4 +6,5 @@ public interface EmailService {
     void sendPasswordResetOtp(String to, String otp);
     void sendWorkspaceSuccess(String to, String workspaceName, String description);
     void sendInvitation(String to, String inviterName, String entityName, String workspaceName, String type);
+    void sendMeetingInvite(String to, String inviterName, String meetingTitle, String channelName, String workspaceName);
 }

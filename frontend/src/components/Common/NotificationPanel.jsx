@@ -8,11 +8,12 @@ import chatService from '../../services/chatService';
 import userService from '../../services/userService';
 import { formatMessageTimestamp } from '../../utils/formatDate';
 import channelService from '../../services/channelService';
+import meetingService from '../../services/meetingService';
 import useToastStore from '../../store/toastStore';
 
 const NotificationPanel = ({ variant = 'light', position = 'right', allowedTypes = null }) => {
   const currentUser = useAuthStore((state) => state.user);
-  const { notifications, setNotifications } = useChatStore();
+  const { notifications, setNotifications, openMeetingLauncher } = useChatStore();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -115,6 +116,69 @@ const NotificationPanel = ({ variant = 'light', position = 'right', allowedTypes
     }
   };
 
+  const findMeetingFromStore = (meetingId) =>
+    (useChatStore.getState().meetings || []).find((item) => String(item.id) === String(meetingId));
+
+  const refreshMeetingFromWorkspaces = async (meetingId) => {
+    try {
+      const response = await meetingService.getMeeting(meetingId);
+      const meeting = response?.data?.data || response?.data || null;
+      if (meeting) {
+        useChatStore.getState().upsertMeeting(meeting);
+        return meeting;
+      }
+    } catch (error) {
+      console.error(`Failed to load meeting ${meetingId} directly`, error);
+    }
+
+    const workspaceList = useChatStore.getState().workspaces || [];
+    if (workspaceList.length === 0) {
+      return null;
+    }
+
+    const results = await Promise.all(
+      workspaceList.map(async (workspace) => {
+        try {
+          const response = await meetingService.getWorkspaceMeetings(workspace.id);
+          return response?.data?.data || response?.data || [];
+        } catch (error) {
+          console.error(`Failed to load meetings for workspace ${workspace.id}`, error);
+          return [];
+        }
+      })
+    );
+
+    const flattenedMeetings = results.flat();
+    useChatStore.getState().setMeetings(flattenedMeetings);
+    return flattenedMeetings.find((item) => String(item.id) === String(meetingId)) || null;
+  };
+
+  const handleJoinMeeting = async (notification) => {
+    try {
+      let meeting = findMeetingFromStore(notification.relatedEntityId);
+
+      if (!meeting) {
+        meeting = await refreshMeetingFromWorkspaces(notification.relatedEntityId);
+      }
+
+      if (!meeting) {
+        useToastStore.getState().addToast('Live meeting is not available yet. Please try again.', 'error');
+        return;
+      }
+
+      openMeetingLauncher({
+        channel: { id: meeting.channelId, name: meeting.channelName },
+        workspaceId: meeting.workspaceId,
+        mode: 'join',
+        meeting,
+      });
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Failed to open meeting join flow', error);
+      useToastStore.getState().addToast('Unable to open the meeting right now.', 'error');
+    }
+  };
+
   const getNotificationIcon = (type) => {
     if (type === 'MENTION') return '💬';
     if (type === 'DIRECT_MESSAGE') return '✉️';
@@ -187,6 +251,15 @@ const NotificationPanel = ({ variant = 'light', position = 'right', allowedTypes
                             <Check size={12} />
                             Dismiss
                           </button>
+                          {notification.type === 'MEETING_INVITE' && (
+                            <button
+                              type="button"
+                              onClick={() => handleJoinMeeting(notification)}
+                              className="bg-[#1264a3] px-2 py-1 text-xs text-white transition hover:bg-[#0f5387]"
+                            >
+                              Join
+                            </button>
+                          )}
                           {(notification.type === 'ROOM_INVITE' || notification.type === 'CHANNEL_INVITE' || notification.type === 'WORKSPACE_INVITE') && (
                             <>
                               <button

@@ -3,6 +3,7 @@ package com.bytechat.serviceimpl;
 import com.bytechat.services.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,8 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
+    @Value("${spring.mail.username:}")
+    private String fromAddress;
 
     @Override
     public void sendOtp(String to, String otp) {
@@ -56,6 +59,17 @@ public class EmailServiceImpl implements EmailService {
         sendHtmlEmail(to, "You've been invited to join " + entityName, "invitation", context);
     }
 
+    @Override
+    public void sendMeetingInvite(String to, String inviterName, String meetingTitle, String channelName, String workspaceName) {
+        log.info("Sending meeting invite to: {}", to);
+        Context context = new Context();
+        context.setVariable("inviterName", inviterName);
+        context.setVariable("meetingTitle", meetingTitle);
+        context.setVariable("channelName", "#" + channelName);
+        context.setVariable("workspaceName", workspaceName);
+        sendHtmlEmail(to, "New meeting started: " + meetingTitle, "meeting-invite", context);
+    }
+
     private void sendHtmlEmail(String to, String subject, String templateName, String variableName, Object variableValue) {
         Context context = new Context();
         context.setVariable(variableName, variableValue);
@@ -66,7 +80,7 @@ public class EmailServiceImpl implements EmailService {
         MimeMessage mimeMessage = mailSender.createMimeMessage();
         try {
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-            helper.setFrom("no-reply@bytechat.com");
+            helper.setFrom((fromAddress == null || fromAddress.isBlank()) ? "no-reply@bytechat.com" : fromAddress);
             helper.setTo(to);
             helper.setSubject(subject);
             String htmlContent = templateEngine.process("emails/" + templateName, context);

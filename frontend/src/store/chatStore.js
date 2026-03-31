@@ -161,18 +161,33 @@ const useChatStore = create((set) => ({
     set((state) => {
       const isCurrent = state.activeThread?.type === 'dm' && String(state.activeThread?.id) === String(userId);
       const shouldIncrementUnread = Boolean(options.incrementUnread) && !isCurrent;
-      return {
-        dmMessages: {
-          ...state.dmMessages,
-          [userId]: dedupe([...(state.dmMessages[userId] ?? []), normalizeMessage(message)]),
-        },
-        sharedUsers: shouldIncrementUnread
+      const existingSharedUser = (state.sharedUsers || []).find((u) => String(u.id) === String(userId));
+
+      const nextSharedUsers = shouldIncrementUnread
+        ? existingSharedUser
           ? state.sharedUsers.map((u) =>
               String(u.id) === String(userId)
                 ? { ...u, unreadCount: (u.unreadCount || 0) + 1 }
                 : u
             )
-          : state.sharedUsers
+          : [
+              {
+                id: userId,
+                displayName: message?.senderName || message?.recipientName || 'Unknown user',
+                avatarUrl: message?.senderAvatar || message?.recipientAvatar || null,
+                unreadCount: 1,
+                online: false,
+              },
+              ...(state.sharedUsers || []),
+            ]
+        : state.sharedUsers;
+
+      return {
+        dmMessages: {
+          ...state.dmMessages,
+          [userId]: dedupe([...(state.dmMessages[userId] ?? []), normalizeMessage(message)]),
+        },
+        sharedUsers: nextSharedUsers
       };
     }),
   upsertDmMessage: (userId, message) =>

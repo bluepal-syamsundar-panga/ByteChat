@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ExternalLink, PhoneOff } from 'lucide-react';
 import meetingService from '../../services/meetingService';
 import useAuthStore from '../../store/authStore';
@@ -6,14 +7,8 @@ import useToastStore from '../../store/toastStore';
 
 const MeetingRoomModal = ({ meeting, isOpen, onClose }) => {
   const currentUser = useAuthStore((state) => state.user);
-  const { removeMeeting } = useChatStore();
+  const { meetings, removeMeeting } = useChatStore();
   const addToast = useToastStore((state) => state.addToast);
-
-  if (!isOpen || !meeting) return null;
-
-  const displayName = encodeURIComponent(currentUser?.displayName || 'ByteChat User');
-  const iframeSrc = `https://meet.jit.si/${meeting.roomKey}#userInfo.displayName="${displayName}"`;
-  const isCreator = String(meeting.creator?.id) === String(currentUser?.id);
 
   const handleEndMeeting = async () => {
     try {
@@ -26,6 +21,21 @@ const MeetingRoomModal = ({ meeting, isOpen, onClose }) => {
       addToast(error?.response?.data?.message || 'Unable to end meeting.', 'error');
     }
   };
+
+  useEffect(() => {
+    if (!isOpen || !meeting?.id) return;
+
+    const stillActive = (meetings || []).some((item) => String(item.id) === String(meeting.id));
+    if (!stillActive) {
+      onClose?.();
+    }
+  }, [isOpen, meeting?.id, meetings, onClose]);
+
+  if (!isOpen || !meeting) return null;
+
+  const displayName = encodeURIComponent(currentUser?.displayName || 'ByteChat User');
+  const iframeSrc = `https://meet.jit.si/${meeting.roomKey}#userInfo.displayName="${displayName}"`;
+  const isCreator = String(meeting.creator?.id) === String(currentUser?.id);
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col bg-black">
