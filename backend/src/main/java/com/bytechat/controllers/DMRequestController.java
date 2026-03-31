@@ -7,6 +7,7 @@ import com.bytechat.entity.User;
 import com.bytechat.services.DMRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/dm/requests")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 @Tag(name = "DM Requests", description = "Endpoints for sending and managing direct message requests")
 @SecurityRequirement(name = "Bearer Authentication")
 public class DMRequestController {

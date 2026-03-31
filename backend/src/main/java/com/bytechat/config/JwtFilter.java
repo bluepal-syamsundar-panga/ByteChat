@@ -1,6 +1,8 @@
 package com.bytechat.config;
 
 import com.bytechat.repository.UserRepository;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,7 +30,6 @@ public class JwtFilter extends OncePerRequestFilter {
 			@NonNull FilterChain filterChain) throws ServletException, IOException {
 		final String authHeader = request.getHeader("Authorization");
 		final String jwt;
-		final String userEmail;
 
 		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
 			filterChain.doFilter(request, response);
@@ -36,7 +37,20 @@ public class JwtFilter extends OncePerRequestFilter {
 		}
 
 		jwt = authHeader.substring(7);
-		userEmail = jwtService.extractUsername(jwt);
+		final String userEmail;
+		try {
+			userEmail = jwtService.extractUsername(jwt);
+		} catch (ExpiredJwtException exception) {
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			response.setContentType("application/json");
+			response.getWriter().write("{\"message\":\"Token expired\"}");
+			return;
+		} catch (JwtException | IllegalArgumentException exception) {
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			response.setContentType("application/json");
+			response.getWriter().write("{\"message\":\"Invalid token\"}");
+			return;
+		}
 
 		if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 			UserDetails userDetails = userRepository.findByEmail(userEmail).orElse(null);

@@ -5,20 +5,46 @@ import LoginPage from '../pages/LoginPage';
 import ProfilePage from '../pages/ProfilePage';
 import RegisterPage from '../pages/RegisterPage';
 import useAuthStore from '../store/authStore';
+import { hasValidAccessToken } from '../utils/authToken';
 
 import LandingPage from '../pages/LandingPage';
 import WorkspaceWizard from '../pages/WorkspaceWizard';
 
 function ProtectedRoute({ children }) {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  if (!hasHydrated) return null;
+  const isAllowed = hasValidAccessToken(accessToken);
+  return isAllowed ? children : <Navigate to="/login" replace />;
+}
+
+function PublicOnlyRoute({ children }) {
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  if (!hasHydrated) return null;
+  const isAllowed = hasValidAccessToken(accessToken);
+  return isAllowed ? <Navigate to="/" replace /> : children;
 }
 
 const AppRouter = () => (
   <BrowserRouter>
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/login"
+        element={
+          <PublicOnlyRoute>
+            <LoginPage />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicOnlyRoute>
+            <RegisterPage />
+          </PublicOnlyRoute>
+        }
+      />
       
       {/* Landing Page is protected but doesn't use MainLayout */}
       <Route

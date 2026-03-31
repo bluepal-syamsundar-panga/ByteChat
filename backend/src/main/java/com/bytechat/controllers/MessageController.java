@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +26,7 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/messages")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 @Tag(name = "Messages", description = "Endpoints for sending, editing, and retrieving room messages")
 @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "Bearer Authentication")
 public class MessageController {

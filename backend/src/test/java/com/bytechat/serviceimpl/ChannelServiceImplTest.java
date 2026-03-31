@@ -80,6 +80,8 @@ class ChannelServiceImplTest {
 
     @Test
     void getWorkspaceChannels_ReturnsList() {
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(anyLong(), anyLong()))
+                .thenReturn(true);
         when(channelRepository.findVisibleChannels(anyLong(), anyLong()))
                 .thenReturn(Arrays.asList(channel));
 

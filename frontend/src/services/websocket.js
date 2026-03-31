@@ -1,6 +1,7 @@
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client/dist/sockjs';
 import useAuthStore from '../store/authStore';
+import { hasValidAccessToken } from '../utils/authToken';
 
 let client = null;
 let subscriptions = new Map();
@@ -24,10 +25,15 @@ function getClient() {
     return client;
   }
 
+  const accessToken = useAuthStore.getState().accessToken;
+  if (!hasValidAccessToken(accessToken)) {
+    return null;
+  }
+
   client = new Client({
     webSocketFactory: () => new SockJS(getWebSocketUrl()),
     connectHeaders: {
-      Authorization: `Bearer ${useAuthStore.getState().accessToken ?? ''}`,
+      Authorization: `Bearer ${accessToken}`,
     },
     reconnectDelay: 5000,
     heartbeatIncoming: 10000,
@@ -47,6 +53,9 @@ function getClient() {
 
 export function connectWebSocket(onConnectCallback) {
   const stompClient = getClient();
+  if (!stompClient) {
+    return null;
+  }
   if (onConnectCallback) {
     connectCallbacks.add(onConnectCallback);
   }
@@ -236,7 +245,7 @@ export function subscribeToDM(userId, callback) {
 
 export function publishRoomMessage(roomId, payload) {
   const stompClient = getClient();
-  if (!stompClient.connected) {
+  if (!stompClient || !stompClient.connected) {
     return false;
   }
 
@@ -249,7 +258,7 @@ export function publishRoomMessage(roomId, payload) {
 
 export function publishChannelMessage(channelId, payload) {
   const stompClient = getClient();
-  if (!stompClient.connected) {
+  if (!stompClient || !stompClient.connected) {
     return false;
   }
 
@@ -262,7 +271,7 @@ export function publishChannelMessage(channelId, payload) {
 
 export function publishTyping(workspaceId, payload) {
   const stompClient = getClient();
-  if (!stompClient.connected) {
+  if (!stompClient || !stompClient.connected) {
     return false;
   }
 

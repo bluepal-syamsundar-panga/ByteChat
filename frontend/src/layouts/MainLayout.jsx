@@ -17,10 +17,11 @@ import userService from '../services/userService';
 import meetingService from '../services/meetingService';
 import { connectWebSocket, disconnectWebSocket, subscribeToNotifications, subscribeToDM } from '../services/websocket';
 import useToastStore from '../store/toastStore';
+import { hasValidAccessToken } from '../utils/authToken';
 
 const MainLayout = () => {
   const navigate = useNavigate();
-  const { user, logout, updateUser } = useAuthStore();
+  const { user, accessToken, logout, updateUser } = useAuthStore();
   const {
     setWorkspaces,
     setUsers,
@@ -57,6 +58,14 @@ const MainLayout = () => {
   const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [newWorkspaceDescription, setNewWorkspaceDescription] = useState('');
+
+  useEffect(() => {
+    if (!hasValidAccessToken(accessToken)) {
+      disconnectWebSocket();
+      logout();
+      navigate('/login', { replace: true });
+    }
+  }, [accessToken, logout, navigate]);
 
   const refreshMeetingsForWorkspace = async (workspaceId) => {
     if (!workspaceId) return [];
@@ -168,7 +177,7 @@ const MainLayout = () => {
   };
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !hasValidAccessToken(accessToken)) return;
 
     connectWebSocket((stompClient) => {
       subscribeToNotifications(user.id, (notification) => {
@@ -281,7 +290,7 @@ const MainLayout = () => {
     });
     loadAppContent();
     return () => disconnectWebSocket();
-  }, [user?.id, setMeetings, setSharedUsers, upsertMeeting, removeMeeting, setNotifications]);
+  }, [user?.id, accessToken, setMeetings, setSharedUsers, upsertMeeting, removeMeeting, setNotifications]);
 
   useEffect(() => {
     let mounted = true;
