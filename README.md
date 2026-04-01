@@ -20,16 +20,24 @@ A real-time Slack clone built with Spring Boot and React.
 
 Prerequisites: Docker installed.
 
-1. Navigate to the root directory `d:\ByteChat`.
-2. Run the stack:
+1. Navigate to the project root directory.
+2. Create your local env file:
+```bash
+Copy-Item .env.example .env
+```
+3. Fill in the confidential values inside `.env`.
+4. Run the stack:
 ```bash
 docker-compose up --build -d
 ```
-3. Access the applications:
+5. Access the applications:
 * Frontend: `http://localhost:5173`
 * Backend API: `http://localhost:8080/api`
 
 ## Environment Variables
-Defaults are provided in the docker-compose file. You can override them:
+Set these in `.env`:
+* `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
 * `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 * `JWT_SECRET`
+* `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`
+* `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
