@@ -26,13 +26,16 @@ function getClient() {
 
   client = new Client({
     webSocketFactory: () => new SockJS(getWebSocketUrl()),
-    connectHeaders: {
-      Authorization: `Bearer ${useAuthStore.getState().accessToken ?? ''}`,
-    },
     reconnectDelay: 5000,
     heartbeatIncoming: 10000,
     heartbeatOutgoing: 10000,
   });
+
+  client.beforeConnect = () => {
+    client.connectHeaders = {
+      Authorization: `Bearer ${useAuthStore.getState().accessToken ?? ''}`,
+    };
+  };
 
   client.onStompError = (frame) => {
     console.error('STOMP error', frame.headers.message, frame.body);
@@ -40,6 +43,15 @@ function getClient() {
 
   client.onWebSocketError = (event) => {
     console.error('WebSocket error', event);
+  };
+
+  client.onDisconnect = () => {
+    activeSubscriptions.forEach((subscription) => subscription.unsubscribe());
+    activeSubscriptions.clear();
+  };
+
+  client.onWebSocketClose = () => {
+    activeSubscriptions.clear();
   };
 
   return client;
@@ -73,6 +85,8 @@ export function connectWebSocket(onConnectCallback) {
 export function disconnectWebSocket() {
   subscriptions.forEach((subscription) => subscription.unsubscribe());
   subscriptions = new Map();
+  activeSubscriptions.forEach((subscription) => subscription.unsubscribe());
+  activeSubscriptions.clear();
   connectCallbacks = new Set();
 
   if (client) {
@@ -200,6 +214,7 @@ export function subscribeToNotifications(userId, callback) {
           const key = `notifications:${userId}`;
           activeSubscriptions.get(key)?.unsubscribe();
           activeSubscriptions.delete(key);
+          notificationListeners.delete(userId);
         }
       }
     }
@@ -227,6 +242,7 @@ export function subscribeToDM(userId, callback) {
           const key = `dm:${userId}`;
           activeSubscriptions.get(key)?.unsubscribe();
           activeSubscriptions.delete(key);
+          dmListeners.delete(userId);
         }
       }
     }

@@ -30,23 +30,34 @@ const NotificationPanel = ({ variant = 'light', position = 'right', allowedTypes
   useEffect(() => {
     if (!currentUser?.id) return;
 
+    let isMounted = true;
+
     async function loadNotifications() {
       setLoading(true);
       try {
         const response = await notificationService.getNotifications();
-        setNotifications(response.data || []);
+        if (isMounted) {
+          setNotifications(response.data || []);
+        }
       } catch (error) {
         console.error('Failed to load notifications', error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
     loadNotifications();
 
-    subscribeToNotifications(currentUser.id, (notification) => {
+    const subscription = subscribeToNotifications(currentUser.id, (notification) => {
       setNotifications((prev) => [notification, ...prev]);
     });
+
+    return () => {
+      isMounted = false;
+      subscription?.unsubscribe?.();
+    };
   }, [currentUser?.id, setNotifications]);
 
   const allowedTypeSet = Array.isArray(allowedTypes) && allowedTypes.length > 0

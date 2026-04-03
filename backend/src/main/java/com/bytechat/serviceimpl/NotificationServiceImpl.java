@@ -8,6 +8,8 @@ import com.bytechat.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import com.bytechat.dto.response.NotificationResponse;
@@ -22,6 +24,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final SimpMessagingTemplate messagingTemplate;
 
     @Override
+    @Transactional
     public Notification sendNotification(Long recipientId, String type, String content, Long relatedEntityId) {
         User recipient = userRepository.findById(recipientId)
                 .orElseThrow(() -> new RuntimeException("Recipient not found"));
@@ -35,11 +38,24 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification savedNotification = notificationRepository.save(notification);
 
-        // Push via WebSocket to the requested recipient using DTO to avoid LazyInitializationException
         NotificationResponse responseDto = NotificationResponse.fromEntity(savedNotification);
-        messagingTemplate.convertAndSend("/topic/user/" + recipientId + "/notifications", responseDto);
+        publishNotificationAfterCommit(recipientId, responseDto);
 
         return savedNotification;
+    }
+
+    private void publishNotificationAfterCommit(Long recipientId, NotificationResponse responseDto) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            messagingTemplate.convertAndSend("/topic/user/" + recipientId + "/notifications", responseDto);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                messagingTemplate.convertAndSend("/topic/user/" + recipientId + "/notifications", responseDto);
+            }
+        });
     }
 
     @Override
