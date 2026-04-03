@@ -8,8 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -17,14 +17,14 @@ public class OtpServiceImpl implements OtpService {
 
     private final OtpRepository otpRepository;
     private final EmailService emailService;
-    private final Random random = new Random();
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
     @Transactional
     public void generateAndSendOtp(String email, com.bytechat.entity.OtpType otpType) {
         otpRepository.deleteByEmail(email);
         
-        String code = String.format("%06d", random.nextInt(1000000));
+        String code = String.format("%06d", secureRandom.nextInt(1_000_000));
         Otp otp = Otp.builder()
                 .email(email)
                 .code(code)

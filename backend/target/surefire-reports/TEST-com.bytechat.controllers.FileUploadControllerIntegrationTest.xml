@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.bytechat.controllers.FileUploadControllerIntegrationTest" time="5.634" tests="2" errors="0" skipped="0" failures="2">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.bytechat.controllers.FileUploadControllerIntegrationTest" time="6.986" tests="2" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="21"/>
     <property name="sun.cpu.isalist" value="amd64"/>
+    <property name="sonar.host.url" value="http://localhost:9000"/>
     <property name="sun.jnu.encoding" value="Cp1252"/>
-    <property name="java.class.path" value="D:\ByteChat\ByteChat\backend\target\test-classes;D:\ByteChat\ByteChat\backend\target\classes;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-data-jpa\3.2.3\spring-boot-starter-data-jpa-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-aop\3.2.3\spring-boot-starter-aop-3.2.3.jar;C:\Users\Admin\.m2\repository\org\aspectj\aspectjweaver\1.9.21\aspectjweaver-1.9.21.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-jdbc\3.2.3\spring-boot-starter-jdbc-3.2.3.jar;C:\Users\Admin\.m2\repository\com\zaxxer\HikariCP\5.0.1\HikariCP-5.0.1.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-jdbc\6.1.4\spring-jdbc-6.1.4.jar;C:\Users\Admin\.m2\repository\org\hibernate\orm\hibernate-core\6.4.4.Final\hibernate-core-6.4.4.Final.jar;C:\Users\Admin\.m2\repository\jakarta\persistence\jakarta.persistence-api\3.1.0\jakarta.persistence-api-3.1.0.jar;C:\Users\Admin\.m2\repository\jakarta\transaction\jakarta.transaction-api\2.0.1\jakarta.transaction-api-2.0.1.jar;C:\Users\Admin\.m2\repository\org\jboss\logging\jboss-logging\3.5.3.Final\jboss-logging-3.5.3.Final.jar;C:\Users\Admin\.m2\repository\org\hibernate\common\hibernate-commons-annotations\6.0.6.Final\hibernate-commons-annotations-6.0.6.Final.jar;C:\Users\Admin\.m2\repository\io\smallrye\jandex\3.1.2\jandex-3.1.2.jar;C:\Users\Admin\.m2\repository\com\fasterxml\classmate\1.6.0\classmate-1.6.0.jar;C:\Users\Admin\.m2\repository\net\bytebuddy\byte-buddy\1.14.12\byte-buddy-1.14.12.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\jaxb-runtime\4.0.4\jaxb-runtime-4.0.4.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\jaxb-core\4.0.4\jaxb-core-4.0.4.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\txw2\4.0.4\txw2-4.0.4.jar;C:\Users\Admin\.m2\repository\com\sun\istack\istack-commons-runtime\4.1.2\istack-commons-runtime-4.1.2.jar;C:\Users\Admin\.m2\repository\jakarta\inject\jakarta.inject-api\2.0.1\jakarta.inject-api-2.0.1.jar;C:\Users\Admin\.m2\repository\org\antlr\antlr4-runtime\4.13.0\antlr4-runtime-4.13.0.jar;C:\Users\Admin\.m2\repository\org\springframework\data\spring-data-jpa\3.2.3\spring-data-jpa-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\data\spring-data-commons\3.2.3\spring-data-commons-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-orm\6.1.4\spring-orm-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-context\6.1.4\spring-context-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-tx\6.1.4\spring-tx-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-beans\6.1.4\spring-beans-6.1.4.jar;C:\Users\Admin\.m2\repository\jakarta\annotation\jakarta.annotation-api\2.1.1\jakarta.annotation-api-2.1.1.jar;C:\Users\Admin\.m2\repository\org\slf4j\slf4j-api\2.0.12\slf4j-api-2.0.12.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-aspects\6.1.4\spring-aspects-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-security\3.2.3\spring-boot-starter-security-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter\3.2.3\spring-boot-starter-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-logging\3.2.3\spring-boot-starter-logging-3.2.3.jar;C:\Users\Admin\.m2\repository\ch\qos\logback\logback-classic\1.4.14\logback-classic-1.4.14.jar;C:\Users\Admin\.m2\repository\ch\qos\logback\logback-core\1.4.14\logback-core-1.4.14.jar;C:\Users\Admin\.m2\repository\org\apache\logging\log4j\log4j-to-slf4j\2.21.1\log4j-to-slf4j-2.21.1.jar;C:\Users\Admin\.m2\repository\org\apache\logging\log4j\log4j-api\2.21.1\log4j-api-2.21.1.jar;C:\Users\Admin\.m2\repository\org\slf4j\jul-to-slf4j\2.0.12\jul-to-slf4j-2.0.12.jar;C:\Users\Admin\.m2\repository\org\yaml\snakeyaml\2.2\snakeyaml-2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-aop\6.1.4\spring-aop-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-config\6.2.2\spring-security-config-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-web\6.2.2\spring-security-web-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-expression\6.1.4\spring-expression-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-web\3.2.3\spring-boot-starter-web-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-json\3.2.3\spring-boot-starter-json-3.2.3.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\datatype\jackson-datatype-jdk8\2.15.4\jackson-datatype-jdk8-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\datatype\jackson-datatype-jsr310\2.15.4\jackson-datatype-jsr310-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\module\jackson-module-parameter-names\2.15.4\jackson-module-parameter-names-2.15.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-tomcat\3.2.3\spring-boot-starter-tomcat-3.2.3.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-core\10.1.19\tomcat-embed-core-10.1.19.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-websocket\10.1.19\tomcat-embed-websocket-10.1.19.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-web\6.1.4\spring-web-6.1.4.jar;C:\Users\Admin\.m2\repository\io\micrometer\micrometer-observation\1.12.3\micrometer-observation-1.12.3.jar;C:\Users\Admin\.m2\repository\io\micrometer\micrometer-commons\1.12.3\micrometer-commons-1.12.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-webmvc\6.1.4\spring-webmvc-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-websocket\3.2.3\spring-boot-starter-websocket-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-messaging\6.1.4\spring-messaging-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-websocket\6.1.4\spring-websocket-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-validation\3.2.3\spring-boot-starter-validation-3.2.3.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-el\10.1.19\tomcat-embed-el-10.1.19.jar;C:\Users\Admin\.m2\repository\org\hibernate\validator\hibernate-validator\8.0.1.Final\hibernate-validator-8.0.1.Final.jar;C:\Users\Admin\.m2\repository\jakarta\validation\jakarta.validation-api\3.0.2\jakarta.validation-api-3.0.2.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-mail\3.2.3\spring-boot-starter-mail-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-context-support\6.1.4\spring-context-support-6.1.4.jar;C:\Users\Admin\.m2\repository\org\eclipse\angus\jakarta.mail\2.0.2\jakarta.mail-2.0.2.jar;C:\Users\Admin\.m2\repository\jakarta\activation\jakarta.activation-api\2.1.2\jakarta.activation-api-2.1.2.jar;C:\Users\Admin\.m2\repository\org\eclipse\angus\angus-activation\2.0.1\angus-activation-2.0.1.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-devtools\3.2.3\spring-boot-devtools-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot\3.2.3\spring-boot-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-autoconfigure\3.2.3\spring-boot-autoconfigure-3.2.3.jar;C:\Users\Admin\.m2\repository\org\postgresql\postgresql\42.6.1\postgresql-42.6.1.jar;C:\Users\Admin\.m2\repository\org\checkerframework\checker-qual\3.31.0\checker-qual-3.31.0.jar;C:\Users\Admin\.m2\repository\org\flywaydb\flyway-core\9.22.3\flyway-core-9.22.3.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\dataformat\jackson-dataformat-toml\2.15.4\jackson-dataformat-toml-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-core\2.15.4\jackson-core-2.15.4.jar;C:\Users\Admin\.m2\repository\com\google\code\gson\gson\2.10.1\gson-2.10.1.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-webmvc-ui\2.3.0\springdoc-openapi-starter-webmvc-ui-2.3.0.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-webmvc-api\2.3.0\springdoc-openapi-starter-webmvc-api-2.3.0.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-common\2.3.0\springdoc-openapi-starter-common-2.3.0.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-core-jakarta\2.2.19\swagger-core-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-annotations-jakarta\2.2.19\swagger-annotations-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-models-jakarta\2.2.19\swagger-models-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\dataformat\jackson-dataformat-yaml\2.15.4\jackson-dataformat-yaml-2.15.4.jar;C:\Users\Admin\.m2\repository\org\webjars\swagger-ui\5.10.3\swagger-ui-5.10.3.jar;C:\Users\Admin\.m2\repository\org\projectlombok\lombok\1.18.30\lombok-1.18.30.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-api\0.11.5\jjwt-api-0.11.5.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-impl\0.11.5\jjwt-impl-0.11.5.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-jackson\0.11.5\jjwt-jackson-0.11.5.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-databind\2.15.4\jackson-databind-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-annotations\2.15.4\jackson-annotations-2.15.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-test\3.2.3\spring-boot-starter-test-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-test\3.2.3\spring-boot-test-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-test-autoconfigure\3.2.3\spring-boot-test-autoconfigure-3.2.3.jar;C:\Users\Admin\.m2\repository\com\jayway\jsonpath\json-path\2.9.0\json-path-2.9.0.jar;C:\Users\Admin\.m2\repository\jakarta\xml\bind\jakarta.xml.bind-api\4.0.1\jakarta.xml.bind-api-4.0.1.jar;C:\Users\Admin\.m2\repository\net\minidev\json-smart\2.5.0\json-smart-2.5.0.jar;C:\Users\Admin\.m2\repository\net\minidev\accessors-smart\2.5.0\accessors-smart-2.5.0.jar;C:\Users\Admin\.m2\repository\org\ow2\asm\asm\9.3\asm-9.3.jar;C:\Users\Admin\.m2\repository\org\assertj\assertj-core\3.24.2\assertj-core-3.24.2.jar;C:\Users\Admin\.m2\repository\org\awaitility\awaitility\4.2.0\awaitility-4.2.0.jar;C:\Users\Admin\.m2\repository\org\hamcrest\hamcrest\2.2\hamcrest-2.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter\5.10.2\junit-jupiter-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-api\5.10.2\junit-jupiter-api-5.10.2.jar;C:\Users\Admin\.m2\repository\org\opentest4j\opentest4j\1.3.0\opentest4j-1.3.0.jar;C:\Users\Admin\.m2\repository\org\junit\platform\junit-platform-commons\1.10.2\junit-platform-commons-1.10.2.jar;C:\Users\Admin\.m2\repository\org\apiguardian\apiguardian-api\1.1.2\apiguardian-api-1.1.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-params\5.10.2\junit-jupiter-params-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-engine\5.10.2\junit-jupiter-engine-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\platform\junit-platform-engine\1.10.2\junit-platform-engine-1.10.2.jar;C:\Users\Admin\.m2\repository\org\mockito\mockito-core\5.7.0\mockito-core-5.7.0.jar;C:\Users\Admin\.m2\repository\net\bytebuddy\byte-buddy-agent\1.14.12\byte-buddy-agent-1.14.12.jar;C:\Users\Admin\.m2\repository\org\objenesis\objenesis\3.3\objenesis-3.3.jar;C:\Users\Admin\.m2\repository\org\mockito\mockito-junit-jupiter\5.7.0\mockito-junit-jupiter-5.7.0.jar;C:\Users\Admin\.m2\repository\org\skyscreamer\jsonassert\1.5.1\jsonassert-1.5.1.jar;C:\Users\Admin\.m2\repository\com\vaadin\external\google\android-json\0.0.20131108.vaadin1\android-json-0.0.20131108.vaadin1.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-core\6.1.4\spring-core-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-jcl\6.1.4\spring-jcl-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-test\6.1.4\spring-test-6.1.4.jar;C:\Users\Admin\.m2\repository\org\xmlunit\xmlunit-core\2.9.1\xmlunit-core-2.9.1.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-test\6.2.2\spring-security-test-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-core\6.2.2\spring-security-core-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-crypto\6.2.2\spring-security-crypto-6.2.2.jar;C:\Users\Admin\.m2\repository\com\cloudinary\cloudinary-http44\1.36.0\cloudinary-http44-1.36.0.jar;C:\Users\Admin\.m2\repository\com\cloudinary\cloudinary-core\1.36.0\cloudinary-core-1.36.0.jar;C:\Users\Admin\.m2\repository\org\apache\commons\commons-lang3\3.13.0\commons-lang3-3.13.0.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpclient\4.4\httpclient-4.4.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpcore\4.4.16\httpcore-4.4.16.jar;C:\Users\Admin\.m2\repository\commons-logging\commons-logging\1.2\commons-logging-1.2.jar;C:\Users\Admin\.m2\repository\commons-codec\commons-codec\1.16.1\commons-codec-1.16.1.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpmime\4.4\httpmime-4.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-thymeleaf\3.2.3\spring-boot-starter-thymeleaf-3.2.3.jar;C:\Users\Admin\.m2\repository\org\thymeleaf\thymeleaf-spring6\3.1.2.RELEASE\thymeleaf-spring6-3.1.2.RELEASE.jar;C:\Users\Admin\.m2\repository\org\thymeleaf\thymeleaf\3.1.2.RELEASE\thymeleaf-3.1.2.RELEASE.jar;C:\Users\Admin\.m2\repository\org\attoparser\attoparser\2.0.7.RELEASE\attoparser-2.0.7.RELEASE.jar;C:\Users\Admin\.m2\repository\org\unbescape\unbescape\1.1.6.RELEASE\unbescape-1.1.6.RELEASE.jar;"/>
+    <property name="java.class.path" value="D:\ByteChat\ByteChat\backend\target\test-classes;D:\ByteChat\ByteChat\backend\target\classes;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-data-jpa\3.2.3\spring-boot-starter-data-jpa-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-aop\3.2.3\spring-boot-starter-aop-3.2.3.jar;C:\Users\Admin\.m2\repository\org\aspectj\aspectjweaver\1.9.21\aspectjweaver-1.9.21.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-jdbc\3.2.3\spring-boot-starter-jdbc-3.2.3.jar;C:\Users\Admin\.m2\repository\com\zaxxer\HikariCP\5.0.1\HikariCP-5.0.1.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-jdbc\6.1.4\spring-jdbc-6.1.4.jar;C:\Users\Admin\.m2\repository\org\hibernate\orm\hibernate-core\6.4.4.Final\hibernate-core-6.4.4.Final.jar;C:\Users\Admin\.m2\repository\jakarta\persistence\jakarta.persistence-api\3.1.0\jakarta.persistence-api-3.1.0.jar;C:\Users\Admin\.m2\repository\jakarta\transaction\jakarta.transaction-api\2.0.1\jakarta.transaction-api-2.0.1.jar;C:\Users\Admin\.m2\repository\org\jboss\logging\jboss-logging\3.5.3.Final\jboss-logging-3.5.3.Final.jar;C:\Users\Admin\.m2\repository\org\hibernate\common\hibernate-commons-annotations\6.0.6.Final\hibernate-commons-annotations-6.0.6.Final.jar;C:\Users\Admin\.m2\repository\io\smallrye\jandex\3.1.2\jandex-3.1.2.jar;C:\Users\Admin\.m2\repository\com\fasterxml\classmate\1.6.0\classmate-1.6.0.jar;C:\Users\Admin\.m2\repository\net\bytebuddy\byte-buddy\1.15.1\byte-buddy-1.15.1.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\jaxb-runtime\4.0.4\jaxb-runtime-4.0.4.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\jaxb-core\4.0.4\jaxb-core-4.0.4.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\txw2\4.0.4\txw2-4.0.4.jar;C:\Users\Admin\.m2\repository\com\sun\istack\istack-commons-runtime\4.1.2\istack-commons-runtime-4.1.2.jar;C:\Users\Admin\.m2\repository\jakarta\inject\jakarta.inject-api\2.0.1\jakarta.inject-api-2.0.1.jar;C:\Users\Admin\.m2\repository\org\antlr\antlr4-runtime\4.13.0\antlr4-runtime-4.13.0.jar;C:\Users\Admin\.m2\repository\org\springframework\data\spring-data-jpa\3.2.3\spring-data-jpa-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\data\spring-data-commons\3.2.3\spring-data-commons-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-orm\6.1.4\spring-orm-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-context\6.1.4\spring-context-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-tx\6.1.4\spring-tx-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-beans\6.1.4\spring-beans-6.1.4.jar;C:\Users\Admin\.m2\repository\jakarta\annotation\jakarta.annotation-api\2.1.1\jakarta.annotation-api-2.1.1.jar;C:\Users\Admin\.m2\repository\org\slf4j\slf4j-api\2.0.12\slf4j-api-2.0.12.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-aspects\6.1.4\spring-aspects-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-security\3.2.3\spring-boot-starter-security-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter\3.2.3\spring-boot-starter-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-logging\3.2.3\spring-boot-starter-logging-3.2.3.jar;C:\Users\Admin\.m2\repository\ch\qos\logback\logback-classic\1.4.14\logback-classic-1.4.14.jar;C:\Users\Admin\.m2\repository\ch\qos\logback\logback-core\1.4.14\logback-core-1.4.14.jar;C:\Users\Admin\.m2\repository\org\apache\logging\log4j\log4j-to-slf4j\2.21.1\log4j-to-slf4j-2.21.1.jar;C:\Users\Admin\.m2\repository\org\apache\logging\log4j\log4j-api\2.21.1\log4j-api-2.21.1.jar;C:\Users\Admin\.m2\repository\org\slf4j\jul-to-slf4j\2.0.12\jul-to-slf4j-2.0.12.jar;C:\Users\Admin\.m2\repository\org\yaml\snakeyaml\2.2\snakeyaml-2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-aop\6.1.4\spring-aop-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-config\6.2.2\spring-security-config-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-web\6.2.2\spring-security-web-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-expression\6.1.4\spring-expression-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-web\3.2.3\spring-boot-starter-web-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-json\3.2.3\spring-boot-starter-json-3.2.3.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\datatype\jackson-datatype-jdk8\2.15.4\jackson-datatype-jdk8-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\datatype\jackson-datatype-jsr310\2.15.4\jackson-datatype-jsr310-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\module\jackson-module-parameter-names\2.15.4\jackson-module-parameter-names-2.15.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-tomcat\3.2.3\spring-boot-starter-tomcat-3.2.3.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-core\10.1.19\tomcat-embed-core-10.1.19.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-websocket\10.1.19\tomcat-embed-websocket-10.1.19.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-web\6.1.4\spring-web-6.1.4.jar;C:\Users\Admin\.m2\repository\io\micrometer\micrometer-observation\1.12.3\micrometer-observation-1.12.3.jar;C:\Users\Admin\.m2\repository\io\micrometer\micrometer-commons\1.12.3\micrometer-commons-1.12.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-webmvc\6.1.4\spring-webmvc-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-websocket\3.2.3\spring-boot-starter-websocket-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-messaging\6.1.4\spring-messaging-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-websocket\6.1.4\spring-websocket-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-validation\3.2.3\spring-boot-starter-validation-3.2.3.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-el\10.1.19\tomcat-embed-el-10.1.19.jar;C:\Users\Admin\.m2\repository\org\hibernate\validator\hibernate-validator\8.0.1.Final\hibernate-validator-8.0.1.Final.jar;C:\Users\Admin\.m2\repository\jakarta\validation\jakarta.validation-api\3.0.2\jakarta.validation-api-3.0.2.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-mail\3.2.3\spring-boot-starter-mail-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-context-support\6.1.4\spring-context-support-6.1.4.jar;C:\Users\Admin\.m2\repository\org\eclipse\angus\jakarta.mail\2.0.2\jakarta.mail-2.0.2.jar;C:\Users\Admin\.m2\repository\jakarta\activation\jakarta.activation-api\2.1.2\jakarta.activation-api-2.1.2.jar;C:\Users\Admin\.m2\repository\org\eclipse\angus\angus-activation\2.0.1\angus-activation-2.0.1.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-devtools\3.2.3\spring-boot-devtools-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot\3.2.3\spring-boot-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-autoconfigure\3.2.3\spring-boot-autoconfigure-3.2.3.jar;C:\Users\Admin\.m2\repository\org\postgresql\postgresql\42.6.1\postgresql-42.6.1.jar;C:\Users\Admin\.m2\repository\org\checkerframework\checker-qual\3.31.0\checker-qual-3.31.0.jar;C:\Users\Admin\.m2\repository\org\flywaydb\flyway-core\9.22.3\flyway-core-9.22.3.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\dataformat\jackson-dataformat-toml\2.15.4\jackson-dataformat-toml-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-core\2.15.4\jackson-core-2.15.4.jar;C:\Users\Admin\.m2\repository\com\google\code\gson\gson\2.10.1\gson-2.10.1.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-webmvc-ui\2.3.0\springdoc-openapi-starter-webmvc-ui-2.3.0.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-webmvc-api\2.3.0\springdoc-openapi-starter-webmvc-api-2.3.0.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-common\2.3.0\springdoc-openapi-starter-common-2.3.0.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-core-jakarta\2.2.19\swagger-core-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-annotations-jakarta\2.2.19\swagger-annotations-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-models-jakarta\2.2.19\swagger-models-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\dataformat\jackson-dataformat-yaml\2.15.4\jackson-dataformat-yaml-2.15.4.jar;C:\Users\Admin\.m2\repository\org\webjars\swagger-ui\5.10.3\swagger-ui-5.10.3.jar;C:\Users\Admin\.m2\repository\org\projectlombok\lombok\1.18.30\lombok-1.18.30.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-api\0.11.5\jjwt-api-0.11.5.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-impl\0.11.5\jjwt-impl-0.11.5.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-jackson\0.11.5\jjwt-jackson-0.11.5.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-databind\2.15.4\jackson-databind-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-annotations\2.15.4\jackson-annotations-2.15.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-test\3.2.3\spring-boot-starter-test-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-test\3.2.3\spring-boot-test-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-test-autoconfigure\3.2.3\spring-boot-test-autoconfigure-3.2.3.jar;C:\Users\Admin\.m2\repository\com\jayway\jsonpath\json-path\2.9.0\json-path-2.9.0.jar;C:\Users\Admin\.m2\repository\jakarta\xml\bind\jakarta.xml.bind-api\4.0.1\jakarta.xml.bind-api-4.0.1.jar;C:\Users\Admin\.m2\repository\net\minidev\json-smart\2.5.0\json-smart-2.5.0.jar;C:\Users\Admin\.m2\repository\net\minidev\accessors-smart\2.5.0\accessors-smart-2.5.0.jar;C:\Users\Admin\.m2\repository\org\ow2\asm\asm\9.3\asm-9.3.jar;C:\Users\Admin\.m2\repository\org\assertj\assertj-core\3.24.2\assertj-core-3.24.2.jar;C:\Users\Admin\.m2\repository\org\awaitility\awaitility\4.2.0\awaitility-4.2.0.jar;C:\Users\Admin\.m2\repository\org\hamcrest\hamcrest\2.2\hamcrest-2.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter\5.10.2\junit-jupiter-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-api\5.10.2\junit-jupiter-api-5.10.2.jar;C:\Users\Admin\.m2\repository\org\opentest4j\opentest4j\1.3.0\opentest4j-1.3.0.jar;C:\Users\Admin\.m2\repository\org\junit\platform\junit-platform-commons\1.10.2\junit-platform-commons-1.10.2.jar;C:\Users\Admin\.m2\repository\org\apiguardian\apiguardian-api\1.1.2\apiguardian-api-1.1.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-params\5.10.2\junit-jupiter-params-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-engine\5.10.2\junit-jupiter-engine-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\platform\junit-platform-engine\1.10.2\junit-platform-engine-1.10.2.jar;C:\Users\Admin\.m2\repository\org\mockito\mockito-core\5.7.0\mockito-core-5.7.0.jar;C:\Users\Admin\.m2\repository\net\bytebuddy\byte-buddy-agent\1.15.1\byte-buddy-agent-1.15.1.jar;C:\Users\Admin\.m2\repository\org\objenesis\objenesis\3.3\objenesis-3.3.jar;C:\Users\Admin\.m2\repository\org\mockito\mockito-junit-jupiter\5.7.0\mockito-junit-jupiter-5.7.0.jar;C:\Users\Admin\.m2\repository\org\skyscreamer\jsonassert\1.5.1\jsonassert-1.5.1.jar;C:\Users\Admin\.m2\repository\com\vaadin\external\google\android-json\0.0.20131108.vaadin1\android-json-0.0.20131108.vaadin1.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-core\6.1.4\spring-core-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-jcl\6.1.4\spring-jcl-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-test\6.1.4\spring-test-6.1.4.jar;C:\Users\Admin\.m2\repository\org\xmlunit\xmlunit-core\2.9.1\xmlunit-core-2.9.1.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-test\6.2.2\spring-security-test-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-core\6.2.2\spring-security-core-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-crypto\6.2.2\spring-security-crypto-6.2.2.jar;C:\Users\Admin\.m2\repository\com\cloudinary\cloudinary-http44\1.36.0\cloudinary-http44-1.36.0.jar;C:\Users\Admin\.m2\repository\com\cloudinary\cloudinary-core\1.36.0\cloudinary-core-1.36.0.jar;C:\Users\Admin\.m2\repository\org\apache\commons\commons-lang3\3.13.0\commons-lang3-3.13.0.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpclient\4.4\httpclient-4.4.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpcore\4.4.16\httpcore-4.4.16.jar;C:\Users\Admin\.m2\repository\commons-logging\commons-logging\1.2\commons-logging-1.2.jar;C:\Users\Admin\.m2\repository\commons-codec\commons-codec\1.16.1\commons-codec-1.16.1.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpmime\4.4\httpmime-4.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-thymeleaf\3.2.3\spring-boot-starter-thymeleaf-3.2.3.jar;C:\Users\Admin\.m2\repository\org\thymeleaf\thymeleaf-spring6\3.1.2.RELEASE\thymeleaf-spring6-3.1.2.RELEASE.jar;C:\Users\Admin\.m2\repository\org\thymeleaf\thymeleaf\3.1.2.RELEASE\thymeleaf-3.1.2.RELEASE.jar;C:\Users\Admin\.m2\repository\org\attoparser\attoparser\2.0.7.RELEASE\attoparser-2.0.7.RELEASE.jar;C:\Users\Admin\.m2\repository\org\unbescape\unbescape\1.1.6.RELEASE\unbescape-1.1.6.RELEASE.jar;"/>
     <property name="java.vm.vendor" value="Oracle Corporation"/>
     <property name="sun.arch.data.model" value="64"/>
     <property name="user.variant" value=""/>
@@ -16,16 +17,15 @@
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="user.country" value="IN"/>
     <property name="sun.boot.library.path" value="C:\Program Files\Java\jdk-21\bin"/>
-    <property name="sun.java.command" value="C:\Users\Admin\AppData\Local\Temp\surefire14850177737969299587\surefirebooter-20260318122928493_3.jar C:\Users\Admin\AppData\Local\Temp\surefire14850177737969299587 2026-03-18T12-29-28_174-jvmRun1 surefire-20260318122928493_1tmp surefire_0-20260318122928493_2tmp"/>
+    <property name="sun.java.command" value="C:\Users\Admin\AppData\Local\Temp\surefire8984093259933011274\surefirebooter-20260401162544863_3.jar C:\Users\Admin\AppData\Local\Temp\surefire8984093259933011274 2026-04-01T16-25-44_005-jvmRun1 surefire-20260401162544863_1tmp surefire_0-20260401162544863_2tmp"/>
     <property name="jdk.debug" value="release"/>
-    <property name="surefire.test.class.path" value="D:\ByteChat\ByteChat\backend\target\test-classes;D:\ByteChat\ByteChat\backend\target\classes;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-data-jpa\3.2.3\spring-boot-starter-data-jpa-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-aop\3.2.3\spring-boot-starter-aop-3.2.3.jar;C:\Users\Admin\.m2\repository\org\aspectj\aspectjweaver\1.9.21\aspectjweaver-1.9.21.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-jdbc\3.2.3\spring-boot-starter-jdbc-3.2.3.jar;C:\Users\Admin\.m2\repository\com\zaxxer\HikariCP\5.0.1\HikariCP-5.0.1.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-jdbc\6.1.4\spring-jdbc-6.1.4.jar;C:\Users\Admin\.m2\repository\org\hibernate\orm\hibernate-core\6.4.4.Final\hibernate-core-6.4.4.Final.jar;C:\Users\Admin\.m2\repository\jakarta\persistence\jakarta.persistence-api\3.1.0\jakarta.persistence-api-3.1.0.jar;C:\Users\Admin\.m2\repository\jakarta\transaction\jakarta.transaction-api\2.0.1\jakarta.transaction-api-2.0.1.jar;C:\Users\Admin\.m2\repository\org\jboss\logging\jboss-logging\3.5.3.Final\jboss-logging-3.5.3.Final.jar;C:\Users\Admin\.m2\repository\org\hibernate\common\hibernate-commons-annotations\6.0.6.Final\hibernate-commons-annotations-6.0.6.Final.jar;C:\Users\Admin\.m2\repository\io\smallrye\jandex\3.1.2\jandex-3.1.2.jar;C:\Users\Admin\.m2\repository\com\fasterxml\classmate\1.6.0\classmate-1.6.0.jar;C:\Users\Admin\.m2\repository\net\bytebuddy\byte-buddy\1.14.12\byte-buddy-1.14.12.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\jaxb-runtime\4.0.4\jaxb-runtime-4.0.4.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\jaxb-core\4.0.4\jaxb-core-4.0.4.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\txw2\4.0.4\txw2-4.0.4.jar;C:\Users\Admin\.m2\repository\com\sun\istack\istack-commons-runtime\4.1.2\istack-commons-runtime-4.1.2.jar;C:\Users\Admin\.m2\repository\jakarta\inject\jakarta.inject-api\2.0.1\jakarta.inject-api-2.0.1.jar;C:\Users\Admin\.m2\repository\org\antlr\antlr4-runtime\4.13.0\antlr4-runtime-4.13.0.jar;C:\Users\Admin\.m2\repository\org\springframework\data\spring-data-jpa\3.2.3\spring-data-jpa-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\data\spring-data-commons\3.2.3\spring-data-commons-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-orm\6.1.4\spring-orm-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-context\6.1.4\spring-context-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-tx\6.1.4\spring-tx-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-beans\6.1.4\spring-beans-6.1.4.jar;C:\Users\Admin\.m2\repository\jakarta\annotation\jakarta.annotation-api\2.1.1\jakarta.annotation-api-2.1.1.jar;C:\Users\Admin\.m2\repository\org\slf4j\slf4j-api\2.0.12\slf4j-api-2.0.12.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-aspects\6.1.4\spring-aspects-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-security\3.2.3\spring-boot-starter-security-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter\3.2.3\spring-boot-starter-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-logging\3.2.3\spring-boot-starter-logging-3.2.3.jar;C:\Users\Admin\.m2\repository\ch\qos\logback\logback-classic\1.4.14\logback-classic-1.4.14.jar;C:\Users\Admin\.m2\repository\ch\qos\logback\logback-core\1.4.14\logback-core-1.4.14.jar;C:\Users\Admin\.m2\repository\org\apache\logging\log4j\log4j-to-slf4j\2.21.1\log4j-to-slf4j-2.21.1.jar;C:\Users\Admin\.m2\repository\org\apache\logging\log4j\log4j-api\2.21.1\log4j-api-2.21.1.jar;C:\Users\Admin\.m2\repository\org\slf4j\jul-to-slf4j\2.0.12\jul-to-slf4j-2.0.12.jar;C:\Users\Admin\.m2\repository\org\yaml\snakeyaml\2.2\snakeyaml-2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-aop\6.1.4\spring-aop-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-config\6.2.2\spring-security-config-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-web\6.2.2\spring-security-web-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-expression\6.1.4\spring-expression-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-web\3.2.3\spring-boot-starter-web-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-json\3.2.3\spring-boot-starter-json-3.2.3.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\datatype\jackson-datatype-jdk8\2.15.4\jackson-datatype-jdk8-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\datatype\jackson-datatype-jsr310\2.15.4\jackson-datatype-jsr310-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\module\jackson-module-parameter-names\2.15.4\jackson-module-parameter-names-2.15.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-tomcat\3.2.3\spring-boot-starter-tomcat-3.2.3.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-core\10.1.19\tomcat-embed-core-10.1.19.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-websocket\10.1.19\tomcat-embed-websocket-10.1.19.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-web\6.1.4\spring-web-6.1.4.jar;C:\Users\Admin\.m2\repository\io\micrometer\micrometer-observation\1.12.3\micrometer-observation-1.12.3.jar;C:\Users\Admin\.m2\repository\io\micrometer\micrometer-commons\1.12.3\micrometer-commons-1.12.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-webmvc\6.1.4\spring-webmvc-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-websocket\3.2.3\spring-boot-starter-websocket-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-messaging\6.1.4\spring-messaging-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-websocket\6.1.4\spring-websocket-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-validation\3.2.3\spring-boot-starter-validation-3.2.3.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-el\10.1.19\tomcat-embed-el-10.1.19.jar;C:\Users\Admin\.m2\repository\org\hibernate\validator\hibernate-validator\8.0.1.Final\hibernate-validator-8.0.1.Final.jar;C:\Users\Admin\.m2\repository\jakarta\validation\jakarta.validation-api\3.0.2\jakarta.validation-api-3.0.2.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-mail\3.2.3\spring-boot-starter-mail-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-context-support\6.1.4\spring-context-support-6.1.4.jar;C:\Users\Admin\.m2\repository\org\eclipse\angus\jakarta.mail\2.0.2\jakarta.mail-2.0.2.jar;C:\Users\Admin\.m2\repository\jakarta\activation\jakarta.activation-api\2.1.2\jakarta.activation-api-2.1.2.jar;C:\Users\Admin\.m2\repository\org\eclipse\angus\angus-activation\2.0.1\angus-activation-2.0.1.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-devtools\3.2.3\spring-boot-devtools-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot\3.2.3\spring-boot-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-autoconfigure\3.2.3\spring-boot-autoconfigure-3.2.3.jar;C:\Users\Admin\.m2\repository\org\postgresql\postgresql\42.6.1\postgresql-42.6.1.jar;C:\Users\Admin\.m2\repository\org\checkerframework\checker-qual\3.31.0\checker-qual-3.31.0.jar;C:\Users\Admin\.m2\repository\org\flywaydb\flyway-core\9.22.3\flyway-core-9.22.3.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\dataformat\jackson-dataformat-toml\2.15.4\jackson-dataformat-toml-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-core\2.15.4\jackson-core-2.15.4.jar;C:\Users\Admin\.m2\repository\com\google\code\gson\gson\2.10.1\gson-2.10.1.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-webmvc-ui\2.3.0\springdoc-openapi-starter-webmvc-ui-2.3.0.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-webmvc-api\2.3.0\springdoc-openapi-starter-webmvc-api-2.3.0.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-common\2.3.0\springdoc-openapi-starter-common-2.3.0.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-core-jakarta\2.2.19\swagger-core-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-annotations-jakarta\2.2.19\swagger-annotations-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-models-jakarta\2.2.19\swagger-models-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\dataformat\jackson-dataformat-yaml\2.15.4\jackson-dataformat-yaml-2.15.4.jar;C:\Users\Admin\.m2\repository\org\webjars\swagger-ui\5.10.3\swagger-ui-5.10.3.jar;C:\Users\Admin\.m2\repository\org\projectlombok\lombok\1.18.30\lombok-1.18.30.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-api\0.11.5\jjwt-api-0.11.5.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-impl\0.11.5\jjwt-impl-0.11.5.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-jackson\0.11.5\jjwt-jackson-0.11.5.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-databind\2.15.4\jackson-databind-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-annotations\2.15.4\jackson-annotations-2.15.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-test\3.2.3\spring-boot-starter-test-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-test\3.2.3\spring-boot-test-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-test-autoconfigure\3.2.3\spring-boot-test-autoconfigure-3.2.3.jar;C:\Users\Admin\.m2\repository\com\jayway\jsonpath\json-path\2.9.0\json-path-2.9.0.jar;C:\Users\Admin\.m2\repository\jakarta\xml\bind\jakarta.xml.bind-api\4.0.1\jakarta.xml.bind-api-4.0.1.jar;C:\Users\Admin\.m2\repository\net\minidev\json-smart\2.5.0\json-smart-2.5.0.jar;C:\Users\Admin\.m2\repository\net\minidev\accessors-smart\2.5.0\accessors-smart-2.5.0.jar;C:\Users\Admin\.m2\repository\org\ow2\asm\asm\9.3\asm-9.3.jar;C:\Users\Admin\.m2\repository\org\assertj\assertj-core\3.24.2\assertj-core-3.24.2.jar;C:\Users\Admin\.m2\repository\org\awaitility\awaitility\4.2.0\awaitility-4.2.0.jar;C:\Users\Admin\.m2\repository\org\hamcrest\hamcrest\2.2\hamcrest-2.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter\5.10.2\junit-jupiter-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-api\5.10.2\junit-jupiter-api-5.10.2.jar;C:\Users\Admin\.m2\repository\org\opentest4j\opentest4j\1.3.0\opentest4j-1.3.0.jar;C:\Users\Admin\.m2\repository\org\junit\platform\junit-platform-commons\1.10.2\junit-platform-commons-1.10.2.jar;C:\Users\Admin\.m2\repository\org\apiguardian\apiguardian-api\1.1.2\apiguardian-api-1.1.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-params\5.10.2\junit-jupiter-params-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-engine\5.10.2\junit-jupiter-engine-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\platform\junit-platform-engine\1.10.2\junit-platform-engine-1.10.2.jar;C:\Users\Admin\.m2\repository\org\mockito\mockito-core\5.7.0\mockito-core-5.7.0.jar;C:\Users\Admin\.m2\repository\net\bytebuddy\byte-buddy-agent\1.14.12\byte-buddy-agent-1.14.12.jar;C:\Users\Admin\.m2\repository\org\objenesis\objenesis\3.3\objenesis-3.3.jar;C:\Users\Admin\.m2\repository\org\mockito\mockito-junit-jupiter\5.7.0\mockito-junit-jupiter-5.7.0.jar;C:\Users\Admin\.m2\repository\org\skyscreamer\jsonassert\1.5.1\jsonassert-1.5.1.jar;C:\Users\Admin\.m2\repository\com\vaadin\external\google\android-json\0.0.20131108.vaadin1\android-json-0.0.20131108.vaadin1.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-core\6.1.4\spring-core-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-jcl\6.1.4\spring-jcl-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-test\6.1.4\spring-test-6.1.4.jar;C:\Users\Admin\.m2\repository\org\xmlunit\xmlunit-core\2.9.1\xmlunit-core-2.9.1.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-test\6.2.2\spring-security-test-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-core\6.2.2\spring-security-core-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-crypto\6.2.2\spring-security-crypto-6.2.2.jar;C:\Users\Admin\.m2\repository\com\cloudinary\cloudinary-http44\1.36.0\cloudinary-http44-1.36.0.jar;C:\Users\Admin\.m2\repository\com\cloudinary\cloudinary-core\1.36.0\cloudinary-core-1.36.0.jar;C:\Users\Admin\.m2\repository\org\apache\commons\commons-lang3\3.13.0\commons-lang3-3.13.0.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpclient\4.4\httpclient-4.4.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpcore\4.4.16\httpcore-4.4.16.jar;C:\Users\Admin\.m2\repository\commons-logging\commons-logging\1.2\commons-logging-1.2.jar;C:\Users\Admin\.m2\repository\commons-codec\commons-codec\1.16.1\commons-codec-1.16.1.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpmime\4.4\httpmime-4.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-thymeleaf\3.2.3\spring-boot-starter-thymeleaf-3.2.3.jar;C:\Users\Admin\.m2\repository\org\thymeleaf\thymeleaf-spring6\3.1.2.RELEASE\thymeleaf-spring6-3.1.2.RELEASE.jar;C:\Users\Admin\.m2\repository\org\thymeleaf\thymeleaf\3.1.2.RELEASE\thymeleaf-3.1.2.RELEASE.jar;C:\Users\Admin\.m2\repository\org\attoparser\attoparser\2.0.7.RELEASE\attoparser-2.0.7.RELEASE.jar;C:\Users\Admin\.m2\repository\org\unbescape\unbescape\1.1.6.RELEASE\unbescape-1.1.6.RELEASE.jar;"/>
+    <property name="surefire.test.class.path" value="D:\ByteChat\ByteChat\backend\target\test-classes;D:\ByteChat\ByteChat\backend\target\classes;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-data-jpa\3.2.3\spring-boot-starter-data-jpa-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-aop\3.2.3\spring-boot-starter-aop-3.2.3.jar;C:\Users\Admin\.m2\repository\org\aspectj\aspectjweaver\1.9.21\aspectjweaver-1.9.21.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-jdbc\3.2.3\spring-boot-starter-jdbc-3.2.3.jar;C:\Users\Admin\.m2\repository\com\zaxxer\HikariCP\5.0.1\HikariCP-5.0.1.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-jdbc\6.1.4\spring-jdbc-6.1.4.jar;C:\Users\Admin\.m2\repository\org\hibernate\orm\hibernate-core\6.4.4.Final\hibernate-core-6.4.4.Final.jar;C:\Users\Admin\.m2\repository\jakarta\persistence\jakarta.persistence-api\3.1.0\jakarta.persistence-api-3.1.0.jar;C:\Users\Admin\.m2\repository\jakarta\transaction\jakarta.transaction-api\2.0.1\jakarta.transaction-api-2.0.1.jar;C:\Users\Admin\.m2\repository\org\jboss\logging\jboss-logging\3.5.3.Final\jboss-logging-3.5.3.Final.jar;C:\Users\Admin\.m2\repository\org\hibernate\common\hibernate-commons-annotations\6.0.6.Final\hibernate-commons-annotations-6.0.6.Final.jar;C:\Users\Admin\.m2\repository\io\smallrye\jandex\3.1.2\jandex-3.1.2.jar;C:\Users\Admin\.m2\repository\com\fasterxml\classmate\1.6.0\classmate-1.6.0.jar;C:\Users\Admin\.m2\repository\net\bytebuddy\byte-buddy\1.15.1\byte-buddy-1.15.1.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\jaxb-runtime\4.0.4\jaxb-runtime-4.0.4.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\jaxb-core\4.0.4\jaxb-core-4.0.4.jar;C:\Users\Admin\.m2\repository\org\glassfish\jaxb\txw2\4.0.4\txw2-4.0.4.jar;C:\Users\Admin\.m2\repository\com\sun\istack\istack-commons-runtime\4.1.2\istack-commons-runtime-4.1.2.jar;C:\Users\Admin\.m2\repository\jakarta\inject\jakarta.inject-api\2.0.1\jakarta.inject-api-2.0.1.jar;C:\Users\Admin\.m2\repository\org\antlr\antlr4-runtime\4.13.0\antlr4-runtime-4.13.0.jar;C:\Users\Admin\.m2\repository\org\springframework\data\spring-data-jpa\3.2.3\spring-data-jpa-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\data\spring-data-commons\3.2.3\spring-data-commons-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-orm\6.1.4\spring-orm-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-context\6.1.4\spring-context-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-tx\6.1.4\spring-tx-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-beans\6.1.4\spring-beans-6.1.4.jar;C:\Users\Admin\.m2\repository\jakarta\annotation\jakarta.annotation-api\2.1.1\jakarta.annotation-api-2.1.1.jar;C:\Users\Admin\.m2\repository\org\slf4j\slf4j-api\2.0.12\slf4j-api-2.0.12.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-aspects\6.1.4\spring-aspects-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-security\3.2.3\spring-boot-starter-security-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter\3.2.3\spring-boot-starter-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-logging\3.2.3\spring-boot-starter-logging-3.2.3.jar;C:\Users\Admin\.m2\repository\ch\qos\logback\logback-classic\1.4.14\logback-classic-1.4.14.jar;C:\Users\Admin\.m2\repository\ch\qos\logback\logback-core\1.4.14\logback-core-1.4.14.jar;C:\Users\Admin\.m2\repository\org\apache\logging\log4j\log4j-to-slf4j\2.21.1\log4j-to-slf4j-2.21.1.jar;C:\Users\Admin\.m2\repository\org\apache\logging\log4j\log4j-api\2.21.1\log4j-api-2.21.1.jar;C:\Users\Admin\.m2\repository\org\slf4j\jul-to-slf4j\2.0.12\jul-to-slf4j-2.0.12.jar;C:\Users\Admin\.m2\repository\org\yaml\snakeyaml\2.2\snakeyaml-2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-aop\6.1.4\spring-aop-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-config\6.2.2\spring-security-config-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-web\6.2.2\spring-security-web-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-expression\6.1.4\spring-expression-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-web\3.2.3\spring-boot-starter-web-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-json\3.2.3\spring-boot-starter-json-3.2.3.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\datatype\jackson-datatype-jdk8\2.15.4\jackson-datatype-jdk8-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\datatype\jackson-datatype-jsr310\2.15.4\jackson-datatype-jsr310-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\module\jackson-module-parameter-names\2.15.4\jackson-module-parameter-names-2.15.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-tomcat\3.2.3\spring-boot-starter-tomcat-3.2.3.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-core\10.1.19\tomcat-embed-core-10.1.19.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-websocket\10.1.19\tomcat-embed-websocket-10.1.19.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-web\6.1.4\spring-web-6.1.4.jar;C:\Users\Admin\.m2\repository\io\micrometer\micrometer-observation\1.12.3\micrometer-observation-1.12.3.jar;C:\Users\Admin\.m2\repository\io\micrometer\micrometer-commons\1.12.3\micrometer-commons-1.12.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-webmvc\6.1.4\spring-webmvc-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-websocket\3.2.3\spring-boot-starter-websocket-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-messaging\6.1.4\spring-messaging-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-websocket\6.1.4\spring-websocket-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-validation\3.2.3\spring-boot-starter-validation-3.2.3.jar;C:\Users\Admin\.m2\repository\org\apache\tomcat\embed\tomcat-embed-el\10.1.19\tomcat-embed-el-10.1.19.jar;C:\Users\Admin\.m2\repository\org\hibernate\validator\hibernate-validator\8.0.1.Final\hibernate-validator-8.0.1.Final.jar;C:\Users\Admin\.m2\repository\jakarta\validation\jakarta.validation-api\3.0.2\jakarta.validation-api-3.0.2.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-mail\3.2.3\spring-boot-starter-mail-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-context-support\6.1.4\spring-context-support-6.1.4.jar;C:\Users\Admin\.m2\repository\org\eclipse\angus\jakarta.mail\2.0.2\jakarta.mail-2.0.2.jar;C:\Users\Admin\.m2\repository\jakarta\activation\jakarta.activation-api\2.1.2\jakarta.activation-api-2.1.2.jar;C:\Users\Admin\.m2\repository\org\eclipse\angus\angus-activation\2.0.1\angus-activation-2.0.1.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-devtools\3.2.3\spring-boot-devtools-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot\3.2.3\spring-boot-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-autoconfigure\3.2.3\spring-boot-autoconfigure-3.2.3.jar;C:\Users\Admin\.m2\repository\org\postgresql\postgresql\42.6.1\postgresql-42.6.1.jar;C:\Users\Admin\.m2\repository\org\checkerframework\checker-qual\3.31.0\checker-qual-3.31.0.jar;C:\Users\Admin\.m2\repository\org\flywaydb\flyway-core\9.22.3\flyway-core-9.22.3.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\dataformat\jackson-dataformat-toml\2.15.4\jackson-dataformat-toml-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-core\2.15.4\jackson-core-2.15.4.jar;C:\Users\Admin\.m2\repository\com\google\code\gson\gson\2.10.1\gson-2.10.1.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-webmvc-ui\2.3.0\springdoc-openapi-starter-webmvc-ui-2.3.0.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-webmvc-api\2.3.0\springdoc-openapi-starter-webmvc-api-2.3.0.jar;C:\Users\Admin\.m2\repository\org\springdoc\springdoc-openapi-starter-common\2.3.0\springdoc-openapi-starter-common-2.3.0.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-core-jakarta\2.2.19\swagger-core-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-annotations-jakarta\2.2.19\swagger-annotations-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\io\swagger\core\v3\swagger-models-jakarta\2.2.19\swagger-models-jakarta-2.2.19.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\dataformat\jackson-dataformat-yaml\2.15.4\jackson-dataformat-yaml-2.15.4.jar;C:\Users\Admin\.m2\repository\org\webjars\swagger-ui\5.10.3\swagger-ui-5.10.3.jar;C:\Users\Admin\.m2\repository\org\projectlombok\lombok\1.18.30\lombok-1.18.30.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-api\0.11.5\jjwt-api-0.11.5.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-impl\0.11.5\jjwt-impl-0.11.5.jar;C:\Users\Admin\.m2\repository\io\jsonwebtoken\jjwt-jackson\0.11.5\jjwt-jackson-0.11.5.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-databind\2.15.4\jackson-databind-2.15.4.jar;C:\Users\Admin\.m2\repository\com\fasterxml\jackson\core\jackson-annotations\2.15.4\jackson-annotations-2.15.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-test\3.2.3\spring-boot-starter-test-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-test\3.2.3\spring-boot-test-3.2.3.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-test-autoconfigure\3.2.3\spring-boot-test-autoconfigure-3.2.3.jar;C:\Users\Admin\.m2\repository\com\jayway\jsonpath\json-path\2.9.0\json-path-2.9.0.jar;C:\Users\Admin\.m2\repository\jakarta\xml\bind\jakarta.xml.bind-api\4.0.1\jakarta.xml.bind-api-4.0.1.jar;C:\Users\Admin\.m2\repository\net\minidev\json-smart\2.5.0\json-smart-2.5.0.jar;C:\Users\Admin\.m2\repository\net\minidev\accessors-smart\2.5.0\accessors-smart-2.5.0.jar;C:\Users\Admin\.m2\repository\org\ow2\asm\asm\9.3\asm-9.3.jar;C:\Users\Admin\.m2\repository\org\assertj\assertj-core\3.24.2\assertj-core-3.24.2.jar;C:\Users\Admin\.m2\repository\org\awaitility\awaitility\4.2.0\awaitility-4.2.0.jar;C:\Users\Admin\.m2\repository\org\hamcrest\hamcrest\2.2\hamcrest-2.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter\5.10.2\junit-jupiter-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-api\5.10.2\junit-jupiter-api-5.10.2.jar;C:\Users\Admin\.m2\repository\org\opentest4j\opentest4j\1.3.0\opentest4j-1.3.0.jar;C:\Users\Admin\.m2\repository\org\junit\platform\junit-platform-commons\1.10.2\junit-platform-commons-1.10.2.jar;C:\Users\Admin\.m2\repository\org\apiguardian\apiguardian-api\1.1.2\apiguardian-api-1.1.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-params\5.10.2\junit-jupiter-params-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\jupiter\junit-jupiter-engine\5.10.2\junit-jupiter-engine-5.10.2.jar;C:\Users\Admin\.m2\repository\org\junit\platform\junit-platform-engine\1.10.2\junit-platform-engine-1.10.2.jar;C:\Users\Admin\.m2\repository\org\mockito\mockito-core\5.7.0\mockito-core-5.7.0.jar;C:\Users\Admin\.m2\repository\net\bytebuddy\byte-buddy-agent\1.15.1\byte-buddy-agent-1.15.1.jar;C:\Users\Admin\.m2\repository\org\objenesis\objenesis\3.3\objenesis-3.3.jar;C:\Users\Admin\.m2\repository\org\mockito\mockito-junit-jupiter\5.7.0\mockito-junit-jupiter-5.7.0.jar;C:\Users\Admin\.m2\repository\org\skyscreamer\jsonassert\1.5.1\jsonassert-1.5.1.jar;C:\Users\Admin\.m2\repository\com\vaadin\external\google\android-json\0.0.20131108.vaadin1\android-json-0.0.20131108.vaadin1.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-core\6.1.4\spring-core-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-jcl\6.1.4\spring-jcl-6.1.4.jar;C:\Users\Admin\.m2\repository\org\springframework\spring-test\6.1.4\spring-test-6.1.4.jar;C:\Users\Admin\.m2\repository\org\xmlunit\xmlunit-core\2.9.1\xmlunit-core-2.9.1.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-test\6.2.2\spring-security-test-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-core\6.2.2\spring-security-core-6.2.2.jar;C:\Users\Admin\.m2\repository\org\springframework\security\spring-security-crypto\6.2.2\spring-security-crypto-6.2.2.jar;C:\Users\Admin\.m2\repository\com\cloudinary\cloudinary-http44\1.36.0\cloudinary-http44-1.36.0.jar;C:\Users\Admin\.m2\repository\com\cloudinary\cloudinary-core\1.36.0\cloudinary-core-1.36.0.jar;C:\Users\Admin\.m2\repository\org\apache\commons\commons-lang3\3.13.0\commons-lang3-3.13.0.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpclient\4.4\httpclient-4.4.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpcore\4.4.16\httpcore-4.4.16.jar;C:\Users\Admin\.m2\repository\commons-logging\commons-logging\1.2\commons-logging-1.2.jar;C:\Users\Admin\.m2\repository\commons-codec\commons-codec\1.16.1\commons-codec-1.16.1.jar;C:\Users\Admin\.m2\repository\org\apache\httpcomponents\httpmime\4.4\httpmime-4.4.jar;C:\Users\Admin\.m2\repository\org\springframework\boot\spring-boot-starter-thymeleaf\3.2.3\spring-boot-starter-thymeleaf-3.2.3.jar;C:\Users\Admin\.m2\repository\org\thymeleaf\thymeleaf-spring6\3.1.2.RELEASE\thymeleaf-spring6-3.1.2.RELEASE.jar;C:\Users\Admin\.m2\repository\org\thymeleaf\thymeleaf\3.1.2.RELEASE\thymeleaf-3.1.2.RELEASE.jar;C:\Users\Admin\.m2\repository\org\attoparser\attoparser\2.0.7.RELEASE\attoparser-2.0.7.RELEASE.jar;C:\Users\Admin\.m2\repository\org\unbescape\unbescape\1.1.6.RELEASE\unbescape-1.1.6.RELEASE.jar;"/>
     <property name="sun.cpu.endian" value="little"/>
     <property name="user.home" value="C:\Users\Admin"/>
     <property name="user.language" value="en"/>
     <property name="java.specification.vendor" value="Oracle Corporation"/>
     <property name="java.version.date" value="2024-10-15"/>
     <property name="java.home" value="C:\Program Files\Java\jdk-21"/>
-    <property name="spring.profiles.active" value="test"/>
     <property name="file.separator" value="\"/>
     <property name="basedir" value="D:\ByteChat\ByteChat\backend"/>
     <property name="java.vm.compressedOopsMode" value="Zero based"/>
@@ -34,7 +34,7 @@
     <property name="java.specification.name" value="Java Platform API Specification"/>
     <property name="FILE_LOG_CHARSET" value="UTF-8"/>
     <property name="java.awt.headless" value="true"/>
-    <property name="surefire.real.class.path" value="C:\Users\Admin\AppData\Local\Temp\surefire14850177737969299587\surefirebooter-20260318122928493_3.jar"/>
+    <property name="surefire.real.class.path" value="C:\Users\Admin\AppData\Local\Temp\surefire8984093259933011274\surefirebooter-20260401162544863_3.jar"/>
     <property name="user.script" value=""/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
     <property name="java.runtime.version" value="21.0.5+9-LTS-239"/>
@@ -48,16 +48,17 @@
     <property name="localRepository" value="C:\Users\Admin\.m2\repository"/>
     <property name="java.vendor.url.bug" value="https://bugreport.java.com/bugreport/"/>
     <property name="java.io.tmpdir" value="C:\Users\Admin\AppData\Local\Temp\"/>
+    <property name="sonar.token" value="sqp_cb4fd7edb56c9c56eeeec1e5a9db71fdcd6e817a"/>
     <property name="com.zaxxer.hikari.pool_number" value="5"/>
     <property name="java.version" value="21.0.5"/>
     <property name="user.dir" value="D:\ByteChat\ByteChat\backend"/>
     <property name="os.arch" value="amd64"/>
     <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
-    <property name="PID" value="9884"/>
+    <property name="PID" value="16496"/>
     <property name="sun.os.patch.level" value=""/>
     <property name="CONSOLE_LOG_CHARSET" value="UTF-8"/>
     <property name="native.encoding" value="Cp1252"/>
-    <property name="java.library.path" value="C:\Program Files\Java\jdk-21\bin;C:\Windows\Sun\Java\bin;C:\Windows\system32;C:\Windows;C:\Python314\Scripts\;C:\Python314\;C:\Python313\Scripts\;C:\Python313\;C:\Program Files\Common Files\Oracle\Java\javapath;C:\app\Admin\product\21c\dbhomeXE\bin;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\ProgramData\chocolatey\bin;C:\Program Files\MySQL\MySQL Server 8.0\bin;C:\Program Files\Java\jdk-21\bin;C:\Program Files\Git\cmd;C:\Users\Admin\Downloads\apache-maven-3.9.9-bin\apache-maven-3.9.9\bin\bin;C:\Program Files\Java\jdk-21\bin;C:\Program Files\Apache\Maven\apache-maven-3.9.9;C:\Program Files\Docker\Docker\resources\bin;C:\Program Files\MongoDB\Server\8.0\bin;C:\Program Files\Redis;C:\Users\Admin\kafka_2.13-3.9.1;C:\Program Files\PostgreSQL\18\bin;C:\Program Files\nodejs\;C:\Program Files\MySQL\MySQL Shell 8.0\bin\;C:\Users\Admin\AppData\Local\Microsoft\WindowsApps;C:\Program Files\nodejs;C:\Users\Admin\AppData\Local\Programs\Microsoft VS Code\bin;C:\Program Files\mongosh\;C:\Users\Admin\AppData\Local\GitHubDesktop\bin;C:\Users\Admin\AppData\Local\Programs\cursor\resources\app\bin;C:\Users\Admin\AppData\Local\Programs\Kiro\bin;C:\Users\Admin\AppData\Roaming\npm;D:\Antigravity\bin;."/>
+    <property name="java.library.path" value="C:\Program Files\Java\jdk-21\bin;C:\Windows\Sun\Java\bin;C:\Windows\system32;C:\Windows;c:\Users\Admin\AppData\Roaming\Code\User\globalStorage\github.copilot-chat\debugCommand;c:\Users\Admin\AppData\Roaming\Code\User\globalStorage\github.copilot-chat\copilotCli;C:\Users\Admin\AppData\Local\Programs\Microsoft VS Code;C:\Python314\Scripts\;C:\Python314\;C:\Python313\Scripts\;C:\Python313\;C:\Program Files\Common Files\Oracle\Java\javapath;C:\app\Admin\product\21c\dbhomeXE\bin;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\ProgramData\chocolatey\bin;C:\Program Files\MySQL\MySQL Server 8.0\bin;C:\Program Files\Java\jdk-21\bin;C:\Program Files\Git\cmd;C:\Program Files\Java\jdk-21\bin;C:\Program Files\Apache\Maven\apache-maven-3.9.9;C:\Program Files\Docker\Docker\resources\bin;C:\Program Files\MongoDB\Server\8.0\bin;C:\Program Files\Redis;C:\Users\Admin\kafka_2.13-3.9.1;C:\Program Files\PostgreSQL\18\bin;C:\Program Files\nodejs\;D:\apache-maven-3.9.14-bin\apache-maven-3.9.14\bin;C:\Program Files\MySQL\MySQL Shell 8.0\bin\;C:\Users\Admin\AppData\Local\Microsoft\WindowsApps;C:\Program Files\nodejs;C:\Users\Admin\AppData\Local\Programs\Microsoft VS Code\bin;C:\Program Files\mongosh\;C:\Users\Admin\AppData\Local\GitHubDesktop\bin;C:\Users\Admin\AppData\Local\Programs\cursor\resources\app\bin;C:\Users\Admin\AppData\Local\Programs\Kiro\bin;C:\Users\Admin\AppData\Roaming\npm;D:\Antigravity\bin;c:\Users\Admin\.vscode\extensions\vscjava.vscode-java-debug-0.58.5\bundled\scripts\noConfigScripts;."/>
     <property name="java.vm.info" value="mixed mode, sharing"/>
     <property name="stderr.encoding" value="Cp1252"/>
     <property name="java.vendor" value="Oracle Corporation"/>
@@ -65,20 +66,10 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="65.0"/>
   </properties>
-  <testcase name="uploadFile_Unauthorized" classname="com.bytechat.controllers.FileUploadControllerIntegrationTest" time="0.197">
-    <failure message="Status expected:&lt;401&gt; but was:&lt;403&gt;" type="java.lang.AssertionError"><![CDATA[java.lang.AssertionError: Status expected:<401> but was:<403>
-	at org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:59)
-	at org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:122)
-	at org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:637)
-	at org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)
-	at com.bytechat.controllers.FileUploadControllerIntegrationTest.uploadFile_Unauthorized(FileUploadControllerIntegrationTest.java:61)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
-]]></failure>
-    <system-out><![CDATA[2026-03-18T12:30:39.067+05:30  INFO 9884 --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.bytechat.controllers.FileUploadControllerIntegrationTest]: FileUploadControllerIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-2026-03-18T12:30:39.076+05:30  INFO 9884 --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.bytechat.ByteChatApplication for test class com.bytechat.controllers.FileUploadControllerIntegrationTest
-2026-03-18T12:30:39.167+05:30  INFO 9884 --- [           main] o.s.b.d.r.RestartApplicationListener     : Restart disabled due to context in which it is running
+  <testcase name="uploadFile_Unauthorized" classname="com.bytechat.controllers.FileUploadControllerIntegrationTest" time="0.434">
+    <system-out><![CDATA[2026-04-01T16:27:01.170+05:30  INFO 16496 --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.bytechat.controllers.FileUploadControllerIntegrationTest]: FileUploadControllerIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-04-01T16:27:01.178+05:30  INFO 16496 --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.bytechat.ByteChatApplication for test class com.bytechat.controllers.FileUploadControllerIntegrationTest
+2026-04-01T16:27:01.190+05:30  INFO 16496 --- [           main] o.s.b.d.r.RestartApplicationListener     : Restart disabled due to context in which it is running
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -88,263 +79,306 @@
  =========|_|==============|___/=/_/_/_/
  :: Spring Boot ::                (v3.2.3)
 
-2026-03-18T12:30:39.303+05:30  INFO 9884 --- [           main] .b.c.FileUploadControllerIntegrationTest : Starting FileUploadControllerIntegrationTest using Java 21.0.5 with PID 9884 (started by Admin in D:\ByteChat\ByteChat\backend)
-2026-03-18T12:30:39.303+05:30 DEBUG 9884 --- [           main] .b.c.FileUploadControllerIntegrationTest : Running with Spring Boot v3.2.3, Spring v6.1.4
-2026-03-18T12:30:39.305+05:30  INFO 9884 --- [           main] .b.c.FileUploadControllerIntegrationTest : The following 1 profile is active: "test"
-2026-03-18T12:30:40.240+05:30  INFO 9884 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-03-18T12:30:40.378+05:30  INFO 9884 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 138 ms. Found 13 JPA repository interfaces.
-2026-03-18T12:30:40.912+05:30  INFO 9884 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-2026-03-18T12:30:40.920+05:30  INFO 9884 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-2026-03-18T12:30:40.929+05:30  INFO 9884 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2026-03-18T12:30:40.937+05:30  INFO 9884 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-5 - Starting...
-2026-03-18T12:30:41.103+05:30  INFO 9884 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-5 - Added connection org.postgresql.jdbc.PgConnection@6948c86c
-2026-03-18T12:30:41.103+05:30  INFO 9884 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-5 - Start completed.
-2026-03-18T12:30:41.877+05:30  INFO 9884 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-2026-03-18T12:30:41.877+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:01.296+05:30  INFO 16496 --- [           main] .b.c.FileUploadControllerIntegrationTest : Starting FileUploadControllerIntegrationTest using Java 21.0.5 with PID 16496 (started by Admin in D:\ByteChat\ByteChat\backend)
+2026-04-01T16:27:01.296+05:30 DEBUG 16496 --- [           main] .b.c.FileUploadControllerIntegrationTest : Running with Spring Boot v3.2.3, Spring v6.1.4
+2026-04-01T16:27:01.296+05:30  INFO 16496 --- [           main] .b.c.FileUploadControllerIntegrationTest : The following 1 profile is active: "test"
+2026-04-01T16:27:02.835+05:30  INFO 16496 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-01T16:27:03.056+05:30  INFO 16496 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 220 ms. Found 14 JPA repository interfaces.
+2026-04-01T16:27:03.461+05:30  INFO 16496 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-04-01T16:27:03.468+05:30  INFO 16496 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-04-01T16:27:03.480+05:30  INFO 16496 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-04-01T16:27:03.484+05:30  INFO 16496 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-5 - Starting...
+2026-04-01T16:27:03.617+05:30  INFO 16496 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-5 - Added connection org.postgresql.jdbc.PgConnection@40f3787f
+2026-04-01T16:27:03.617+05:30  INFO 16496 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-5 - Start completed.
+2026-04-01T16:27:03.632+05:30  WARN 16496 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-04-01T16:27:04.455+05:30  INFO 16496 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-04-01T16:27:04.456+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists attachments 
        drop constraint if exists FKcf4ta8qdkixetfy7wnqfv3vkv
 Hibernate: 
     alter table if exists attachments 
        drop constraint if exists FKcf4ta8qdkixetfy7wnqfv3vkv
-2026-03-18T12:30:41.883+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.460+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists attachments 
        drop constraint if exists FKr60r9lnkb1bv66bqanw3vb4ne
 Hibernate: 
     alter table if exists attachments 
        drop constraint if exists FKr60r9lnkb1bv66bqanw3vb4ne
-2026-03-18T12:30:41.885+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.462+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channel_invitations 
        drop constraint if exists FKo7xoquf05ql0t3ge2yvglsmkl
 Hibernate: 
     alter table if exists channel_invitations 
        drop constraint if exists FKo7xoquf05ql0t3ge2yvglsmkl
-2026-03-18T12:30:41.887+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.464+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channel_invitations 
        drop constraint if exists FKme8opxf0xpeg6jhqui8wskuei
 Hibernate: 
     alter table if exists channel_invitations 
        drop constraint if exists FKme8opxf0xpeg6jhqui8wskuei
-2026-03-18T12:30:41.888+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.466+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channel_invitations 
        drop constraint if exists FK3n8wmnwf6byo257w63y818i8e
 Hibernate: 
     alter table if exists channel_invitations 
        drop constraint if exists FK3n8wmnwf6byo257w63y818i8e
-2026-03-18T12:30:41.890+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.468+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channel_members 
        drop constraint if exists FK5w7mqibtg5vbjt7xq6xyhc479
 Hibernate: 
     alter table if exists channel_members 
        drop constraint if exists FK5w7mqibtg5vbjt7xq6xyhc479
-2026-03-18T12:30:41.891+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.470+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channel_members 
        drop constraint if exists FKjunpxp98pv6g23t5d3w5hx8ji
 Hibernate: 
     alter table if exists channel_members 
        drop constraint if exists FKjunpxp98pv6g23t5d3w5hx8ji
-2026-03-18T12:30:41.893+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.472+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channels 
        drop constraint if exists FKj5bvg2dapo5aqh7j9xc2wr8e3
 Hibernate: 
     alter table if exists channels 
        drop constraint if exists FKj5bvg2dapo5aqh7j9xc2wr8e3
-2026-03-18T12:30:41.895+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.473+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channels 
        drop constraint if exists FK6sm2dry33aemqyix6ydqmjrj6
 Hibernate: 
     alter table if exists channels 
        drop constraint if exists FK6sm2dry33aemqyix6ydqmjrj6
-2026-03-18T12:30:41.896+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.475+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    alter table if exists direct_message_hidden_users 
+       drop constraint if exists FK3bxavuu4h2gi6ihbeksqpfp22
+Hibernate: 
+    alter table if exists direct_message_hidden_users 
+       drop constraint if exists FK3bxavuu4h2gi6ihbeksqpfp22
+2026-04-01T16:27:04.477+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists direct_messages 
        drop constraint if exists FK7jcln0adoq6mv6p71x1y5aln3
 Hibernate: 
     alter table if exists direct_messages 
        drop constraint if exists FK7jcln0adoq6mv6p71x1y5aln3
-2026-03-18T12:30:41.898+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.479+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists direct_messages 
        drop constraint if exists FK8prvpwn46hap1dbp8xwh63wlf
 Hibernate: 
     alter table if exists direct_messages 
        drop constraint if exists FK8prvpwn46hap1dbp8xwh63wlf
-2026-03-18T12:30:41.900+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.481+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists direct_messages 
        drop constraint if exists FKwwdaofacdgtpksin3j7sqj6f
 Hibernate: 
     alter table if exists direct_messages 
        drop constraint if exists FKwwdaofacdgtpksin3j7sqj6f
-2026-03-18T12:30:41.902+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.483+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists dm_requests 
        drop constraint if exists FKdv9bqmfvb8uali5ctm0lvst30
 Hibernate: 
     alter table if exists dm_requests 
        drop constraint if exists FKdv9bqmfvb8uali5ctm0lvst30
-2026-03-18T12:30:41.903+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.485+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists dm_requests 
        drop constraint if exists FKgfhe9weqonod6e1q0lhlus0d4
 Hibernate: 
     alter table if exists dm_requests 
        drop constraint if exists FKgfhe9weqonod6e1q0lhlus0d4
-2026-03-18T12:30:41.905+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.486+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists dm_requests 
        drop constraint if exists FKf5ou483a6yuveq51mmwf9hf2p
 Hibernate: 
     alter table if exists dm_requests 
        drop constraint if exists FKf5ou483a6yuveq51mmwf9hf2p
-2026-03-18T12:30:41.907+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.488+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    alter table if exists meetings 
+       drop constraint if exists FKfulcdj14tv0d6f1xn5tqhrkvb
+Hibernate: 
+    alter table if exists meetings 
+       drop constraint if exists FKfulcdj14tv0d6f1xn5tqhrkvb
+2026-04-01T16:27:04.490+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    alter table if exists meetings 
+       drop constraint if exists FKaa1dp9oxlq8sykp2s8xwcshr7
+Hibernate: 
+    alter table if exists meetings 
+       drop constraint if exists FKaa1dp9oxlq8sykp2s8xwcshr7
+2026-04-01T16:27:04.493+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    alter table if exists meetings 
+       drop constraint if exists FK9nro0gsbo3kv2lw00v1ve84qw
+Hibernate: 
+    alter table if exists meetings 
+       drop constraint if exists FK9nro0gsbo3kv2lw00v1ve84qw
+2026-04-01T16:27:04.495+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    alter table if exists message_hidden_users 
+       drop constraint if exists FK5934d9ycb3idcamocglty3nft
+Hibernate: 
+    alter table if exists message_hidden_users 
+       drop constraint if exists FK5934d9ycb3idcamocglty3nft
+2026-04-01T16:27:04.496+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists message_mentions 
        drop constraint if exists FKn8dkm95maeahsjpbee9cnbntd
 Hibernate: 
     alter table if exists message_mentions 
        drop constraint if exists FKn8dkm95maeahsjpbee9cnbntd
-2026-03-18T12:30:41.908+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.498+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists message_reads 
        drop constraint if exists FK4hf3vygb7iguer8spwq89xwsa
 Hibernate: 
     alter table if exists message_reads 
        drop constraint if exists FK4hf3vygb7iguer8spwq89xwsa
-2026-03-18T12:30:41.909+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.500+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists message_reads 
        drop constraint if exists FKd25ttt384b7vp2bqtw19gighu
 Hibernate: 
     alter table if exists message_reads 
        drop constraint if exists FKd25ttt384b7vp2bqtw19gighu
-2026-03-18T12:30:41.911+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.503+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists messages 
        drop constraint if exists FK3u3ckbhwq9se1cmopk2pq05b2
 Hibernate: 
     alter table if exists messages 
        drop constraint if exists FK3u3ckbhwq9se1cmopk2pq05b2
-2026-03-18T12:30:41.913+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.505+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists messages 
        drop constraint if exists FK4ui4nnwntodh6wjvck53dbk9m
 Hibernate: 
     alter table if exists messages 
        drop constraint if exists FK4ui4nnwntodh6wjvck53dbk9m
-2026-03-18T12:30:41.915+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.507+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists notifications 
        drop constraint if exists FKqqnsjxlwleyjbxlmm213jaj3f
 Hibernate: 
     alter table if exists notifications 
        drop constraint if exists FKqqnsjxlwleyjbxlmm213jaj3f
-2026-03-18T12:30:41.917+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.508+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists reactions 
        drop constraint if exists FKg7p9a9gnfl6lvhe9rk31rc1dq
 Hibernate: 
     alter table if exists reactions 
        drop constraint if exists FKg7p9a9gnfl6lvhe9rk31rc1dq
-2026-03-18T12:30:41.918+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.510+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists reactions 
        drop constraint if exists FKlmwgdoo3g3f4g0wsgc1lmwfby
 Hibernate: 
     alter table if exists reactions 
        drop constraint if exists FKlmwgdoo3g3f4g0wsgc1lmwfby
-2026-03-18T12:30:41.920+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.511+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists reactions 
        drop constraint if exists FKqmewaibcp5bxtlqxc2cawhuln
 Hibernate: 
     alter table if exists reactions 
        drop constraint if exists FKqmewaibcp5bxtlqxc2cawhuln
-2026-03-18T12:30:41.921+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.513+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspace_invitations 
        drop constraint if exists FKcw13o1mp447qs3h7kphm8hktm
 Hibernate: 
     alter table if exists workspace_invitations 
        drop constraint if exists FKcw13o1mp447qs3h7kphm8hktm
-2026-03-18T12:30:41.924+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.516+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspace_invitations 
        drop constraint if exists FKj4tqiky662q6y79oc8gfh2ffa
 Hibernate: 
     alter table if exists workspace_invitations 
        drop constraint if exists FKj4tqiky662q6y79oc8gfh2ffa
-2026-03-18T12:30:41.925+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.517+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspace_invitations 
        drop constraint if exists FKcjk1r4awojk9f3vcc7gak8rnv
 Hibernate: 
     alter table if exists workspace_invitations 
        drop constraint if exists FKcjk1r4awojk9f3vcc7gak8rnv
-2026-03-18T12:30:41.927+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.520+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspace_members 
        drop constraint if exists FK6vtnpc3eexk504u61uepn40p1
 Hibernate: 
     alter table if exists workspace_members 
        drop constraint if exists FK6vtnpc3eexk504u61uepn40p1
-2026-03-18T12:30:41.928+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.522+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspace_members 
        drop constraint if exists FKw9hq87n3rvq2c4j47qo78i5r
 Hibernate: 
     alter table if exists workspace_members 
        drop constraint if exists FKw9hq87n3rvq2c4j47qo78i5r
-2026-03-18T12:30:41.929+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.524+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspaces 
        drop constraint if exists FK58ks96jjlsbhsh21cen7hr59h
 Hibernate: 
     alter table if exists workspaces 
        drop constraint if exists FK58ks96jjlsbhsh21cen7hr59h
-2026-03-18T12:30:41.932+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.526+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists attachments cascade
 Hibernate: 
     drop table if exists attachments cascade
-2026-03-18T12:30:41.939+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.547+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists channel_invitations cascade
 Hibernate: 
     drop table if exists channel_invitations cascade
-2026-03-18T12:30:41.943+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.552+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists channel_members cascade
 Hibernate: 
     drop table if exists channel_members cascade
-2026-03-18T12:30:41.950+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.558+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists channels cascade
 Hibernate: 
     drop table if exists channels cascade
-2026-03-18T12:30:41.956+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.566+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    drop table if exists direct_message_hidden_users cascade
+Hibernate: 
+    drop table if exists direct_message_hidden_users cascade
+2026-04-01T16:27:04.568+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists direct_messages cascade
 Hibernate: 
     drop table if exists direct_messages cascade
-2026-03-18T12:30:41.963+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.577+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists dm_requests cascade
 Hibernate: 
     drop table if exists dm_requests cascade
-2026-03-18T12:30:41.969+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.583+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    drop table if exists meetings cascade
+Hibernate: 
+    drop table if exists meetings cascade
+2026-04-01T16:27:04.591+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    drop table if exists message_hidden_users cascade
+Hibernate: 
+    drop table if exists message_hidden_users cascade
+2026-04-01T16:27:04.593+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists message_mentions cascade
 Hibernate: 
     drop table if exists message_mentions cascade
-2026-03-18T12:30:41.971+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.594+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists message_reads cascade
 Hibernate: 
     drop table if exists message_reads cascade
-2026-03-18T12:30:41.977+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.600+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists messages cascade
 Hibernate: 
     drop table if exists messages cascade
-2026-03-18T12:30:41.986+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.607+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists notifications cascade
 Hibernate: 
     drop table if exists notifications cascade
-2026-03-18T12:30:41.992+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.613+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists otps cascade
 Hibernate: 
     drop table if exists otps cascade
-2026-03-18T12:30:41.999+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.620+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists reactions cascade
 Hibernate: 
     drop table if exists reactions cascade
-2026-03-18T12:30:42.005+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.625+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists users cascade
 Hibernate: 
     drop table if exists users cascade
-2026-03-18T12:30:42.013+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.633+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists workspace_invitations cascade
 Hibernate: 
     drop table if exists workspace_invitations cascade
-2026-03-18T12:30:42.020+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.639+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists workspace_members cascade
 Hibernate: 
     drop table if exists workspace_members cascade
-2026-03-18T12:30:42.025+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.644+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     drop table if exists workspaces cascade
 Hibernate: 
     drop table if exists workspaces cascade
-2026-03-18T12:30:42.032+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.651+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table attachments (
         file_size bigint,
         id bigserial not null,
@@ -368,7 +402,7 @@ Hibernate:
         file_url varchar(255) not null,
         primary key (id)
     )
-2026-03-18T12:30:42.049+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.672+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table channel_invitations (
         channel_id bigint not null,
         created_at timestamp(6) not null,
@@ -390,7 +424,7 @@ Hibernate:
         status varchar(255) not null check (status in ('PENDING','ACCEPTED','REJECTED','EXPIRED')),
         primary key (id)
     )
-2026-03-18T12:30:42.056+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.679+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table channel_members (
         is_archived boolean not null,
         channel_id bigint not null,
@@ -410,7 +444,7 @@ Hibernate:
         role varchar(255) not null check (role in ('ADMIN','MEMBER')),
         primary key (id)
     )
-2026-03-18T12:30:42.065+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.686+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table channels (
         is_archived boolean not null,
         is_default boolean not null,
@@ -438,18 +472,33 @@ Hibernate:
         name varchar(255) not null,
         primary key (id)
     )
-2026-03-18T12:30:42.074+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.694+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    create table direct_message_hidden_users (
+        direct_message_id bigint not null,
+        user_id bigint
+    )
+Hibernate: 
+    create table direct_message_hidden_users (
+        direct_message_id bigint not null,
+        user_id bigint
+    )
+2026-04-01T16:27:04.697+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table direct_messages (
         is_deleted boolean not null,
         is_pinned boolean not null,
         edited_at timestamp(6),
         from_user_id bigint not null,
         id bigserial not null,
+        pinned_by_user_id bigint,
         read_at timestamp(6),
+        reply_to_message_id bigint,
         sent_at timestamp(6) not null,
         to_user_id bigint not null,
         workspace_id bigint,
         content TEXT not null,
+        pinned_by_name varchar(255),
+        reply_to_content TEXT,
+        reply_to_sender_name varchar(255),
         type varchar(255),
         primary key (id)
     )
@@ -460,15 +509,20 @@ Hibernate:
         edited_at timestamp(6),
         from_user_id bigint not null,
         id bigserial not null,
+        pinned_by_user_id bigint,
         read_at timestamp(6),
+        reply_to_message_id bigint,
         sent_at timestamp(6) not null,
         to_user_id bigint not null,
         workspace_id bigint,
         content TEXT not null,
+        pinned_by_name varchar(255),
+        reply_to_content TEXT,
+        reply_to_sender_name varchar(255),
         type varchar(255),
         primary key (id)
     )
-2026-03-18T12:30:42.083+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.705+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table dm_requests (
         created_at timestamp(6) not null,
         id bigserial not null,
@@ -490,7 +544,45 @@ Hibernate:
         status varchar(255) not null check (status in ('PENDING','ACCEPTED','REJECTED')),
         primary key (id)
     )
-2026-03-18T12:30:42.089+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.711+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    create table meetings (
+        is_active boolean not null,
+        channel_id bigint not null,
+        created_at timestamp(6) not null,
+        creator_id bigint not null,
+        ended_at timestamp(6),
+        id bigserial not null,
+        workspace_id bigint not null,
+        password_hash varchar(255) not null,
+        room_key varchar(255) not null unique,
+        title varchar(255) not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table meetings (
+        is_active boolean not null,
+        channel_id bigint not null,
+        created_at timestamp(6) not null,
+        creator_id bigint not null,
+        ended_at timestamp(6),
+        id bigserial not null,
+        workspace_id bigint not null,
+        password_hash varchar(255) not null,
+        room_key varchar(255) not null unique,
+        title varchar(255) not null,
+        primary key (id)
+    )
+2026-04-01T16:27:04.721+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    create table message_hidden_users (
+        message_id bigint not null,
+        user_id bigint
+    )
+Hibernate: 
+    create table message_hidden_users (
+        message_id bigint not null,
+        user_id bigint
+    )
+2026-04-01T16:27:04.723+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table message_mentions (
         message_id bigint not null,
         user_id bigint
@@ -500,7 +592,7 @@ Hibernate:
         message_id bigint not null,
         user_id bigint
     )
-2026-03-18T12:30:42.091+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.726+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table message_reads (
         id bigserial not null,
         message_id bigint not null,
@@ -518,16 +610,21 @@ Hibernate:
         primary key (id),
         unique (message_id, user_id)
     )
-2026-03-18T12:30:42.100+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.734+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table messages (
         is_deleted boolean not null,
         is_pinned boolean not null,
         channel_id bigint not null,
         edited_at timestamp(6),
         id bigserial not null,
+        pinned_by_user_id bigint,
+        reply_to_message_id bigint,
         sender_id bigint not null,
         sent_at timestamp(6) not null,
         content TEXT not null,
+        pinned_by_name varchar(255),
+        reply_to_content TEXT,
+        reply_to_sender_name varchar(255),
         type varchar(255),
         primary key (id)
     )
@@ -538,13 +635,18 @@ Hibernate:
         channel_id bigint not null,
         edited_at timestamp(6),
         id bigserial not null,
+        pinned_by_user_id bigint,
+        reply_to_message_id bigint,
         sender_id bigint not null,
         sent_at timestamp(6) not null,
         content TEXT not null,
+        pinned_by_name varchar(255),
+        reply_to_content TEXT,
+        reply_to_sender_name varchar(255),
         type varchar(255),
         primary key (id)
     )
-2026-03-18T12:30:42.108+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.742+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table notifications (
         is_read boolean,
         created_at timestamp(6) not null,
@@ -566,7 +668,7 @@ Hibernate:
         type varchar(255) not null,
         primary key (id)
     )
-2026-03-18T12:30:42.116+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.757+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table otps (
         verified boolean not null,
         code varchar(6) not null,
@@ -588,7 +690,7 @@ Hibernate:
         otp_type varchar(255) not null check (otp_type in ('REGISTRATION','PASSWORD_RESET','WORKSPACE_CREATION')),
         primary key (id)
     )
-2026-03-18T12:30:42.126+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.769+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table reactions (
         created_at timestamp(6) not null,
         dm_id bigint,
@@ -608,7 +710,7 @@ Hibernate:
         emoji varchar(255) not null,
         primary key (id)
     )
-2026-03-18T12:30:42.132+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.775+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table users (
         is_verified boolean not null,
         online boolean not null,
@@ -636,7 +738,7 @@ Hibernate:
         role varchar(255) not null check (role in ('OWNER','MEMBER')),
         primary key (id)
     )
-2026-03-18T12:30:42.146+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.788+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table workspace_invitations (
         created_at timestamp(6) not null,
         id bigserial not null,
@@ -660,7 +762,7 @@ Hibernate:
         status varchar(255) not null check (status in ('PENDING','ACCEPTED','REJECTED','EXPIRED')),
         primary key (id)
     )
-2026-03-18T12:30:42.155+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.800+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table workspace_members (
         id bigserial not null,
         joined_at timestamp(6) not null,
@@ -678,7 +780,7 @@ Hibernate:
         role varchar(255) not null check (role in ('OWNER','ADMIN','MEMBER')),
         primary key (id)
     )
-2026-03-18T12:30:42.161+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.807+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     create table workspaces (
         is_archived boolean not null,
         is_private boolean not null,
@@ -700,7 +802,7 @@ Hibernate:
         name varchar(255) not null,
         primary key (id)
     )
-2026-03-18T12:30:42.170+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.818+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists attachments 
        add constraint FKcf4ta8qdkixetfy7wnqfv3vkv 
        foreign key (message_id) 
@@ -710,7 +812,7 @@ Hibernate:
        add constraint FKcf4ta8qdkixetfy7wnqfv3vkv 
        foreign key (message_id) 
        references messages
-2026-03-18T12:30:42.175+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.823+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists attachments 
        add constraint FKr60r9lnkb1bv66bqanw3vb4ne 
        foreign key (uploader_id) 
@@ -720,7 +822,7 @@ Hibernate:
        add constraint FKr60r9lnkb1bv66bqanw3vb4ne 
        foreign key (uploader_id) 
        references users
-2026-03-18T12:30:42.179+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.828+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channel_invitations 
        add constraint FKo7xoquf05ql0t3ge2yvglsmkl 
        foreign key (channel_id) 
@@ -730,7 +832,7 @@ Hibernate:
        add constraint FKo7xoquf05ql0t3ge2yvglsmkl 
        foreign key (channel_id) 
        references channels
-2026-03-18T12:30:42.184+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.833+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channel_invitations 
        add constraint FKme8opxf0xpeg6jhqui8wskuei 
        foreign key (invitee_id) 
@@ -740,7 +842,7 @@ Hibernate:
        add constraint FKme8opxf0xpeg6jhqui8wskuei 
        foreign key (invitee_id) 
        references users
-2026-03-18T12:30:42.186+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.835+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channel_invitations 
        add constraint FK3n8wmnwf6byo257w63y818i8e 
        foreign key (inviter_id) 
@@ -750,7 +852,7 @@ Hibernate:
        add constraint FK3n8wmnwf6byo257w63y818i8e 
        foreign key (inviter_id) 
        references users
-2026-03-18T12:30:42.188+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.838+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channel_members 
        add constraint FK5w7mqibtg5vbjt7xq6xyhc479 
        foreign key (channel_id) 
@@ -760,7 +862,7 @@ Hibernate:
        add constraint FK5w7mqibtg5vbjt7xq6xyhc479 
        foreign key (channel_id) 
        references channels
-2026-03-18T12:30:42.191+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.841+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channel_members 
        add constraint FKjunpxp98pv6g23t5d3w5hx8ji 
        foreign key (user_id) 
@@ -770,7 +872,7 @@ Hibernate:
        add constraint FKjunpxp98pv6g23t5d3w5hx8ji 
        foreign key (user_id) 
        references users
-2026-03-18T12:30:42.194+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.844+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channels 
        add constraint FKj5bvg2dapo5aqh7j9xc2wr8e3 
        foreign key (created_by) 
@@ -780,7 +882,7 @@ Hibernate:
        add constraint FKj5bvg2dapo5aqh7j9xc2wr8e3 
        foreign key (created_by) 
        references users
-2026-03-18T12:30:42.196+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.848+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists channels 
        add constraint FK6sm2dry33aemqyix6ydqmjrj6 
        foreign key (workspace_id) 
@@ -790,7 +892,17 @@ Hibernate:
        add constraint FK6sm2dry33aemqyix6ydqmjrj6 
        foreign key (workspace_id) 
        references workspaces
-2026-03-18T12:30:42.200+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.852+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    alter table if exists direct_message_hidden_users 
+       add constraint FK3bxavuu4h2gi6ihbeksqpfp22 
+       foreign key (direct_message_id) 
+       references direct_messages
+Hibernate: 
+    alter table if exists direct_message_hidden_users 
+       add constraint FK3bxavuu4h2gi6ihbeksqpfp22 
+       foreign key (direct_message_id) 
+       references direct_messages
+2026-04-01T16:27:04.855+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists direct_messages 
        add constraint FK7jcln0adoq6mv6p71x1y5aln3 
        foreign key (from_user_id) 
@@ -800,7 +912,7 @@ Hibernate:
        add constraint FK7jcln0adoq6mv6p71x1y5aln3 
        foreign key (from_user_id) 
        references users
-2026-03-18T12:30:42.203+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.858+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists direct_messages 
        add constraint FK8prvpwn46hap1dbp8xwh63wlf 
        foreign key (to_user_id) 
@@ -810,7 +922,7 @@ Hibernate:
        add constraint FK8prvpwn46hap1dbp8xwh63wlf 
        foreign key (to_user_id) 
        references users
-2026-03-18T12:30:42.206+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.860+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists direct_messages 
        add constraint FKwwdaofacdgtpksin3j7sqj6f 
        foreign key (workspace_id) 
@@ -820,7 +932,7 @@ Hibernate:
        add constraint FKwwdaofacdgtpksin3j7sqj6f 
        foreign key (workspace_id) 
        references workspaces
-2026-03-18T12:30:42.208+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.863+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists dm_requests 
        add constraint FKdv9bqmfvb8uali5ctm0lvst30 
        foreign key (recipient_id) 
@@ -830,7 +942,7 @@ Hibernate:
        add constraint FKdv9bqmfvb8uali5ctm0lvst30 
        foreign key (recipient_id) 
        references users
-2026-03-18T12:30:42.211+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.867+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists dm_requests 
        add constraint FKgfhe9weqonod6e1q0lhlus0d4 
        foreign key (requester_id) 
@@ -840,7 +952,7 @@ Hibernate:
        add constraint FKgfhe9weqonod6e1q0lhlus0d4 
        foreign key (requester_id) 
        references users
-2026-03-18T12:30:42.213+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.870+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists dm_requests 
        add constraint FKf5ou483a6yuveq51mmwf9hf2p 
        foreign key (workspace_id) 
@@ -850,7 +962,47 @@ Hibernate:
        add constraint FKf5ou483a6yuveq51mmwf9hf2p 
        foreign key (workspace_id) 
        references workspaces
-2026-03-18T12:30:42.240+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.872+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    alter table if exists meetings 
+       add constraint FKfulcdj14tv0d6f1xn5tqhrkvb 
+       foreign key (channel_id) 
+       references channels
+Hibernate: 
+    alter table if exists meetings 
+       add constraint FKfulcdj14tv0d6f1xn5tqhrkvb 
+       foreign key (channel_id) 
+       references channels
+2026-04-01T16:27:04.876+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    alter table if exists meetings 
+       add constraint FKaa1dp9oxlq8sykp2s8xwcshr7 
+       foreign key (creator_id) 
+       references users
+Hibernate: 
+    alter table if exists meetings 
+       add constraint FKaa1dp9oxlq8sykp2s8xwcshr7 
+       foreign key (creator_id) 
+       references users
+2026-04-01T16:27:04.878+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    alter table if exists meetings 
+       add constraint FK9nro0gsbo3kv2lw00v1ve84qw 
+       foreign key (workspace_id) 
+       references workspaces
+Hibernate: 
+    alter table if exists meetings 
+       add constraint FK9nro0gsbo3kv2lw00v1ve84qw 
+       foreign key (workspace_id) 
+       references workspaces
+2026-04-01T16:27:04.881+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
+    alter table if exists message_hidden_users 
+       add constraint FK5934d9ycb3idcamocglty3nft 
+       foreign key (message_id) 
+       references messages
+Hibernate: 
+    alter table if exists message_hidden_users 
+       add constraint FK5934d9ycb3idcamocglty3nft 
+       foreign key (message_id) 
+       references messages
+2026-04-01T16:27:04.884+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists message_mentions 
        add constraint FKn8dkm95maeahsjpbee9cnbntd 
        foreign key (message_id) 
@@ -860,7 +1012,7 @@ Hibernate:
        add constraint FKn8dkm95maeahsjpbee9cnbntd 
        foreign key (message_id) 
        references messages
-2026-03-18T12:30:42.242+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.886+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists message_reads 
        add constraint FK4hf3vygb7iguer8spwq89xwsa 
        foreign key (message_id) 
@@ -870,7 +1022,7 @@ Hibernate:
        add constraint FK4hf3vygb7iguer8spwq89xwsa 
        foreign key (message_id) 
        references messages
-2026-03-18T12:30:42.245+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.890+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists message_reads 
        add constraint FKd25ttt384b7vp2bqtw19gighu 
        foreign key (user_id) 
@@ -880,7 +1032,7 @@ Hibernate:
        add constraint FKd25ttt384b7vp2bqtw19gighu 
        foreign key (user_id) 
        references users
-2026-03-18T12:30:42.248+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.893+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists messages 
        add constraint FK3u3ckbhwq9se1cmopk2pq05b2 
        foreign key (channel_id) 
@@ -890,7 +1042,7 @@ Hibernate:
        add constraint FK3u3ckbhwq9se1cmopk2pq05b2 
        foreign key (channel_id) 
        references channels
-2026-03-18T12:30:42.251+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.895+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists messages 
        add constraint FK4ui4nnwntodh6wjvck53dbk9m 
        foreign key (sender_id) 
@@ -900,7 +1052,7 @@ Hibernate:
        add constraint FK4ui4nnwntodh6wjvck53dbk9m 
        foreign key (sender_id) 
        references users
-2026-03-18T12:30:42.252+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.898+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists notifications 
        add constraint FKqqnsjxlwleyjbxlmm213jaj3f 
        foreign key (recipient_id) 
@@ -910,7 +1062,7 @@ Hibernate:
        add constraint FKqqnsjxlwleyjbxlmm213jaj3f 
        foreign key (recipient_id) 
        references users
-2026-03-18T12:30:42.256+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.902+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists reactions 
        add constraint FKg7p9a9gnfl6lvhe9rk31rc1dq 
        foreign key (dm_id) 
@@ -920,7 +1072,7 @@ Hibernate:
        add constraint FKg7p9a9gnfl6lvhe9rk31rc1dq 
        foreign key (dm_id) 
        references direct_messages
-2026-03-18T12:30:42.258+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.905+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists reactions 
        add constraint FKlmwgdoo3g3f4g0wsgc1lmwfby 
        foreign key (message_id) 
@@ -930,7 +1082,7 @@ Hibernate:
        add constraint FKlmwgdoo3g3f4g0wsgc1lmwfby 
        foreign key (message_id) 
        references messages
-2026-03-18T12:30:42.261+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.907+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists reactions 
        add constraint FKqmewaibcp5bxtlqxc2cawhuln 
        foreign key (user_id) 
@@ -940,7 +1092,7 @@ Hibernate:
        add constraint FKqmewaibcp5bxtlqxc2cawhuln 
        foreign key (user_id) 
        references users
-2026-03-18T12:30:42.263+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.910+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspace_invitations 
        add constraint FKcw13o1mp447qs3h7kphm8hktm 
        foreign key (invitee_id) 
@@ -950,7 +1102,7 @@ Hibernate:
        add constraint FKcw13o1mp447qs3h7kphm8hktm 
        foreign key (invitee_id) 
        references users
-2026-03-18T12:30:42.267+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.915+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspace_invitations 
        add constraint FKj4tqiky662q6y79oc8gfh2ffa 
        foreign key (inviter_id) 
@@ -960,7 +1112,7 @@ Hibernate:
        add constraint FKj4tqiky662q6y79oc8gfh2ffa 
        foreign key (inviter_id) 
        references users
-2026-03-18T12:30:42.269+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.918+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspace_invitations 
        add constraint FKcjk1r4awojk9f3vcc7gak8rnv 
        foreign key (workspace_id) 
@@ -970,7 +1122,7 @@ Hibernate:
        add constraint FKcjk1r4awojk9f3vcc7gak8rnv 
        foreign key (workspace_id) 
        references workspaces
-2026-03-18T12:30:42.272+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.921+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspace_members 
        add constraint FK6vtnpc3eexk504u61uepn40p1 
        foreign key (user_id) 
@@ -980,7 +1132,7 @@ Hibernate:
        add constraint FK6vtnpc3eexk504u61uepn40p1 
        foreign key (user_id) 
        references users
-2026-03-18T12:30:42.274+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.924+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspace_members 
        add constraint FKw9hq87n3rvq2c4j47qo78i5r 
        foreign key (workspace_id) 
@@ -990,7 +1142,7 @@ Hibernate:
        add constraint FKw9hq87n3rvq2c4j47qo78i5r 
        foreign key (workspace_id) 
        references workspaces
-2026-03-18T12:30:42.276+05:30 DEBUG 9884 --- [           main] org.hibernate.SQL                        : 
+2026-04-01T16:27:04.927+05:30 DEBUG 16496 --- [           main] org.hibernate.SQL                        : 
     alter table if exists workspaces 
        add constraint FK58ks96jjlsbhsh21cen7hr59h 
        foreign key (owner_id) 
@@ -1000,102 +1152,23 @@ Hibernate:
        add constraint FK58ks96jjlsbhsh21cen7hr59h 
        foreign key (owner_id) 
        references users
-2026-03-18T12:30:42.280+05:30  INFO 9884 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-03-18T12:30:43.553+05:30  WARN 9884 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2026-03-18T12:30:43.731+05:30  INFO 9884 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@1df81376, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@4789c89e, org.springframework.security.web.context.SecurityContextHolderFilter@1ccb6dd2, org.springframework.security.web.header.HeaderWriterFilter@5bb64b2b, org.springframework.web.filter.CorsFilter@623f35de, org.springframework.security.web.authentication.logout.LogoutFilter@4cb2c334, com.bytechat.config.JwtFilter@1852c3ba, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@7ff70cf1, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@16f1ef37, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@507f939a, org.springframework.security.web.session.SessionManagementFilter@2fa64353, org.springframework.security.web.access.ExceptionTranslationFilter@7ff39597, org.springframework.security.web.access.intercept.AuthorizationFilter@127400db]
-2026-03-18T12:30:44.339+05:30 DEBUG 9884 --- [           main] com.bytechat.config.JwtFilter            : Filter 'jwtFilter' configured for use
-2026-03-18T12:30:44.339+05:30  INFO 9884 --- [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
-2026-03-18T12:30:44.339+05:30  INFO 9884 --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
-2026-03-18T12:30:44.341+05:30  INFO 9884 --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 2 ms
-2026-03-18T12:30:44.353+05:30  INFO 9884 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
-2026-03-18T12:30:44.353+05:30  INFO 9884 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@9f34b7d]]
-2026-03-18T12:30:44.416+05:30  INFO 9884 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
-2026-03-18T12:30:44.458+05:30  INFO 9884 --- [           main] .b.c.FileUploadControllerIntegrationTest : Started FileUploadControllerIntegrationTest in 5.374 seconds (process running for 75.265)
-
-MockHttpServletRequest:
-      HTTP Method = POST
-      Request URI = /api/files/upload
-       Parameters = {}
-          Headers = [Content-Type:"multipart/form-data;charset=UTF-8"]
-             Body = null
-    Session Attrs = {}
-
-Handler:
-             Type = null
-
-Async:
-    Async started = false
-     Async result = null
-
-Resolved Exception:
-             Type = null
-
-ModelAndView:
-        View name = null
-             View = null
-            Model = null
-
-FlashMap:
-       Attributes = null
-
-MockHttpServletResponse:
-           Status = 403
-    Error message = Access Denied
-          Headers = [Vary:"Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers", X-Content-Type-Options:"nosniff", X-XSS-Protection:"0", Cache-Control:"no-cache, no-store, max-age=0, must-revalidate", Pragma:"no-cache", Expires:"0", X-Frame-Options:"DENY"]
-     Content type = null
-             Body = 
-    Forwarded URL = null
-   Redirected URL = null
-          Cookies = []
+2026-04-01T16:27:04.931+05:30  INFO 16496 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-01T16:27:06.457+05:30  WARN 16496 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-04-01T16:27:06.997+05:30  INFO 16496 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@36fc31c1, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@36fa1d17, org.springframework.security.web.context.SecurityContextHolderFilter@37dfdaa5, org.springframework.security.web.header.HeaderWriterFilter@6b1db618, org.springframework.web.filter.CorsFilter@47872c28, org.springframework.security.web.csrf.CsrfFilter@20dccbe5, org.springframework.security.web.authentication.logout.LogoutFilter@38270425, com.bytechat.config.JwtFilter@15477c50, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@53d523d1, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@55fee2c5, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@4511d9a7, org.springframework.security.web.session.SessionManagementFilter@711ab480, org.springframework.security.web.access.ExceptionTranslationFilter@73e2e19e, org.springframework.security.web.access.intercept.AuthorizationFilter@60dc4906]
+2026-04-01T16:27:07.556+05:30  INFO 16496 --- [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-04-01T16:27:07.556+05:30  INFO 16496 --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-04-01T16:27:07.558+05:30  INFO 16496 --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 2 ms
+2026-04-01T16:27:07.573+05:30  INFO 16496 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-04-01T16:27:07.573+05:30  INFO 16496 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@646b56b]]
+2026-04-01T16:27:07.574+05:30  INFO 16496 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-04-01T16:27:07.586+05:30  INFO 16496 --- [           main] .b.c.FileUploadControllerIntegrationTest : Started FileUploadControllerIntegrationTest in 6.396 seconds (process running for 82.079)
+2026-04-01T16:27:08.085+05:30  INFO 16496 --- [           main] c.b.controllers.FileUploadController     : Received file upload request for file: test.txt, messageId: null
+2026-04-01T16:27:08.085+05:30  WARN 16496 --- [           main] c.b.controllers.FileUploadController     : Unauthorized file upload attempt.
 ]]></system-out>
   </testcase>
-  <testcase name="uploadFile_Success" classname="com.bytechat.controllers.FileUploadControllerIntegrationTest" time="0.013">
-    <failure message="Status expected:&lt;200&gt; but was:&lt;403&gt;" type="java.lang.AssertionError"><![CDATA[java.lang.AssertionError: Status expected:<200> but was:<403>
-	at org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:59)
-	at org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:122)
-	at org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:637)
-	at org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)
-	at com.bytechat.controllers.FileUploadControllerIntegrationTest.uploadFile_Success(FileUploadControllerIntegrationTest.java:46)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
-]]></failure>
-    <system-out><![CDATA[
-MockHttpServletRequest:
-      HTTP Method = POST
-      Request URI = /api/files/upload
-       Parameters = {}
-          Headers = [Content-Type:"multipart/form-data;charset=UTF-8"]
-             Body = null
-    Session Attrs = {}
-
-Handler:
-             Type = null
-
-Async:
-    Async started = false
-     Async result = null
-
-Resolved Exception:
-             Type = null
-
-ModelAndView:
-        View name = null
-             View = null
-            Model = null
-
-FlashMap:
-       Attributes = null
-
-MockHttpServletResponse:
-           Status = 403
-    Error message = Access Denied
-          Headers = [Vary:"Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers", X-Content-Type-Options:"nosniff", X-XSS-Protection:"0", Cache-Control:"no-cache, no-store, max-age=0, must-revalidate", Pragma:"no-cache", Expires:"0", X-Frame-Options:"DENY"]
-     Content type = null
-             Body = 
-    Forwarded URL = null
-   Redirected URL = null
-          Cookies = []
+  <testcase name="uploadFile_Success" classname="com.bytechat.controllers.FileUploadControllerIntegrationTest" time="0.029">
+    <system-out><![CDATA[2026-04-01T16:27:08.122+05:30  INFO 16496 --- [           main] c.b.controllers.FileUploadController     : Received file upload request for file: test.txt, messageId: null
+2026-04-01T16:27:08.126+05:30  INFO 16496 --- [           main] c.b.controllers.FileUploadController     : File uploaded successfully: test.txt by user 1
 ]]></system-out>
   </testcase>
 </testsuite>

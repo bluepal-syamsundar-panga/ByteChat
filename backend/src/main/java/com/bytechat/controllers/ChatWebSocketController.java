@@ -15,6 +15,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.util.Map;
+import java.security.Principal;
 
 @Controller
 @RequiredArgsConstructor
@@ -29,12 +30,13 @@ public class ChatWebSocketController {
     public void sendMessageToChannel(@DestinationVariable Long channelId, 
                                      @Payload MessageRequest chatMessage,
                                      SimpMessageHeaderAccessor headerAccessor) {
-                                     
-        if (headerAccessor.getUser() == null || headerAccessor.getUser().getName() == null) {
+
+        Principal principal = headerAccessor.getUser();
+        if (principal == null || principal.getName() == null) {
             log.warn("WebSocket message received without authenticated user for channel: {}", channelId);
             return;
         }
-        String email = headerAccessor.getUser().getName();
+        String email = principal.getName();
         
         User sender = userRepository.findByEmail(email).orElse(null);
         if (sender == null) return;
@@ -50,12 +52,17 @@ public class ChatWebSocketController {
     public void sendMessageToRoom(@DestinationVariable Long roomId, 
                                   @Payload MessageRequest chatMessage,
                                   SimpMessageHeaderAccessor headerAccessor) {
-                                  
-        String email = headerAccessor.getUser() != null ? headerAccessor.getUser().getName() : null;
-        if (email == null) return;
-        
-        User sender = userRepository.findByEmail(email).orElse(null);
-        if (sender == null) return;
+
+        Principal principal = headerAccessor.getUser();
+        if (principal == null || principal.getName() == null) {
+            log.warn("WebSocket room message received without authenticated user for room: {}", roomId);
+            return;
+        }
+
+        String email = principal.getName();
+        if (!userRepository.existsByEmail(email)) {
+            log.warn("WebSocket room message received for unknown user: {}", email);
+        }
         
         // This is for backward compatibility or workspace-wide announcements?
         // Let's assume for now rooms don't carry messages directly anymore, or they use a default channel.

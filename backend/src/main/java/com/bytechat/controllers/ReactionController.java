@@ -2,10 +2,8 @@ package com.bytechat.controllers;
 
 import com.bytechat.dto.response.ApiResponse;
 import com.bytechat.dto.response.MessageResponse;
-import com.bytechat.entity.Message;
 import com.bytechat.entity.Reaction;
 import com.bytechat.entity.User;
-import com.bytechat.repository.MessageRepository;
 import com.bytechat.services.MessageService;
 import com.bytechat.services.ReactionService;
 
@@ -32,9 +30,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 @SecurityRequirement(name = "Bearer Authentication")
 public class ReactionController {
 
+    private static final String CHANNEL_TOPIC_PREFIX = "/topic/channel/";
+    private static final String ROOM_TOPIC_PREFIX = "/topic/room/";
+
     private final ReactionService reactionService;
     private final MessageService messageService;
-    private final MessageRepository messageRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     @Operation(summary = "Add reaction", description = "Adds an emoji reaction to a specific message.")
@@ -48,16 +48,14 @@ public class ReactionController {
             reactionService.addReaction(messageId, currentUser.getId(), emoji);
             
             // Get full updated message response
-            Message message = messageRepository.findById(messageId)
-                    .orElseThrow(() -> new RuntimeException("Message not found"));
             MessageResponse response = messageService.getMessageResponse(messageId, currentUser);
             
             if (response != null) {
                 // Broadcast update
                 if (response.getChannelId() != null) {
-                    messagingTemplate.convertAndSend("/topic/channel/" + response.getChannelId(), response);
+                    messagingTemplate.convertAndSend(CHANNEL_TOPIC_PREFIX + response.getChannelId(), response);
                 } else if (response.getRoomId() != null) {
-                    messagingTemplate.convertAndSend("/topic/room/" + response.getRoomId(), response);
+                    messagingTemplate.convertAndSend(ROOM_TOPIC_PREFIX + response.getRoomId(), response);
                 }
             }
 

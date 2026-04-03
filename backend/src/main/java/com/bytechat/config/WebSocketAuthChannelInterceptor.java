@@ -3,6 +3,7 @@ package com.bytechat.config;
 import com.bytechat.entity.User;
 import com.bytechat.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -20,6 +21,8 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
     private final UserRepository userRepository;
 
     @Override
+    @SuppressWarnings("java:S2637")
+    @Nullable
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
         if (accessor == null || accessor.getCommand() != StompCommand.CONNECT) {

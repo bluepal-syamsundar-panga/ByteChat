@@ -23,6 +23,8 @@ import java.time.LocalDateTime;
 @Slf4j
 public class AuthServiceImpl implements AuthService {
 
+    private static final String USER_NOT_FOUND = "User not found";
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -95,7 +97,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new com.bytechat.exception.ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new com.bytechat.exception.ResourceNotFoundException(USER_NOT_FOUND));
 
         user.setOnline(true);
         user.setLastSeen(LocalDateTime.now());
@@ -124,7 +126,7 @@ public class AuthServiceImpl implements AuthService {
         String email = jwtService.extractUsername(refreshToken);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new com.bytechat.exception.ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new com.bytechat.exception.ResourceNotFoundException(USER_NOT_FOUND));
 
         if (!jwtService.isTokenValid(refreshToken, user)) {
             log.warn("Invalid refresh token attempt for user {}", email);
@@ -175,7 +177,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new com.bytechat.exception.ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new com.bytechat.exception.ResourceNotFoundException(USER_NOT_FOUND));
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);

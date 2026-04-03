@@ -29,6 +29,9 @@ import java.time.LocalDateTime;
 @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "Bearer Authentication")
 public class MessageController {
 
+    private static final String CHANNEL_TOPIC_PREFIX = "/topic/channel/";
+    private static final String ROOM_TOPIC_PREFIX = "/topic/room/";
+
     private final MessageService messageService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -59,7 +62,7 @@ public class MessageController {
         MessageResponse response = messageService.sendMessage(channelId, request, currentUser);
         
         // Broadcast via WebSocket
-        messagingTemplate.convertAndSend("/topic/channel/" + channelId, response);
+        messagingTemplate.convertAndSend(CHANNEL_TOPIC_PREFIX + channelId, response);
         
         return ResponseEntity.ok(ApiResponse.success(response, "Message sent successfully"));
     }
@@ -75,9 +78,9 @@ public class MessageController {
         
         // Broadcast update to channel topic (frontend subscribes to channel topics)
         if (response.getChannelId() != null) {
-            messagingTemplate.convertAndSend("/topic/channel/" + response.getChannelId(), response);
+            messagingTemplate.convertAndSend(CHANNEL_TOPIC_PREFIX + response.getChannelId(), response);
         } else if (response.getRoomId() != null) {
-            messagingTemplate.convertAndSend("/topic/room/" + response.getRoomId(), response);
+            messagingTemplate.convertAndSend(ROOM_TOPIC_PREFIX + response.getRoomId(), response);
         }
         
         return ResponseEntity.ok(ApiResponse.success(response, "Message edited successfully"));
@@ -94,9 +97,9 @@ public class MessageController {
         
         // Broadcast update to channel topic
         if (response.getChannelId() != null) {
-            messagingTemplate.convertAndSend("/topic/channel/" + response.getChannelId(), response);
+            messagingTemplate.convertAndSend(CHANNEL_TOPIC_PREFIX + response.getChannelId(), response);
         } else if (response.getRoomId() != null) {
-            messagingTemplate.convertAndSend("/topic/room/" + response.getRoomId(), response);
+            messagingTemplate.convertAndSend(ROOM_TOPIC_PREFIX + response.getRoomId(), response);
         }
         
         return ResponseEntity.ok(ApiResponse.success(null, "Message deleted successfully"));
@@ -121,9 +124,9 @@ public class MessageController {
         
         // Broadcast update to channel topic (frontend subscribes to channel topics)
         if (response.getChannelId() != null) {
-            messagingTemplate.convertAndSend("/topic/channel/" + response.getChannelId(), response);
+            messagingTemplate.convertAndSend(CHANNEL_TOPIC_PREFIX + response.getChannelId(), response);
         } else if (response.getRoomId() != null) {
-            messagingTemplate.convertAndSend("/topic/room/" + response.getRoomId(), response);
+            messagingTemplate.convertAndSend(ROOM_TOPIC_PREFIX + response.getRoomId(), response);
         }
         
         return ResponseEntity.ok(ApiResponse.success(response, "Message pin toggled"));

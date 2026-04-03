@@ -29,6 +29,8 @@ import java.time.LocalDateTime;
 @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "Bearer Authentication")
 public class DirectMessageController {
 
+    private static final String DM_TOPIC_PREFIX = "/topic/dm/";
+
     private final DirectMessageService directMessageService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -63,8 +65,8 @@ public class DirectMessageController {
         MessageResponse response = directMessageService.sendDirectMessage(otherUserId, request, currentUser);
         
         // Broadcast to both sender and receiver
-        messagingTemplate.convertAndSend("/topic/dm/" + otherUserId, response);
-        messagingTemplate.convertAndSend("/topic/dm/" + currentUser.getId(), response);
+        messagingTemplate.convertAndSend(DM_TOPIC_PREFIX + otherUserId, response);
+        messagingTemplate.convertAndSend(DM_TOPIC_PREFIX + currentUser.getId(), response);
         
         return ResponseEntity.ok(ApiResponse.success(response, "DM sent successfully"));
     }
@@ -122,11 +124,11 @@ public class DirectMessageController {
     }
 
     private void broadcastUpdate(MessageResponse response, Long currentUserId) {
-        messagingTemplate.convertAndSend("/topic/dm/" + response.getSenderId(), response);
+        messagingTemplate.convertAndSend(DM_TOPIC_PREFIX + response.getSenderId(), response);
         if (response.getRecipientId() != null) {
-            messagingTemplate.convertAndSend("/topic/dm/" + response.getRecipientId(), response);
+            messagingTemplate.convertAndSend(DM_TOPIC_PREFIX + response.getRecipientId(), response);
         } else if (currentUserId != null) {
-            messagingTemplate.convertAndSend("/topic/dm/" + currentUserId, response);
+            messagingTemplate.convertAndSend(DM_TOPIC_PREFIX + currentUserId, response);
         }
     }
 }

@@ -30,6 +30,8 @@ import java.util.List;
 @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "Bearer Authentication")
 public class WorkspaceController {
 
+    private static final String USER_NOT_AUTHENTICATED = "User not authenticated";
+
     private final WorkspaceService workspaceService;
     private final OtpService otpService;
 
@@ -79,7 +81,7 @@ public class WorkspaceController {
             @Parameter(description = "Number of items per page") @RequestParam(name = "size", defaultValue = "50") int size,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
-            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+            return ResponseEntity.status(401).body(ApiResponse.error(USER_NOT_AUTHENTICATED));
         }
         Page<WorkspaceResponse> workspaces = workspaceService.getUserWorkspaces(currentUser, page, size);
         return ResponseEntity.ok(ApiResponse.success(workspaces, "Workspaces fetched successfully"));
@@ -91,7 +93,7 @@ public class WorkspaceController {
             @Parameter(description = "ID of the workspace to join") @PathVariable(name = "workspaceId") Long workspaceId,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
-            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+            return ResponseEntity.status(401).body(ApiResponse.error(USER_NOT_AUTHENTICATED));
         }
         workspaceService.joinWorkspace(workspaceId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Joined workspace successfully"));
@@ -104,7 +106,7 @@ public class WorkspaceController {
             @Valid @RequestBody InviteUserRequest request,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
-            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+            return ResponseEntity.status(401).body(ApiResponse.error(USER_NOT_AUTHENTICATED));
         }
         workspaceService.inviteUser(workspaceId, request, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Invitation sent"));
@@ -116,7 +118,7 @@ public class WorkspaceController {
             @Parameter(description = "ID of the workspace") @PathVariable(name = "workspaceId") Long workspaceId,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
-            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+            return ResponseEntity.status(401).body(ApiResponse.error(USER_NOT_AUTHENTICATED));
         }
         workspaceService.leaveWorkspace(workspaceId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Left workspace successfully"));
@@ -128,7 +130,7 @@ public class WorkspaceController {
             @Parameter(description = "ID of the workspace") @PathVariable(name = "workspaceId") Long workspaceId,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
-            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+            return ResponseEntity.status(401).body(ApiResponse.error(USER_NOT_AUTHENTICATED));
         }
         return ResponseEntity.ok(ApiResponse.success(workspaceService.getWorkspaceMembers(workspaceId, currentUser), "Workspace members fetched"));
     }
@@ -140,7 +142,7 @@ public class WorkspaceController {
             @Parameter(description = "ID of the user to remove") @PathVariable(name = "userId") Long userId,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
-            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+            return ResponseEntity.status(401).body(ApiResponse.error(USER_NOT_AUTHENTICATED));
         }
         workspaceService.removeMember(workspaceId, userId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Member removed from workspace"));
@@ -152,7 +154,7 @@ public class WorkspaceController {
             @Parameter(description = "ID of the workspace") @PathVariable(name = "workspaceId") Long workspaceId,
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
-            return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
+            return ResponseEntity.status(401).body(ApiResponse.error(USER_NOT_AUTHENTICATED));
         }
         workspaceService.deleteWorkspace(workspaceId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(null, "Workspace deleted successfully"));

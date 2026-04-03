@@ -1,5 +1,7 @@
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\controllers\UserController.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\request\JoinMeetingRequest.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\controllers\ReactionController.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\repository\MeetingRepository.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\MessageService.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\FileStorageService.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\exception\UnauthorizedException.java
@@ -7,6 +9,7 @@ D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\config\StaticResourceCon
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\serviceimpl\MessageServiceImpl.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\response\AttachmentResponse.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\WorkspaceMember.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\response\CursorPageResponse.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\serviceimpl\WorkspaceServiceImpl.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\WorkspaceRole.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\repository\NotificationRepository.java
@@ -24,6 +27,7 @@ D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\request\CreateWorksp
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\repository\DirectMessageRepository.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\repository\WorkspaceMemberRepository.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\request\RefreshTokenRequest.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\MeetingService.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\repository\MessageRepository.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\Notification.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\serviceimpl\PresenceServiceImpl.java
@@ -34,6 +38,7 @@ D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\AuthService.jav
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\controllers\ChannelController.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\ChannelService.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\controllers\WorkspaceController.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\serviceimpl\MeetingServiceImpl.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\repository\MessageReadRepository.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\Reaction.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\repository\OtpRepository.java
@@ -50,10 +55,12 @@ D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\Otp.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\controllers\NotificationController.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\config\WebSocketConfig.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\config\SecurityConfig.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\controllers\MeetingController.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\OtpService.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\controllers\ChatWebSocketController.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\repository\AttachmentRepository.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\WorkspaceService.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\request\CreateMeetingRequest.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\request\UpdateProfileRequest.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\response\AuthResponse.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\serviceimpl\DirectMessageServiceImpl.java
@@ -102,6 +109,8 @@ D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\repository\UserRepositor
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\response\MessageReadUserResponse.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\serviceimpl\CloudinaryServiceImpl.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\OtpType.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\Meeting.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\response\MeetingResponse.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\entity\WorkspaceInvitation.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\config\OpenApiConfig.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\controllers\MessageController.java

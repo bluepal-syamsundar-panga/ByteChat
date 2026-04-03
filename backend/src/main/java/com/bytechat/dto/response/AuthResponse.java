@@ -13,9 +13,9 @@ public class AuthResponse {
     public AuthResponse() {
     }
 
-    public AuthResponse(String token, String accessToken, String refreshToken, String email, String displayName,
+    public AuthResponse(String accessToken, String refreshToken, String email, String displayName,
                         String avatarUrl, Long userId, String role) {
-        this.token = token;
+        this.token = accessToken;
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.email = email;
@@ -27,7 +27,7 @@ public class AuthResponse {
 
     public static AuthResponse of(String accessToken, String refreshToken, String email, String displayName,
                                   String avatarUrl, Long userId, String role) {
-        return new AuthResponse(accessToken, accessToken, refreshToken, email, displayName, avatarUrl, userId, role);
+        return new AuthResponse(accessToken, refreshToken, email, displayName, avatarUrl, userId, role);
     }
 
     public String getToken() {
