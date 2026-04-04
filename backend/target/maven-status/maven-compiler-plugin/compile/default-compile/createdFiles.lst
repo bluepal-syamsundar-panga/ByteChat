@@ -135,6 +135,7 @@ com\bytechat\entity\User$UserBuilder.class
 com\bytechat\services\UserService.class
 com\bytechat\dto\request\RefreshTokenRequest.class
 com\bytechat\controllers\ChannelController.class
+com\bytechat\serviceimpl\NotificationServiceImpl$1.class
 com\bytechat\entity\WorkspaceRole.class
 com\bytechat\dto\response\ReactionResponse.class
 com\bytechat\entity\WorkspaceMember.class

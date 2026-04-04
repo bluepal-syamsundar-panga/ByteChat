@@ -18,5 +18,6 @@ D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\controllers\ReactionCont
 D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\serviceimpl\DirectMessageServiceImplTest.java
 D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\serviceimpl\OtpServiceImplTest.java
 D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\controllers\ChannelControllerIntegrationTest.java
+D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\AbstractIntegrationTest.java
 D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\controllers\DMRequestControllerIntegrationTest.java
 D:\ByteChat\ByteChat\backend\src\test\java\com\bytechat\serviceimpl\ReactionServiceImplTest.java

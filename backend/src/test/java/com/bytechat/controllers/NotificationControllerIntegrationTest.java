@@ -29,11 +29,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.bytechat.AbstractIntegrationTest;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestWebSocketConfig.class)
-class NotificationControllerIntegrationTest {
+class NotificationControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

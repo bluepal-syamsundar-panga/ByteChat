@@ -25,11 +25,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.bytechat.AbstractIntegrationTest;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestWebSocketConfig.class)
-class UserControllerIntegrationTest {
+class UserControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
