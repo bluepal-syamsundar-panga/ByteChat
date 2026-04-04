@@ -38,7 +38,6 @@ com\bytechat\entity\MessageRead$MessageReadBuilder.class
 com\bytechat\controllers\MessageController.class
 com\bytechat\entity\Otp.class
 com\bytechat\controllers\WorkspaceController.class
-com\bytechat\serviceimpl\WorkspaceServiceImpl.class
 com\bytechat\config\WebSocketEventListener.class
 com\bytechat\entity\InvitationStatus.class
 com\bytechat\serviceimpl\CloudinaryServiceImpl.class
@@ -95,7 +94,6 @@ com\bytechat\entity\DirectMessage$DirectMessageBuilder.class
 com\bytechat\dto\request\CreateWorkspaceRequest$CreateWorkspaceRequestBuilder.class
 com\bytechat\controllers\AuthController.class
 com\bytechat\entity\ChannelInvitation.class
-com\bytechat\serviceimpl\ChannelServiceImpl.class
 com\bytechat\services\OtpService.class
 com\bytechat\entity\DirectMessage.class
 com\bytechat\services\DirectMessageService.class

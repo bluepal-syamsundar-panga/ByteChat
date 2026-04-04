@@ -58,6 +58,7 @@ D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\config\SecurityConfig.ja
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\controllers\MeetingController.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\OtpService.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\controllers\ChatWebSocketController.java
+D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\config\RedisConfig.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\repository\AttachmentRepository.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\services\WorkspaceService.java
 D:\ByteChat\ByteChat\backend\src\main\java\com\bytechat\dto\request\CreateMeetingRequest.java

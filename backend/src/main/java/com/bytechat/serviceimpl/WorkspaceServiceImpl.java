@@ -12,6 +12,8 @@ import com.bytechat.services.ChannelService;
 import com.bytechat.services.NotificationService;
 import com.bytechat.services.WorkspaceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"workspaces", "userWorkspaces"}, allEntries = true)
     public WorkspaceResponse createWorkspace(CreateWorkspaceRequest request, User currentUser) {
         Workspace workspace = Workspace.builder()
                 .name(request.getName())
@@ -74,6 +77,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"workspaces", "userWorkspaces"}, allEntries = true)
     public WorkspaceCreationResponse createWorkspaceWithDetails(CreateWorkspaceRequest request, String email, User currentUser) {
         User workspaceOwner = null;
         if (currentUser != null) {
@@ -125,6 +129,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"userWorkspaces"}, allEntries = true)
     public void joinWorkspace(Long workspaceId, User currentUser) {
         log.info("User {} joining workspace {}", currentUser.getEmail(), workspaceId);
         Workspace workspace = getWorkspaceOrThrow(workspaceId);
@@ -154,6 +159,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"userWorkspaces"}, allEntries = true)
     public void leaveWorkspace(Long workspaceId, User currentUser) {
         log.info("User {} leaving workspace {}", currentUser.getEmail(), workspaceId);
         WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, currentUser.getId())
@@ -170,6 +176,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"workspaces", "userWorkspaces"}, allEntries = true)
     public void deleteWorkspace(Long workspaceId, User currentUser) {
         log.info("Deleting workspace {} by user {}", workspaceId, currentUser.getEmail());
         Workspace workspace = getWorkspaceOrThrow(workspaceId);
@@ -185,6 +192,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"userWorkspaces"}, allEntries = true)
     public void removeMember(Long workspaceId, Long userId, User currentUser) {
         log.info("Removing member {} from workspace {} by user {}", userId, workspaceId, currentUser.getEmail());
         Workspace workspace = getWorkspaceOrThrow(workspaceId);
@@ -306,6 +314,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "userWorkspaces", allEntries = true)
     public void acceptInvite(Long notificationId, User currentUser) {
         log.info("User {} accepting invite from notification {}", currentUser.getEmail(), notificationId);
         Notification notification = notificationRepository.findById(notificationId)
@@ -372,19 +381,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     private boolean isWorkspaceWideDefaultChannel(Channel channel) {
         return channel != null && (channel.isDefault() || "general".equalsIgnoreCase(channel.getName()));
-    }
-
-    private WorkspaceResponse mapToResponse(Workspace workspace) {
-        if (workspace == null) return null;
-        return WorkspaceResponse.builder()
-                .id(workspace.getId())
-                .name(workspace.getName())
-                .description(workspace.getDescription())
-                .isPrivate(workspace.isPrivate())
-                .isArchived(workspace.isArchived())
-                .createdById(workspace.getOwner() != null ? workspace.getOwner().getId() : null)
-                .createdAt(workspace.getCreatedAt())
-                .build();
     }
 
     private WorkspaceResponse mapToResponse(Workspace workspace, User currentUser) {

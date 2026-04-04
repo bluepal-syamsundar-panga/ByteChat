@@ -11,6 +11,8 @@ import com.bytechat.exception.ResourceNotFoundException;
 import com.bytechat.services.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"workspaceChannels", "channelMembers"}, allEntries = true)
     public ChannelResponse createChannel(Long workspaceId, String name, String description, boolean isPrivate, boolean isDefault, User creator) {
         log.info("Creating channel {} in workspace {} by user {}", name, workspaceId, creator != null ? creator.getEmail() : "SYSTEM");
         Workspace workspace = workspaceRepository.findById(workspaceId)
@@ -73,6 +76,8 @@ public class ChannelServiceImpl implements ChannelService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    @Cacheable(value = "workspaceChannels", key = "#workspaceId + '-' + #currentUser.id")
     public List<ChannelResponse> getWorkspaceChannels(Long workspaceId, User currentUser) {
         log.info("Fetching visible channels for workspace {} for user {}", workspaceId, currentUser.getEmail());
         if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, currentUser.getId())) {
@@ -107,6 +112,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"channelMembers", "workspaceChannels"}, allEntries = true)
     public void addMember(Long channelId, User user) {
         log.info("Adding member {} to channel {}", user.getEmail(), channelId);
         Channel channel = getChannel(channelId);
@@ -139,6 +145,8 @@ public class ChannelServiceImpl implements ChannelService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    @Cacheable(value = "channelMembers", key = "#channelId")
     public List<UserResponse> getChannelMembers(Long channelId) {
         log.info("Fetching members for channel {}", channelId);
         Channel channel = getChannel(channelId);
@@ -213,6 +221,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"channelMembers", "workspaceChannels"}, allEntries = true)
     public void acceptInvite(Long notificationId, User currentUser) {
         log.info("User {} accepting channel invite from notification {}", currentUser.getEmail(), notificationId);
         Notification notification = notificationRepository.findById(notificationId)
@@ -255,6 +264,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"channelMembers", "workspaceChannels"}, allEntries = true)
     public void leaveChannel(Long channelId, User currentUser) {
         log.info("User {} leaving channel {}", currentUser.getEmail(), channelId);
         Channel channel = getChannel(channelId);
@@ -288,6 +298,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"workspaceChannels", "channelMembers"}, allEntries = true)
     public void deleteChannel(Long channelId, User currentUser) {
         log.info("Deleting channel {} by user {}", channelId, currentUser.getEmail());
         Channel channel = getChannel(channelId);
@@ -316,6 +327,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"workspaceChannels", "channelMembers"}, allEntries = true)
     public void permanentlyDeleteChannel(Long channelId, User currentUser) {
         log.info("Permanently deleting channel {} by user {}", channelId, currentUser.getEmail());
         Channel channel = getChannel(channelId);
@@ -342,6 +354,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"channelMembers", "workspaceChannels"}, allEntries = true)
     public void removeMember(Long channelId, Long userId, User currentUser) {
         log.info("Removing member {} from channel {} by admin {}", userId, channelId, currentUser.getEmail());
         Channel channel = getChannel(channelId);
@@ -434,6 +447,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"workspaceChannels", "channelMembers"}, allEntries = true)
     public void restoreChannel(Long channelId, User currentUser) {
         log.info("Restoring channel {} for user {}", channelId, currentUser.getEmail());
         Channel channel = getChannel(channelId);

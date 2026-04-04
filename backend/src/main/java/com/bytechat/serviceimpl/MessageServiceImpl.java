@@ -22,6 +22,7 @@ import com.bytechat.services.MessageService;
 import com.bytechat.services.NotificationService;
 import com.bytechat.repository.ChannelMemberRepository;
 import com.bytechat.dto.response.NotificationResponse;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -199,6 +200,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "workspaceChannels", allEntries = true)
     public void markAsRead(Long messageId, User currentUser) {
         if (!messageReadRepository.existsByMessageIdAndUserId(messageId, currentUser.getId())) {
             log.debug("Marking message {} as read for user {}", messageId, currentUser.getEmail());
@@ -214,6 +216,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "workspaceChannels", allEntries = true)
     public void markChannelAsRead(Long channelId, User currentUser) {
         log.info("Marking all messages in channel {} as read for user {}", channelId, currentUser.getEmail());
         List<Message> unreadMessages = messageRepository.findUnreadMessagesInChannel(channelId, currentUser.getId());
