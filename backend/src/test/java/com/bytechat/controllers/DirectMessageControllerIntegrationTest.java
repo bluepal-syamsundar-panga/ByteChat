@@ -1,5 +1,6 @@
 package com.bytechat.controllers;
 
+import com.bytechat.AbstractIntegrationTest;
 import com.bytechat.config.TestWebSocketConfig;
 import com.bytechat.dto.request.MessageRequest;
 import com.bytechat.dto.response.CursorPageResponse;
@@ -23,25 +24,30 @@ import java.util.Collections;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 @Import(TestWebSocketConfig.class)
-class DirectMessageControllerIntegrationTest {
+class DirectMessageControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
     private DirectMessageService directMessageService;
+
+    @MockBean
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     private User testUser;
 
@@ -110,6 +116,50 @@ class DirectMessageControllerIntegrationTest {
 
         mockMvc.perform(post("/api/dm/2/read")
                         .with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void editMessage_Success() throws Exception {
+        MessageResponse response = new MessageResponse();
+        response.setSenderId(1L);
+        when(directMessageService.editMessage(anyLong(), anyString(), any())).thenReturn(response);
+        mockMvc.perform(put("/api/dm/1").with(user(testUser))
+                        .contentType("application/json")
+                        .content("{\"content\": \"Edited Content\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void deleteMessage_Success() throws Exception {
+        MessageResponse response = new MessageResponse();
+        response.setSenderId(1L);
+        when(directMessageService.deleteMessage(anyLong(), anyString(), any())).thenReturn(response);
+        mockMvc.perform(delete("/api/dm/1").with(user(testUser))
+                        .param("scope", "all"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void pinMessage_Success() throws Exception {
+        when(directMessageService.pinMessage(anyLong(), any())).thenReturn(new MessageResponse());
+        mockMvc.perform(post("/api/dm/1/pin")
+                        .with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void reactToMessage_Success() throws Exception {
+        MessageResponse response = new MessageResponse();
+        response.setSenderId(1L);
+        when(directMessageService.reactToMessage(anyLong(), anyString(), any())).thenReturn(response);
+        mockMvc.perform(post("/api/dm/1/react")
+                        .with(user(testUser))
+                        .param("emoji", "👍"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }

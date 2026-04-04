@@ -24,13 +24,16 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import com.bytechat.AbstractIntegrationTest;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestWebSocketConfig.class)
-class WorkspaceControllerIntegrationTest {
+class WorkspaceControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -40,6 +43,9 @@ class WorkspaceControllerIntegrationTest {
 
     @MockBean
     private WorkspaceService workspaceService;
+
+    @MockBean
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     @MockBean
     private OtpService otpService;
@@ -97,6 +103,27 @@ class WorkspaceControllerIntegrationTest {
         when(workspaceService.getWorkspaceMembers(anyLong(), any())).thenReturn(Collections.emptyList());
 
         mockMvc.perform(get("/api/workspaces/1/members").with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void joinWorkspace_Success() throws Exception {
+        mockMvc.perform(post("/api/workspaces/{id}/join", 1L).with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void leaveWorkspace_Success() throws Exception {
+        mockMvc.perform(post("/api/workspaces/{id}/leave", 1L).with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void deleteWorkspace_Success() throws Exception {
+        mockMvc.perform(delete("/api/workspaces/1").with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }

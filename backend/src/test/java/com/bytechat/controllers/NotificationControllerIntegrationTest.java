@@ -78,6 +78,35 @@ class NotificationControllerIntegrationTest extends AbstractIntegrationTest {
         verify(notificationService).markAsRead(1L);
     }
 
+    // Removing non-existent endpoint test
+
+    @Test
+    void markWorkspaceAsRead_Success() throws Exception {
+        mockMvc.perform(put("/api/notifications/mark-workspace-read/1").with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+        
+        verify(notificationService).markWorkspaceNotificationsAsRead(eq(testUser.getId()), eq(1L));
+    }
+
+    @Test
+    void markChannelAsRead_Success() throws Exception {
+        mockMvc.perform(put("/api/notifications/mark-room-read/1").with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+        
+        verify(notificationService).markChannelNotificationsAsRead(eq(testUser.getId()), eq(1L));
+    }
+
+    @Test
+    void markDMAsRead_Success() throws Exception {
+        mockMvc.perform(put("/api/notifications/mark-dm-read/2").with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+        
+        verify(notificationService).markDMNotificationsAsRead(eq(testUser.getId()), eq(2L));
+    }
+
     @Test
     void acceptInvite_Success() throws Exception {
         Notification notification = Notification.builder().id(1L).type("WORKSPACE_INVITE").build();

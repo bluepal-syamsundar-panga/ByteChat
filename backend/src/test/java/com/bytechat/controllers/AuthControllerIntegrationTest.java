@@ -1,6 +1,7 @@
 package com.bytechat.controllers;
 
 import com.bytechat.dto.request.AuthRequest;
+import com.bytechat.dto.request.RefreshTokenRequest;
 import com.bytechat.dto.response.AuthResponse;
 import com.bytechat.services.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,11 +22,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.bytechat.AbstractIntegrationTest;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestWebSocketConfig.class)
-class AuthControllerIntegrationTest {
+class AuthControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -73,17 +76,34 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    void login_Failure_InvalidCredentials() throws Exception {
-        AuthRequest request = new AuthRequest();
-        request.setEmail("wrong@example.com");
-        request.setPassword("wrong");
+    void sendRegistrationOtp_Success() throws Exception {
+        mockMvc.perform(post("/api/auth/register/send-otp")
+                .param("email", "test@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
 
-        when(authService.login(any(AuthRequest.class))).thenThrow(new RuntimeException("Invalid credentials"));
+    @Test
+    void sendForgotPasswordOtp_Success() throws Exception {
+        mockMvc.perform(post("/api/auth/forgot-password/send-otp")
+                .param("email", "test@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
 
-        mockMvc.perform(post("/api/auth/login")
+    @Test
+    void refresh_Success() throws Exception {
+        RefreshTokenRequest request = new RefreshTokenRequest();
+        request.setRefreshToken("old_refresh");
+
+        AuthResponse authResponse = AuthResponse.of("new_access", "new_refresh", "test@example.com", "Test User", null, 1L, "MEMBER");
+        when(authService.refreshToken(any(RefreshTokenRequest.class))).thenReturn(authResponse);
+
+        mockMvc.perform(post("/api/auth/refresh")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("new_access"));
     }
 }

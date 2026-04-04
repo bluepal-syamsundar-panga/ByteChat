@@ -23,19 +23,23 @@ import java.util.Collections;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.bytechat.AbstractIntegrationTest;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestWebSocketConfig.class)
-class MessageControllerIntegrationTest {
+class MessageControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -45,6 +49,9 @@ class MessageControllerIntegrationTest {
 
     @MockBean
     private MessageService messageService;
+
+    @MockBean
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     private User testUser;
 
@@ -110,4 +117,33 @@ class MessageControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
+
+    @Test
+    void deleteMessage_Success() throws Exception {
+        MessageResponse response = MessageResponse.builder().id(1L).channelId(1L).build();
+        when(messageService.deleteMessage(anyLong(), anyString(), any())).thenReturn(response);
+        mockMvc.perform(delete("/api/messages/1")
+                        .with(user(testUser))
+                        .param("scope", "all"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void markAsRead_Success() throws Exception {
+        mockMvc.perform(post("/api/messages/1/read")
+                        .with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void markChannelAsRead_Success() throws Exception {
+        mockMvc.perform(post("/api/messages/channel/1/read")
+                        .with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    // Removed non-existent reactToMessage endpoint test
 }

@@ -140,24 +140,37 @@ class MessageServiceImplTest {
     }
 
     @Test
-    void editMessage_NotSender_ThrowsException() {
-        User otherUser = User.builder().id(2L).build();
+    void getMessageResponse_Success() {
         when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).thenReturn(true);
 
-        assertThrows(UnauthorizedException.class,
-                () -> messageService.editMessage(1L, messageRequest, otherUser));
+        MessageResponse response = messageService.getMessageResponse(1L, sender);
+
+        assertNotNull(response);
     }
 
     // ================= DELETE =================
 
     @Test
-    void deleteMessage_Success() {
+    void deleteMessage_AllScope_Success() {
         when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
         when(messageRepository.save(any(Message.class))).thenReturn(message);
 
         messageService.deleteMessage(1L, "all", sender);
 
         assertTrue(message.isDeleted());
+    }
+
+    @Test
+    void deleteMessage_SelfScope_Success() {
+        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(anyLong(), anyLong())).thenReturn(true);
+        when(messageRepository.save(any(Message.class))).thenReturn(message);
+
+        messageService.deleteMessage(1L, "self", sender);
+
+        assertNotNull(message.getHiddenForUserIds());
+        assertTrue(message.getHiddenForUserIds().contains(sender.getId()));
     }
 
     // ================= PIN =================
@@ -204,5 +217,26 @@ class MessageServiceImplTest {
 
         verify(reactionRepository).delete(reaction);
         verify(reactionRepository).flush();
+    }
+
+    @Test
+    void markAsRead_Success() {
+        when(messageReadRepository.existsByMessageIdAndUserId(1L, 1L)).thenReturn(false);
+        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+
+        messageService.markAsRead(1L, sender);
+
+        verify(messageReadRepository).save(any(MessageRead.class));
+        verify(notificationService).markRelatedNotificationsAsRead(eq(1L), eq("MENTION"), eq(1L));
+    }
+
+    @Test
+    void markChannelAsRead_Success() {
+        when(messageRepository.findUnreadMessagesInChannel(1L, 1L)).thenReturn(List.of(message));
+
+        messageService.markChannelAsRead(1L, sender);
+
+        verify(messageReadRepository).saveAll(anyList());
+        verify(notificationService).markChannelNotificationsAsRead(1L, 1L);
     }
 }

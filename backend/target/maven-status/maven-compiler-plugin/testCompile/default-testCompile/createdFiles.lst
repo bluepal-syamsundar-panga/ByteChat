@@ -5,7 +5,11 @@ com\bytechat\controllers\ReactionControllerIntegrationTest.class
 com\bytechat\serviceimpl\DirectMessageServiceImplTest.class
 com\bytechat\serviceimpl\AuthServiceImplTest.class
 com\bytechat\controllers\FileUploadControllerIntegrationTest.class
+com\bytechat\controllers\TypingControllerIntegrationTest.class
+com\bytechat\serviceimpl\CloudinaryServiceImplTest.class
 com\bytechat\serviceimpl\MeetingServiceImplTest.class
+com\bytechat\controllers\MeetingControllerIntegrationTest.class
+com\bytechat\AbstractIntegrationTest.class
 com\bytechat\serviceimpl\ReactionServiceImplTest.class
 com\bytechat\serviceimpl\OtpServiceImplTest.class
 com\bytechat\serviceimpl\MessageServiceImplTest.class
@@ -15,7 +19,11 @@ com\bytechat\config\TestWebSocketConfig$1.class
 com\bytechat\serviceimpl\ChannelServiceImplTest.class
 com\bytechat\controllers\AuthControllerIntegrationTest.class
 com\bytechat\serviceimpl\WorkspaceServiceImplTest.class
+com\bytechat\serviceimpl\EmailServiceImplTest.class
+com\bytechat\serviceimpl\FileStorageServiceImplTest.class
+com\bytechat\controllers\ChatWebSocketControllerIntegrationTest.class
 com\bytechat\controllers\MessageControllerIntegrationTest.class
+com\bytechat\serviceimpl\PresenceServiceImplTest.class
 com\bytechat\controllers\DirectMessageControllerIntegrationTest.class
 com\bytechat\controllers\NotificationControllerIntegrationTest.class
 com\bytechat\controllers\ChannelControllerIntegrationTest.class

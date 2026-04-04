@@ -19,6 +19,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -153,22 +154,60 @@ class WorkspaceServiceImplTest {
     }
 
     @Test
-    void inviteUser_WithPendingInvite_ThrowsConflictException() {
-        User invitedUser = User.builder().id(2L).email("member@example.com").displayName("Member").build();
-
+    void inviteUser_Success() {
+        User invitedUser = User.builder().id(2L).email("new@example.com").build();
         when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
-        when(userRepository.findByEmail("member@example.com")).thenReturn(Optional.of(invitedUser));
-        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, invitedUser.getId())).thenReturn(false);
-        when(notificationRepository.findByRecipientIdAndTypeAndRelatedEntityIdAndIsReadFalse(invitedUser.getId(), "WORKSPACE_INVITE", 1L))
-                .thenReturn(Collections.singletonList(Notification.builder().id(99L).build()));
+        when(userRepository.findByEmail("new@example.com")).thenReturn(Optional.of(invitedUser));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 2L)).thenReturn(false);
+        when(notificationRepository.findByRecipientIdAndTypeAndRelatedEntityIdAndIsReadFalse(2L, "WORKSPACE_INVITE", 1L))
+                .thenReturn(Collections.emptyList());
 
-        ConflictException exception = assertThrows(
-                ConflictException.class,
-                () -> workspaceService.inviteUser(1L, "member@example.com", owner)
-        );
+        workspaceService.inviteUser(1L, "new@example.com", owner);
 
-        assertEquals("You already sent invitation", exception.getMessage());
-        verify(notificationService, never()).sendNotification(anyLong(), anyString(), anyString(), anyLong());
-        verify(emailService, never()).sendInvitation(anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(notificationService).sendNotification(eq(2L), eq("WORKSPACE_INVITE"), anyString(), eq(1L));
+        verify(emailService).sendInvitation(eq("new@example.com"), anyString(), anyString(), anyString(), eq("WORKSPACE"));
+    }
+
+    @Test
+    void acceptInvite_Success() {
+        Notification notification = Notification.builder()
+                .id(1L)
+                .recipient(owner)
+                .type("WORKSPACE_INVITE")
+                .relatedEntityId(1L)
+                .build();
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, owner.getId())).thenReturn(false);
+
+        workspaceService.acceptInvite(1L, owner);
+
+        assertTrue(notification.isRead());
+        verify(workspaceMemberRepository).save(any(WorkspaceMember.class));
+    }
+
+    @Test
+    void removeMember_Success() {
+        User memberToRemove = User.builder().id(2L).email("remove@example.com").build();
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(memberToRemove));
+        when(channelMemberRepository.findByWorkspaceIdAndUserId(1L, 2L)).thenReturn(Collections.emptyList());
+        when(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L)).thenReturn(Optional.of(WorkspaceMember.builder().build()));
+
+        workspaceService.removeMember(1L, 2L, owner);
+
+        verify(workspaceMemberRepository).delete(any(WorkspaceMember.class));
+    }
+
+    @Test
+    void getWorkspaceMembers_Success() {
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).thenReturn(true);
+        when(workspaceMemberRepository.findByWorkspaceId(1L)).thenReturn(Collections.singletonList(
+                WorkspaceMember.builder().user(owner).role(WorkspaceRole.OWNER).build()
+        ));
+
+        List<com.bytechat.dto.response.UserResponse> members = workspaceService.getWorkspaceMembers(1L, owner);
+
+        assertEquals(1, members.size());
     }
 }

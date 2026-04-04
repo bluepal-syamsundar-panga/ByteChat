@@ -23,9 +23,11 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -108,5 +110,42 @@ class MeetingServiceImplTest {
                 .sendMeetingInvite(eq(member.getEmail()), eq(creator.getDisplayName()), eq("Daily Sync"), eq("general"), eq("Engineering"));
         verify(emailService, never())
                 .sendMeetingInvite(eq(creator.getEmail()), any(), any(), any(), any());
+    }
+
+    @Test
+    void getActiveWorkspaceMeetings_Success() {
+        Meeting activeMeeting = Meeting.builder().id(1L).channel(channel).workspace(workspace).creator(creator).isActive(true).build();
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(10L, creator.getId())).thenReturn(true);
+        when(meetingRepository.findByWorkspaceIdAndIsActiveTrueOrderByCreatedAtDesc(10L)).thenReturn(List.of(activeMeeting));
+        when(channelMemberRepository.existsByChannelIdAndUserId(anyLong(), anyLong())).thenReturn(true);
+
+        List<MeetingResponse> results = meetingService.getActiveWorkspaceMeetings(10L, creator);
+
+        assertEquals(1, results.size());
+    }
+
+    @Test
+    void joinMeeting_Success() {
+        Meeting meeting = Meeting.builder().id(1L).channel(channel).workspace(workspace).creator(creator).isActive(true).passwordHash("encoded").build();
+        when(meetingRepository.findById(1L)).thenReturn(Optional.of(meeting));
+        when(channelMemberRepository.existsByChannelIdAndUserId(anyLong(), anyLong())).thenReturn(true);
+        when(passwordEncoder.matches("pass", "encoded")).thenReturn(true);
+
+        MeetingResponse result = meetingService.joinMeeting(1L, "pass", creator);
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void endMeeting_Success() {
+        Meeting meeting = Meeting.builder().id(1L).channel(channel).creator(creator).isActive(true).build();
+        when(meetingRepository.findById(1L)).thenReturn(Optional.of(meeting));
+        when(channelMemberRepository.findByChannelId(anyLong())).thenReturn(Collections.emptyList());
+        when(messageRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
+
+        meetingService.endMeeting(1L, creator);
+
+        assertFalse(meeting.isActive());
+        verify(meetingRepository).save(meeting);
     }
 }

@@ -5,6 +5,7 @@ import com.bytechat.dto.response.CursorPageResponse;
 import com.bytechat.dto.response.MessageResponse;
 import com.bytechat.dto.response.UserResponse;
 import com.bytechat.entity.DirectMessage;
+import com.bytechat.entity.Reaction;
 import com.bytechat.entity.User;
 import com.bytechat.exception.UnauthorizedException;
 import com.bytechat.repository.DMRequestRepository;
@@ -24,6 +25,7 @@ import org.springframework.data.domain.PageRequest;
 import java.time.LocalDateTime;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -136,12 +138,48 @@ class DirectMessageServiceImplTest {
     }
 
     @Test
-    void deleteMessage_Success() {
+    void deleteMessage_SelfScope_Success() {
         when(directMessageRepository.findById(1L)).thenReturn(Optional.of(dm));
         when(directMessageRepository.save(any(DirectMessage.class))).thenReturn(dm);
 
-        MessageResponse response = directMessageService.deleteMessage(1L, "all", sender);
+        directMessageService.deleteMessage(1L, "self", sender);
 
-        assertTrue(dm.isDeleted());
+        assertNotNull(dm.getHiddenForUserIds());
+        assertTrue(dm.getHiddenForUserIds().contains(sender.getId()));
+    }
+
+    @Test
+    void pinMessage_Success() {
+        when(directMessageRepository.findById(1L)).thenReturn(Optional.of(dm));
+        when(directMessageRepository.save(any(DirectMessage.class))).thenReturn(dm);
+
+        directMessageService.pinMessage(1L, sender);
+
+        assertTrue(dm.isPinned());
+        assertEquals(sender.getId(), dm.getPinnedByUserId());
+    }
+
+    @Test
+    void reactToMessage_Success() {
+        when(directMessageRepository.findById(1L)).thenReturn(Optional.of(dm));
+        when(reactionRepository.findByDirectMessageIdAndUserIdAndEmoji(anyLong(), anyLong(), anyString()))
+                .thenReturn(Optional.empty());
+
+        directMessageService.reactToMessage(1L, "❤️", sender);
+
+        verify(reactionRepository).save(any(Reaction.class));
+        verify(notificationService).sendNotification(eq(recipient.getId()), eq("REACTION"), anyString(), eq(1L));
+    }
+
+    @Test
+    void sendDirectMessage_WithMention_Success() {
+        messageRequest.setContent("Hi @Recipient");
+        when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
+        when(userRepository.findUsersSharingRoomWith(anyLong(), any())).thenReturn(Collections.singletonList(recipient));
+        when(directMessageRepository.save(any(DirectMessage.class))).thenReturn(dm);
+
+        directMessageService.sendDirectMessage(2L, messageRequest, sender);
+
+        verify(notificationService).sendNotification(eq(2L), eq("MENTION"), anyString(), anyLong());
     }
 }

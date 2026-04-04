@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.bytechat.serviceimpl.DirectMessageServiceImplTest
 -------------------------------------------------------------------------------
-Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.807 s -- in com.bytechat.serviceimpl.DirectMessageServiceImplTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.336 s -- in com.bytechat.serviceimpl.DirectMessageServiceImplTest

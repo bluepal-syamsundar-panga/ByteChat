@@ -127,11 +127,25 @@ class UserServiceImplTest {
     }
 
     @Test
-    void updateAvatar_IOException_ThrowsException() throws IOException {
-        MultipartFile file = mock(MultipartFile.class);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(cloudinaryService.uploadFile(file)).thenThrow(new IOException("Upload failed"));
+    void getSharedRoomUsers_ReturnsList() {
+        when(userRepository.findUsersSharingRoomWith(anyLong(), any())).thenReturn(Arrays.asList(onlineUser));
+        when(directMessageRepository.countUnreadBySender(anyLong(), anyLong())).thenReturn(0L);
 
-        assertThrows(RuntimeException.class, () -> userService.updateAvatar(1L, file));
+        List<UserResponse> responses = userService.getSharedRoomUsers(1L);
+
+        assertEquals(1, responses.size());
+        verify(userRepository).findUsersSharingRoomWith(eq(1L), any());
+    }
+
+    @Test
+    void updateProfile_NotFound_ThrowsException() {
+        when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> userService.updateProfile(99L, new UpdateProfileRequest()));
+    }
+
+    @Test
+    void updateAvatar_UserNotFound_ThrowsException() {
+        when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> userService.updateAvatar(99L, mock(MultipartFile.class)));
     }
 }

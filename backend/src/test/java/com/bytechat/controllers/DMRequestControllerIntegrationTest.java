@@ -26,11 +26,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.bytechat.AbstractIntegrationTest;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestWebSocketConfig.class)
-class DMRequestControllerIntegrationTest {
+class DMRequestControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -63,6 +65,27 @@ class DMRequestControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("PENDING"));
+    }
+
+    @Test
+    void acceptRequest_Success() throws Exception {
+        User sender = User.builder().id(2L).displayName("Sender").build();
+        User receiver = User.builder().id(1L).displayName("Receiver").build();
+        DMRequest request = DMRequest.builder().id(1L).sender(sender).receiver(receiver).status(DMRequestStatus.ACCEPTED).build();
+        
+        when(dmRequestService.acceptRequest(any(), anyLong())).thenReturn(request);
+
+        mockMvc.perform(post("/api/dm/requests/accept/1").with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("ACCEPTED"));
+    }
+
+    @Test
+    void rejectRequest_Success() throws Exception {
+        mockMvc.perform(post("/api/dm/requests/reject/1").with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test

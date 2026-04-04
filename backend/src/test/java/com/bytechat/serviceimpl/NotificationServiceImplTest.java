@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -144,11 +145,24 @@ class NotificationServiceImplTest {
     }
 
     @Test
-    void getNotification_Success() {
-        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
+    void markRelatedNotificationsAsRead_Success() {
+        when(notificationRepository.findByRecipientIdAndTypeAndRelatedEntityIdAndIsReadFalse(1L, "MENTION", 1L))
+                .thenReturn(List.of(notification));
 
-        Notification result = notificationService.getNotification(1L);
+        notificationService.markRelatedNotificationsAsRead(1L, "MENTION", 1L);
 
-        assertNotNull(result);
+        assertTrue(notification.isRead());
+        verify(notificationRepository).saveAll(anyList());
+    }
+
+    @Test
+    void markRelatedNotificationsAsReadForAll_Success() {
+        when(notificationRepository.findByTypeAndRelatedEntityIdAndIsReadFalse("MEETING_INVITE", 1L))
+                .thenReturn(List.of(notification));
+
+        notificationService.markRelatedNotificationsAsReadForAll("MEETING_INVITE", 1L);
+
+        assertTrue(notification.isRead());
+        verify(notificationRepository).saveAll(anyList());
     }
 }

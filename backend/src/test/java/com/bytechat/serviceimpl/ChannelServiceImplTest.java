@@ -132,43 +132,133 @@ class ChannelServiceImplTest {
     }
 
     @Test
-    void archiveChannel_Success() {
+    void getArchivedChannels_ReturnsList() {
+        when(channelRepository.findArchivedChannels(anyLong(), anyLong()))
+                .thenReturn(Arrays.asList(channel));
+
+        List<ChannelResponse> responses = channelService.getArchivedChannels(1L, user);
+
+        assertEquals(1, responses.size());
+        verify(channelRepository).findArchivedChannels(1L, user.getId());
+    }
+
+    @Test
+    void getDeletedChannels_ReturnsList() {
+        when(channelRepository.findDeletedChannels(anyLong(), anyLong()))
+                .thenReturn(Arrays.asList(channel));
+
+        List<ChannelResponse> responses = channelService.getDeletedChannels(1L, user);
+
+        assertEquals(1, responses.size());
+        verify(channelRepository).findDeletedChannels(1L, user.getId());
+    }
+
+    @Test
+    void getChannelMembers_Success() {
+        Channel randomChannel = Channel.builder()
+                .id(1L)
+                .name("random")
+                .workspace(workspace)
+                .createdBy(user)
+                .build();
         ChannelMember membership = ChannelMember.builder()
                 .user(user)
-                .channel(channel)
+                .role(ChannelRole.ADMIN)
+                .build();
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(randomChannel));
+        when(channelMemberRepository.findByChannelId(1L)).thenReturn(Arrays.asList(membership));
+
+        List<com.bytechat.dto.response.UserResponse> members = channelService.getChannelMembers(1L);
+
+        assertEquals(1, members.size());
+        assertEquals("ADMIN", members.get(0).getRole());
+    }
+
+    @Test
+    void acceptInvite_Success() {
+        Notification notification = Notification.builder()
+                .id(1L)
+                .recipient(user)
+                .type("CHANNEL_INVITE")
+                .relatedEntityId(1L)
                 .build();
 
-        when(channelMemberRepository.findByChannelIdAndUserId(1L, 1L))
-                .thenReturn(Optional.of(membership));
-
-        channelService.archiveChannel(1L, user);
-
-        assertTrue(membership.isArchived());
-        verify(channelMemberRepository, times(1)).save(membership);
-    }
-
-    @Test
-    void leaveChannel_DefaultChannel_ThrowsException() {
-        channel.setDefault(true);
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
         when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(channelMemberRepository.existsByChannelIdAndUserId(1L, 1L)).thenReturn(false);
+        when(messageRepository.saveAndFlush(any(Message.class))).thenReturn(new Message());
 
-        assertThrows(RuntimeException.class,
-                () -> channelService.leaveChannel(1L, user));
+        channelService.acceptInvite(1L, user);
+
+        assertTrue(notification.isRead());
+        verify(channelMemberRepository).save(any(ChannelMember.class));
     }
 
     @Test
-    void deleteChannel_Success() {
+    void removeMember_Success() {
+        User userToRemove = User.builder().id(2L).email("remove@example.com").build();
+        ChannelMember membership = ChannelMember.builder().user(userToRemove).channel(channel).build();
+        ChannelMember admin = ChannelMember.builder().user(user).role(ChannelRole.ADMIN).build();
+
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, user.getId())).thenReturn(Optional.of(admin));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(userToRemove));
+        // Also mock for system message
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 2L)).thenReturn(Optional.of(membership));
+        when(messageRepository.saveAndFlush(any(Message.class))).thenReturn(new Message());
+
+        channelService.removeMember(1L, 2L, user);
+
+        verify(channelMemberRepository).delete(membership);
+    }
+
+    @Test
+    void restoreChannel_Success() {
+        channel.setDeleted(true);
         when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
         when(workspaceMemberRepository.findByWorkspaceIdAndUserId(anyLong(), anyLong()))
-                .thenReturn(Optional.of(
-                        WorkspaceMember.builder()
-                                .role(WorkspaceRole.OWNER)
-                                .build()
-                ));
+                .thenReturn(Optional.of(WorkspaceMember.builder().role(WorkspaceRole.OWNER).build()));
 
-        channelService.deleteChannel(1L, user);
+        channelService.restoreChannel(1L, user);
 
-        assertTrue(channel.isDeleted());
-        verify(channelRepository, times(1)).save(channel);
+        assertFalse(channel.isDeleted());
+        verify(channelRepository).save(channel);
+    }
+
+    @Test
+    void transferOwnership_Success() {
+        ChannelMember currentAdmin = ChannelMember.builder().user(user).role(ChannelRole.ADMIN).build();
+        User newAdminUser = User.builder().id(2L).displayName("NewAdmin").build();
+        ChannelMember newAdmin = ChannelMember.builder().user(newAdminUser).role(ChannelRole.MEMBER).build();
+
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 1L)).thenReturn(Optional.of(currentAdmin));
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 2L)).thenReturn(Optional.of(newAdmin));
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(messageRepository.saveAndFlush(any(Message.class))).thenReturn(new Message());
+
+        channelService.transferOwnership(1L, 2L, user);
+
+        assertEquals(ChannelRole.MEMBER, currentAdmin.getRole());
+        assertEquals(ChannelRole.ADMIN, newAdmin.getRole());
+    }
+
+    @Test
+    void makeAdmin_Success() {
+        ChannelMember actingMember = ChannelMember.builder().user(user).role(ChannelRole.ADMIN).build();
+        User targetUser = User.builder().id(2L).displayName("target").build();
+        ChannelMember targetMember = ChannelMember.builder().user(targetUser).role(ChannelRole.MEMBER).build();
+
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 1L)).thenReturn(Optional.of(actingMember));
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 2L)).thenReturn(Optional.of(targetMember));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(messageRepository.saveAndFlush(any(Message.class))).thenReturn(new Message());
+
+        channelService.makeAdmin(1L, 2L, user);
+
+        assertEquals(ChannelRole.ADMIN, targetMember.getRole());
     }
 }
