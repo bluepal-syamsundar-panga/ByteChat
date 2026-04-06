@@ -9,6 +9,10 @@ import com.bytechat.repository.*;
 import com.bytechat.services.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
@@ -19,18 +23,27 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class MessageServiceImplTest {
 
+    @Mock
     private MessageRepository messageRepository;
+    @Mock
     private ChannelRepository channelRepository;
+    @Mock
     private WorkspaceMemberRepository workspaceMemberRepository;
+    @Mock
     private ChannelMemberRepository channelMemberRepository;
+    @Mock
     private ReactionRepository reactionRepository;
+    @Mock
     private NotificationService notificationService;
+    @Mock
     private MessageReadRepository messageReadRepository;
-
+    @Mock
     private SimpMessagingTemplate messagingTemplate;
 
+    @InjectMocks
     private MessageServiceImpl messageService;
 
     private User sender;
@@ -41,27 +54,6 @@ class MessageServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        messageRepository = mock(MessageRepository.class);
-        channelRepository = mock(ChannelRepository.class);
-        workspaceMemberRepository = mock(WorkspaceMemberRepository.class);
-        channelMemberRepository = mock(ChannelMemberRepository.class);
-        reactionRepository = mock(ReactionRepository.class);
-        notificationService = mock(NotificationService.class);
-        messageReadRepository = mock(MessageReadRepository.class);
-
-        messagingTemplate = null;
-
-        messageService = new MessageServiceImpl(
-                messageRepository,
-                channelRepository,
-                workspaceMemberRepository,
-                channelMemberRepository,
-                reactionRepository,
-                notificationService,
-                messageReadRepository,
-                messagingTemplate
-        );
-
         sender = User.builder().id(1L).email("sender@example.com").displayName("Sender").build();
         workspace = Workspace.builder().id(1L).name("Workspace").build();
         channel = Channel.builder().id(1L).name("channel").workspace(workspace).build();
@@ -78,9 +70,9 @@ class MessageServiceImplTest {
         messageRequest = new MessageRequest();
         messageRequest.setContent("Hello");
 
-        when(reactionRepository.findByMessageId(anyLong())).thenReturn(Collections.emptyList());
-        when(messageReadRepository.findByMessageId(anyLong())).thenReturn(Collections.emptyList());
-        when(channelMemberRepository.findByChannelId(anyLong())).thenReturn(Collections.emptyList());
+        lenient().when(reactionRepository.findByMessageId(anyLong())).thenReturn(Collections.emptyList());
+        lenient().when(messageReadRepository.findByMessageId(anyLong())).thenReturn(Collections.emptyList());
+        lenient().when(channelMemberRepository.findByChannelId(anyLong())).thenReturn(Collections.emptyList());
     }
 
     // ================= SEND =================
@@ -90,7 +82,7 @@ class MessageServiceImplTest {
         when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
         when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).thenReturn(true);
         when(workspaceMemberRepository.findByWorkspaceId(anyLong())).thenReturn(Collections.emptyList());
-        when(messageRepository.save(any(Message.class))).thenReturn(message);
+        when(messageRepository.save(any(Message.class))).thenAnswer(i -> i.getArgument(0));
 
         MessageResponse response = messageService.sendMessage(1L, messageRequest, sender);
 
@@ -128,7 +120,7 @@ class MessageServiceImplTest {
     @Test
     void editMessage_Success() {
         when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
-        when(messageRepository.save(any(Message.class))).thenReturn(message);
+        when(messageRepository.save(any(Message.class))).thenAnswer(i -> i.getArgument(0));
         when(workspaceMemberRepository.findByWorkspaceId(anyLong())).thenReturn(Collections.emptyList());
 
         messageRequest.setContent("Updated");
@@ -238,5 +230,62 @@ class MessageServiceImplTest {
 
         verify(messageReadRepository).saveAll(anyList());
         verify(notificationService).markChannelNotificationsAsRead(1L, 1L);
+    }
+
+    @Test
+    void sendMessage_WithReply_Success() {
+        messageRequest.setReplyToMessageId(2L);
+        Message replyTarget = Message.builder().id(2L).sender(sender).content("Target").build();
+        
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).thenReturn(true);
+        when(messageRepository.findById(2L)).thenReturn(Optional.of(replyTarget));
+        when(messageRepository.save(any(Message.class))).thenAnswer(i -> i.getArgument(0));
+        when(workspaceMemberRepository.findByWorkspaceId(anyLong())).thenReturn(Collections.emptyList());
+
+        MessageResponse response = messageService.sendMessage(1L, messageRequest, sender);
+
+        assertNotNull(response);
+    }
+
+    @Test
+    void sendMessage_WithMentions_Success() {
+        messageRequest.setContent("Hello @User2");
+        User user2 = User.builder().id(2L).displayName("User2").email("u2@ex.com").build();
+        WorkspaceMember wsMember = WorkspaceMember.builder().user(user2).build();
+        
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).thenReturn(true);
+        when(workspaceMemberRepository.findByWorkspaceId(1L)).thenReturn(java.util.Arrays.asList(wsMember));
+        when(messageRepository.save(any(Message.class))).thenAnswer(i -> i.getArgument(0));
+
+        messageService.sendMessage(1L, messageRequest, sender);
+
+        verify(notificationService).sendNotification(eq(2L), eq("MENTION"), anyString(), any());
+    }
+
+    @Test
+    void editMessage_NotSender_ThrowsException() {
+        User outsider = User.builder().id(99L).build();
+        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+
+        assertThrows(UnauthorizedException.class, () -> messageService.editMessage(1L, messageRequest, outsider));
+    }
+
+    @Test
+    void deleteMessage_NotSender_ThrowsException() {
+        User outsider = User.builder().id(99L).build();
+        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+
+        assertThrows(UnauthorizedException.class, () -> messageService.deleteMessage(1L, "all", outsider));
+    }
+
+    @Test
+    void pinMessage_NotMember_ThrowsException() {
+        User outsider = User.builder().id(99L).build();
+        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(anyLong(), eq(99L))).thenReturn(false);
+
+        assertThrows(UnauthorizedException.class, () -> messageService.pinMessage(1L, outsider));
     }
 }

@@ -80,7 +80,7 @@ class ChannelServiceImplTest {
 
     @Test
     void getWorkspaceChannels_ReturnsList() {
-    	  when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(anyLong(), anyLong()))
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(anyLong(), anyLong()))
           .thenReturn(true);
         when(channelRepository.findVisibleChannels(anyLong(), anyLong()))
                 .thenReturn(Arrays.asList(channel));
@@ -121,10 +121,9 @@ class ChannelServiceImplTest {
         verify(notificationService, times(1))
                 .sendNotification(eq(2L), eq("CHANNEL_INVITE"), anyString(), eq(1L));
 
-        // ✅ FIXED ASSERTION
         verify(emailService, times(1)).sendInvitation(
                 eq("invitee@example.com"),
-                isNull(), // 👈 important fix
+                isNull(), 
                 eq("general"),
                 eq("Workspace"),
                 eq("CHANNEL")
@@ -204,7 +203,6 @@ class ChannelServiceImplTest {
         when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
         when(channelMemberRepository.findByChannelIdAndUserId(1L, user.getId())).thenReturn(Optional.of(admin));
         when(userRepository.findById(2L)).thenReturn(Optional.of(userToRemove));
-        // Also mock for system message
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(channelMemberRepository.findByChannelIdAndUserId(1L, 2L)).thenReturn(Optional.of(membership));
         when(messageRepository.saveAndFlush(any(Message.class))).thenReturn(new Message());
@@ -260,5 +258,124 @@ class ChannelServiceImplTest {
         channelService.makeAdmin(1L, 2L, user);
 
         assertEquals(ChannelRole.ADMIN, targetMember.getRole());
+    }
+
+    @Test
+    void archiveChannel_Success() {
+        ChannelMember membership = ChannelMember.builder().user(user).isArchived(false).build();
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 1L)).thenReturn(Optional.of(membership));
+
+        channelService.archiveChannel(1L, user);
+
+        assertTrue(membership.isArchived());
+        verify(channelMemberRepository).save(membership);
+    }
+
+    @Test
+    void leaveChannel_Success() {
+        ChannelMember membership = ChannelMember.builder().user(user).role(ChannelRole.MEMBER).build();
+        channel.setDefault(false);
+
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 1L)).thenReturn(Optional.of(membership));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(messageRepository.saveAndFlush(any(Message.class))).thenReturn(new Message());
+
+        channelService.leaveChannel(1L, user);
+
+        verify(channelMemberRepository).delete(membership);
+    }
+
+    @Test
+    void leaveChannel_ThrowsException_WhenDefaultChannel() {
+        channel.setDefault(true);
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+
+        assertThrows(RuntimeException.class, () -> channelService.leaveChannel(1L, user));
+    }
+
+    @Test
+    void deleteChannel_Success() {
+        channel.setDefault(false);
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.findByWorkspaceIdAndUserId(anyLong(), anyLong()))
+                .thenReturn(Optional.of(WorkspaceMember.builder().role(WorkspaceRole.OWNER).build()));
+
+        channelService.deleteChannel(1L, user);
+
+        assertTrue(channel.isDeleted());
+        verify(channelRepository).save(channel);
+    }
+
+    @Test
+    void deleteChannel_ThrowsUnauthorized_WhenNotOwnerOrCreator() {
+        User otherUser = User.builder().id(99L).build();
+        channel.setCreatedBy(otherUser);
+        channel.setDefault(false);
+        
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.findByWorkspaceIdAndUserId(anyLong(), eq(1L)))
+                .thenReturn(Optional.of(WorkspaceMember.builder().role(WorkspaceRole.MEMBER).build()));
+
+        assertThrows(com.bytechat.exception.UnauthorizedException.class, () -> channelService.deleteChannel(1L, user));
+    }
+
+    @Test
+    void permanentlyDeleteChannel_Success() {
+        channel.setDeleted(true);
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.findByWorkspaceIdAndUserId(anyLong(), eq(1L)))
+                .thenReturn(Optional.of(WorkspaceMember.builder().role(WorkspaceRole.OWNER).build()));
+
+        channelService.permanentlyDeleteChannel(1L, user);
+
+        verify(channelRepository).delete(channel);
+    }
+
+    @Test
+    void removeAdmin_Success() {
+        ChannelMember admin = ChannelMember.builder().user(user).role(ChannelRole.ADMIN).build();
+        User targetUser = User.builder().id(2L).displayName("target").build();
+        ChannelMember targetMember = ChannelMember.builder().user(targetUser).role(ChannelRole.ADMIN).build();
+        
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 1L)).thenReturn(Optional.of(admin));
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 2L)).thenReturn(Optional.of(targetMember));
+        when(channelMemberRepository.findByChannelId(1L)).thenReturn(java.util.Arrays.asList(admin, targetMember));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(messageRepository.saveAndFlush(any(Message.class))).thenReturn(new Message());
+
+        channelService.removeAdmin(1L, 2L, user);
+
+        assertEquals(ChannelRole.MEMBER, targetMember.getRole());
+    }
+
+    @Test
+    void removeAdmin_ThrowsException_WhenLastAdmin() {
+        ChannelMember admin = ChannelMember.builder().user(user).role(ChannelRole.ADMIN).build();
+        User targetUser = User.builder().id(2L).build();
+        ChannelMember targetMember = ChannelMember.builder().user(targetUser).role(ChannelRole.ADMIN).build();
+
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 1L)).thenReturn(Optional.of(admin));
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 2L)).thenReturn(Optional.of(targetMember));
+        when(channelMemberRepository.findByChannelId(1L)).thenReturn(java.util.Arrays.asList(targetMember));
+
+        assertThrows(RuntimeException.class, () -> channelService.removeAdmin(1L, 2L, user));
+    }
+
+    @Test
+    void syncDefaultChannelMemberships_Success() {
+        User memberUser = User.builder().id(2L).email("member@example.com").build();
+        WorkspaceMember wsMember = WorkspaceMember.builder().user(memberUser).role(WorkspaceRole.MEMBER).build();
+        
+        channel.setDefault(true);
+        when(workspaceMemberRepository.findByWorkspaceId(anyLong())).thenReturn(java.util.Arrays.asList(wsMember));
+        when(channelMemberRepository.existsByChannelIdAndUserId(anyLong(), eq(2L))).thenReturn(false);
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        
+        channelService.getChannelMembers(1L);
+
+        verify(channelMemberRepository).save(any(ChannelMember.class));
     }
 }

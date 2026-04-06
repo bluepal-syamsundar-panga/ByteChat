@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -209,5 +209,100 @@ class WorkspaceServiceImplTest {
         List<com.bytechat.dto.response.UserResponse> members = workspaceService.getWorkspaceMembers(1L, owner);
 
         assertEquals(1, members.size());
+    }
+
+    @Test
+    void leaveWorkspace_Success() {
+        User memberUser = User.builder().id(2L).email("member@example.com").build();
+        WorkspaceMember member = WorkspaceMember.builder()
+                .workspace(workspace)
+                .user(memberUser)
+                .role(WorkspaceRole.MEMBER)
+                .build();
+        
+        when(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L)).thenReturn(Optional.of(member));
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+        when(channelMemberRepository.findByWorkspaceIdAndUserId(1L, 2L)).thenReturn(Collections.emptyList());
+
+        workspaceService.leaveWorkspace(1L, memberUser);
+
+        verify(workspaceMemberRepository).delete(member);
+    }
+
+    @Test
+    void leaveWorkspace_ThrowsException_WhenNotMember() {
+        User outsider = User.builder().id(99L).build();
+        when(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 99L)).thenReturn(Optional.empty());
+
+        assertThrows(com.bytechat.exception.ResourceNotFoundException.class, () -> workspaceService.leaveWorkspace(1L, outsider));
+    }
+
+    @Test
+    void removeMember_ThrowsUnauthorized_WhenNotOwner() {
+        User otherUser = User.builder().id(2L).build();
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+
+        assertThrows(UnauthorizedException.class, () -> workspaceService.removeMember(1L, 3L, otherUser));
+    }
+
+    @Test
+    void removeMember_ThrowsException_WhenRemovingSelf() {
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+
+        assertThrows(RuntimeException.class, () -> workspaceService.removeMember(1L, owner.getId(), owner));
+    }
+
+    @Test
+    void inviteUser_ThrowsConflict_WhenAlreadyMember() {
+        User alreadyMember = User.builder().id(2L).email("member@example.com").build();
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+        when(userRepository.findByEmail("member@example.com")).thenReturn(Optional.of(alreadyMember));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 2L)).thenReturn(true);
+
+        assertThrows(ConflictException.class, () -> workspaceService.inviteUser(1L, "member@example.com", owner));
+    }
+
+    @Test
+    void inviteUser_ThrowsConflict_WhenDuplicateInvite() {
+        User invitedUser = User.builder().id(2L).email("new@example.com").build();
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+        when(userRepository.findByEmail("new@example.com")).thenReturn(Optional.of(invitedUser));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 2L)).thenReturn(false);
+        when(notificationRepository.findByRecipientIdAndTypeAndRelatedEntityIdAndIsReadFalse(2L, "WORKSPACE_INVITE", 1L))
+                .thenReturn(Collections.singletonList(new Notification()));
+
+        assertThrows(ConflictException.class, () -> workspaceService.inviteUser(1L, "new@example.com", owner));
+    }
+
+    @Test
+    void acceptInvite_ThrowsUnauthorized_WhenWrongRecipient() {
+        User wrongUser = User.builder().id(99L).build();
+        Notification notification = Notification.builder()
+                .id(1L)
+                .recipient(owner) // Belongs to owner
+                .build();
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
+
+        assertThrows(UnauthorizedException.class, () -> workspaceService.acceptInvite(1L, wrongUser));
+    }
+
+    @Test
+    void acceptInvite_ThrowsException_WhenWrongType() {
+        Notification notification = Notification.builder()
+                .id(1L)
+                .recipient(owner)
+                .type("OTHER_TYPE")
+                .build();
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
+
+        assertThrows(RuntimeException.class, () -> workspaceService.acceptInvite(1L, owner));
+    }
+
+    @Test
+    void getWorkspaceMembers_ThrowsException_WhenNotMember() {
+        User outsider = User.builder().id(99L).build();
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 99L)).thenReturn(false);
+
+        assertThrows(RuntimeException.class, () -> workspaceService.getWorkspaceMembers(1L, outsider));
     }
 }

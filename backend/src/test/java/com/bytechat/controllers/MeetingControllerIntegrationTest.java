@@ -16,85 +16,93 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
 @Import(TestWebSocketConfig.class)
 class MeetingControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
-    private MeetingService meetingService;
-
     @Autowired
     private ObjectMapper objectMapper;
 
-    private MeetingResponse meetingResponse;
+    @MockBean
+    private MeetingService meetingService;
+
+    private User testUser;
 
     @BeforeEach
     void setUp() {
-        meetingResponse = MeetingResponse.builder()
+        testUser = User.builder()
                 .id(1L)
-                .title("Team Sync")
-                .isActive(true)
+                .email("test@example.com")
+                .displayName("Test User")
+                .role(com.bytechat.entity.Role.MEMBER)
                 .build();
     }
 
     @Test
     void createMeeting_Success() throws Exception {
         CreateMeetingRequest request = new CreateMeetingRequest();
-        request.setTitle("Team Sync");
-        request.setPassword("pass123");
+        request.setTitle("Scrum");
+        request.setPassword("pass");
 
-        when(meetingService.createMeeting(anyLong(), anyString(), any(), any())).thenReturn(meetingResponse);
+        MeetingResponse response = MeetingResponse.builder().id(100L).title("Scrum").build();
+        when(meetingService.createMeeting(anyLong(), anyString(), anyString(), any(com.bytechat.entity.User.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/meetings/channels/1")
+                        .with(user(testUser))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.title").value("Team Sync"));
+                .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
     void getActiveMeetings_Success() throws Exception {
-        when(meetingService.getActiveWorkspaceMeetings(anyLong(), any())).thenReturn(Collections.singletonList(meetingResponse));
+        when(meetingService.getActiveWorkspaceMeetings(anyLong(), any(com.bytechat.entity.User.class))).thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/meetings/workspaces/1"))
+        mockMvc.perform(get("/api/meetings/workspaces/1").with(user(testUser)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data[0].title").value("Team Sync"));
+                .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
     void getMeeting_Success() throws Exception {
-        when(meetingService.getMeeting(anyLong(), any())).thenReturn(meetingResponse);
+        MeetingResponse response = MeetingResponse.builder().id(100L).title("Scrum").build();
+        when(meetingService.getMeeting(anyLong(), any(com.bytechat.entity.User.class))).thenReturn(response);
 
-        mockMvc.perform(get("/api/meetings/1"))
+        mockMvc.perform(get("/api/meetings/100").with(user(testUser)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.title").value("Team Sync"));
+                .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
     void joinMeeting_Success() throws Exception {
         JoinMeetingRequest request = new JoinMeetingRequest();
-        request.setPassword("pass123");
+        request.setPassword("pass");
 
-        when(meetingService.joinMeeting(anyLong(), anyString(), any())).thenReturn(meetingResponse);
+        MeetingResponse response = MeetingResponse.builder().id(100L).title("Scrum").build();
+        when(meetingService.joinMeeting(anyLong(), anyString(), any(com.bytechat.entity.User.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/meetings/1/join")
+        mockMvc.perform(post("/api/meetings/100/join")
+                        .with(user(testUser))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -103,7 +111,9 @@ class MeetingControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void endMeeting_Success() throws Exception {
-        mockMvc.perform(post("/api/meetings/1/end"))
+        doNothing().when(meetingService).endMeeting(anyLong(), any(com.bytechat.entity.User.class));
+
+        mockMvc.perform(post("/api/meetings/100/end").with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }

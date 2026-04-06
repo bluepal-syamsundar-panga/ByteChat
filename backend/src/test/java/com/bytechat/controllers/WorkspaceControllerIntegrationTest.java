@@ -1,6 +1,8 @@
 package com.bytechat.controllers;
 
 import com.bytechat.dto.request.CreateWorkspaceRequest;
+import com.bytechat.dto.request.InviteUserRequest;
+import com.bytechat.dto.response.WorkspaceResponse;
 import com.bytechat.entity.User;
 import com.bytechat.services.OtpService;
 import com.bytechat.services.WorkspaceService;
@@ -17,11 +19,13 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 
 import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -99,8 +103,48 @@ class WorkspaceControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void getUserWorkspaces_Success() throws Exception {
+        Page<WorkspaceResponse> page = new PageImpl<>(Collections.emptyList());
+        when(workspaceService.getUserWorkspaces(any(com.bytechat.entity.User.class), anyInt(), anyInt())).thenReturn(page);
+
+        mockMvc.perform(get("/api/workspaces")
+                        .with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void joinWorkspace_Success() throws Exception {
+        doNothing().when(workspaceService).joinWorkspace(anyLong(), any(com.bytechat.entity.User.class));
+        mockMvc.perform(post("/api/workspaces/{id}/join", 1L).with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void inviteUser_Success() throws Exception {
+        InviteUserRequest request = new InviteUserRequest("invitee@example.com");
+        doNothing().when(workspaceService).inviteUser(anyLong(), any(InviteUserRequest.class), any(com.bytechat.entity.User.class));
+
+        mockMvc.perform(post("/api/workspaces/1/invite")
+                        .with(user(testUser))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void leaveWorkspace_Success() throws Exception {
+        doNothing().when(workspaceService).leaveWorkspace(anyLong(), any(com.bytechat.entity.User.class));
+        mockMvc.perform(post("/api/workspaces/{id}/leave", 1L).with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
     void getWorkspaceMembers_Success() throws Exception {
-        when(workspaceService.getWorkspaceMembers(anyLong(), any())).thenReturn(Collections.emptyList());
+        when(workspaceService.getWorkspaceMembers(anyLong(), any(com.bytechat.entity.User.class))).thenReturn(Collections.emptyList());
 
         mockMvc.perform(get("/api/workspaces/1/members").with(user(testUser)))
                 .andExpect(status().isOk())
@@ -108,21 +152,17 @@ class WorkspaceControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void joinWorkspace_Success() throws Exception {
-        mockMvc.perform(post("/api/workspaces/{id}/join", 1L).with(user(testUser)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-    }
-
-    @Test
-    void leaveWorkspace_Success() throws Exception {
-        mockMvc.perform(post("/api/workspaces/{id}/leave", 1L).with(user(testUser)))
+    void removeMember_Success() throws Exception {
+        doNothing().when(workspaceService).removeMember(anyLong(), anyLong(), any(com.bytechat.entity.User.class));
+        mockMvc.perform(delete("/api/workspaces/1/members/2")
+                        .with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
     void deleteWorkspace_Success() throws Exception {
+        doNothing().when(workspaceService).deleteWorkspace(anyLong(), any(com.bytechat.entity.User.class));
         mockMvc.perform(delete("/api/workspaces/1").with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));

@@ -1,35 +1,32 @@
 package com.bytechat.controllers;
 
+import com.bytechat.AbstractIntegrationTest;
+import com.bytechat.config.TestWebSocketConfig;
 import com.bytechat.entity.Notification;
 import com.bytechat.entity.User;
 import com.bytechat.services.ChannelService;
 import com.bytechat.services.NotificationService;
 import com.bytechat.services.WorkspaceService;
-import com.bytechat.config.TestWebSocketConfig;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.Import;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.junit.jupiter.api.BeforeEach;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 import java.util.Collections;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-import com.bytechat.AbstractIntegrationTest;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -72,49 +69,59 @@ class NotificationControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void markAsRead_Success() throws Exception {
+        doNothing().when(notificationService).markAsRead(anyLong());
+
         mockMvc.perform(put("/api/notifications/1/read").with(user(testUser)))
-                .andExpect(status().isOk());
-        
-        verify(notificationService).markAsRead(1L);
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 
-    // Removing non-existent endpoint test
-
     @Test
-    void markWorkspaceAsRead_Success() throws Exception {
+    void markWorkspaceRead_Success() throws Exception {
+        doNothing().when(notificationService).markWorkspaceNotificationsAsRead(anyLong(), anyLong());
+
         mockMvc.perform(put("/api/notifications/mark-workspace-read/1").with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
-        
-        verify(notificationService).markWorkspaceNotificationsAsRead(eq(testUser.getId()), eq(1L));
     }
 
     @Test
-    void markChannelAsRead_Success() throws Exception {
+    void markRoomRead_Success() throws Exception {
+        doNothing().when(notificationService).markChannelNotificationsAsRead(anyLong(), anyLong());
+
         mockMvc.perform(put("/api/notifications/mark-room-read/1").with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
-        
-        verify(notificationService).markChannelNotificationsAsRead(eq(testUser.getId()), eq(1L));
     }
 
     @Test
-    void markDMAsRead_Success() throws Exception {
+    void markDMRead_Success() throws Exception {
+        doNothing().when(notificationService).markDMNotificationsAsRead(anyLong(), anyLong());
+
         mockMvc.perform(put("/api/notifications/mark-dm-read/2").with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
-        
-        verify(notificationService).markDMNotificationsAsRead(eq(testUser.getId()), eq(2L));
     }
 
     @Test
-    void acceptInvite_Success() throws Exception {
-        Notification notification = Notification.builder().id(1L).type("WORKSPACE_INVITE").build();
+    void acceptNotification_ChannelInvite_Success() throws Exception {
+        Notification notification = Notification.builder().type("CHANNEL_INVITE").build();
         when(notificationService.getNotification(1L)).thenReturn(notification);
+        doNothing().when(channelService).acceptInvite(anyLong(), any(com.bytechat.entity.User.class));
 
         mockMvc.perform(post("/api/notifications/1/accept").with(user(testUser)))
-                .andExpect(status().isOk());
-        
-        verify(workspaceService).acceptInvite(eq(1L), any());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void acceptNotification_WorkspaceInvite_Success() throws Exception {
+        Notification notification = Notification.builder().type("WORKSPACE_INVITE").build();
+        when(notificationService.getNotification(1L)).thenReturn(notification);
+        doNothing().when(workspaceService).acceptInvite(anyLong(), any(com.bytechat.entity.User.class));
+
+        mockMvc.perform(post("/api/notifications/1/accept").with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 }

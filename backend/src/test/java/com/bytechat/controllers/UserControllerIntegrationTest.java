@@ -1,19 +1,19 @@
 package com.bytechat.controllers;
 
+import com.bytechat.AbstractIntegrationTest;
+import com.bytechat.config.TestWebSocketConfig;
 import com.bytechat.dto.request.UpdateProfileRequest;
 import com.bytechat.dto.response.UserResponse;
 import com.bytechat.entity.User;
 import com.bytechat.services.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
-import com.bytechat.config.TestWebSocketConfig;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.Import;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,11 +21,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-import com.bytechat.AbstractIntegrationTest;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -73,27 +74,49 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void getCurrentUser_Success() throws Exception {
+    void getMe_Success() throws Exception {
         UserResponse response = UserResponse.builder().id(1L).email("test@example.com").build();
         when(userService.getUserProfile(anyLong())).thenReturn(response);
 
         mockMvc.perform(get("/api/users/me").with(user(testUser)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.email").value("test@example.com"));
     }
 
     @Test
-    void updateProfile_Success() throws Exception {
+    void updateCurrentUser_Success() throws Exception {
         UpdateProfileRequest request = new UpdateProfileRequest();
-        request.setDisplayName("Updated Name");
-
-        UserResponse response = UserResponse.builder().id(1L).displayName("Updated Name").build();
-        when(userService.updateProfile(anyLong(), any())).thenReturn(response);
+        request.setDisplayName("New Name");
+        UserResponse response = UserResponse.builder().id(1L).displayName("New Name").build();
+        
+        when(userService.updateProfile(anyLong(), any(UpdateProfileRequest.class))).thenReturn(response);
 
         mockMvc.perform(put("/api/users/me")
-                .with(user(testUser))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                        .with(user(testUser))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.displayName").value("Updated Name"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.displayName").value("New Name"));
+    }
+
+    @Test
+    void getSharedRoomUsers_Success() throws Exception {
+        when(userService.getSharedRoomUsers(anyLong())).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/api/users/shared").with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void getUserProfile_Success() throws Exception {
+        UserResponse response = UserResponse.builder().id(1L).email("test@example.com").build();
+        when(userService.getUserProfile(anyLong())).thenReturn(response);
+
+        mockMvc.perform(get("/api/users/1").with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 }

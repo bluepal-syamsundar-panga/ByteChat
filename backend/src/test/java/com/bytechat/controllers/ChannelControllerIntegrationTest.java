@@ -1,8 +1,8 @@
 package com.bytechat.controllers;
 
+import com.bytechat.dto.request.InviteUserRequest;
 import com.bytechat.dto.response.ChannelResponse;
-import com.bytechat.entity.Role;
-import com.bytechat.entity.User;
+import com.bytechat.entity.*;
 import com.bytechat.services.ChannelService;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -10,6 +10,7 @@ import com.bytechat.AbstractIntegrationTest;
 import com.bytechat.config.TestWebSocketConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
@@ -19,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.MediaType;
 
 import java.util.Collections;
 
@@ -42,6 +44,9 @@ class ChannelControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @MockBean
     private ChannelService channelService;
@@ -155,6 +160,28 @@ class ChannelControllerIntegrationTest extends AbstractIntegrationTest {
     void deleteChannel_Success() throws Exception {
         doNothing().when(channelService).deleteChannel(anyLong(), any());
         mockMvc.perform(delete("/api/channels/1")
+                        .with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void inviteUser_Success() throws Exception {
+        InviteUserRequest request = new InviteUserRequest("invitee@example.com");
+        doNothing().when(channelService).inviteUser(anyLong(), anyString(), any());
+
+        mockMvc.perform(post("/api/channels/1/invite")
+                        .with(user(testUser))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void permanentlyDeleteChannel_Success() throws Exception {
+        doNothing().when(channelService).permanentlyDeleteChannel(anyLong(), any());
+        mockMvc.perform(delete("/api/channels/1/permanent")
                         .with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));

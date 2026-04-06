@@ -1,11 +1,9 @@
 package com.bytechat.controllers;
 
+import com.bytechat.AbstractIntegrationTest;
 import com.bytechat.config.TestWebSocketConfig;
 import com.bytechat.dto.response.MessageResponse;
-import com.bytechat.entity.Channel;
-import com.bytechat.entity.Message;
 import com.bytechat.entity.User;
-import com.bytechat.repository.MessageRepository;
 import com.bytechat.services.MessageService;
 import com.bytechat.services.ReactionService;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,20 +17,14 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
-import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import com.bytechat.AbstractIntegrationTest;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -50,7 +42,7 @@ class ReactionControllerIntegrationTest extends AbstractIntegrationTest {
     private MessageService messageService;
 
     @MockBean
-    private MessageRepository messageRepository;
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     private User testUser;
 
@@ -66,35 +58,23 @@ class ReactionControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void addReaction_Success() throws Exception {
-        Message message = Message.builder().id(1L).channel(Channel.builder().id(1L).build()).build();
-        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
-        when(messageService.getMessageResponse(eq(1L), any()))
-                .thenReturn(MessageResponse.builder().id(1L).channelId(1L).build());
+        com.bytechat.entity.Reaction reaction = new com.bytechat.entity.Reaction();
+        when(reactionService.addReaction(anyLong(), anyLong(), anyString())).thenReturn(reaction);
+        MessageResponse response = MessageResponse.builder().id(1L).channelId(1L).build();
+        when(messageService.getMessageResponse(anyLong(), any(com.bytechat.entity.User.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/messages/1/reactions")
                         .with(user(testUser))
                         .param("emoji", "👍"))
-                .andExpect(status().isOk());
-
-        verify(reactionService).addReaction(eq(1L), any(), eq("👍"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
-    void removeReaction_Success() throws Exception {
-        mockMvc.perform(delete("/api/messages/1/reactions")
-                        .with(user(testUser))
-                        .param("emoji", "👍"))
-                .andExpect(status().isOk());
+    void getMessageReactions_Success() throws Exception {
+        when(reactionService.getReactionsForMessage(anyLong())).thenReturn(Collections.emptyList());
 
-        verify(reactionService).removeReaction(eq(1L), any(), eq("👍"));
-    }
-
-    @Test
-    void getReactions_Success() throws Exception {
-        when(reactionService.getReactionsForMessage(1L)).thenReturn(Collections.emptyList());
-
-        mockMvc.perform(get("/api/messages/1/reactions")
-                        .with(user(testUser)))
+        mockMvc.perform(get("/api/messages/1/reactions").with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }

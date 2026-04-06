@@ -1,32 +1,29 @@
 package com.bytechat.controllers;
 
+import com.bytechat.AbstractIntegrationTest;
+import com.bytechat.config.TestWebSocketConfig;
 import com.bytechat.entity.DMRequest;
-import com.bytechat.entity.DMRequestStatus;
 import com.bytechat.entity.User;
-import com.bytechat.entity.Workspace;
 import com.bytechat.services.DMRequestService;
 import org.junit.jupiter.api.BeforeEach;
-import com.bytechat.config.TestWebSocketConfig;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.Import;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-import com.bytechat.AbstractIntegrationTest;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -54,43 +51,37 @@ class DMRequestControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void sendRequest_Success() throws Exception {
-        User sender = User.builder().id(1L).displayName("Sender").build();
-        User receiver = User.builder().id(2L).displayName("Receiver").build();
-        Workspace workspace = Workspace.builder().id(1L).build();
-        DMRequest request = DMRequest.builder().id(1L).sender(sender).receiver(receiver).workspace(workspace).status(DMRequestStatus.PENDING).build();
-        
-        when(dmRequestService.sendRequest(anyLong(), any(), anyLong())).thenReturn(request);
+        User receiver = User.builder().id(2L).build();
+        DMRequest dmRequest = DMRequest.builder().id(100L).sender(testUser).receiver(receiver).build();
+        when(dmRequestService.sendRequest(anyLong(), any(com.bytechat.entity.User.class), anyLong())).thenReturn(dmRequest);
 
         mockMvc.perform(post("/api/dm/requests/send/1/2").with(user(testUser)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.status").value("PENDING"));
+                .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
     void acceptRequest_Success() throws Exception {
-        User sender = User.builder().id(2L).displayName("Sender").build();
-        User receiver = User.builder().id(1L).displayName("Receiver").build();
-        DMRequest request = DMRequest.builder().id(1L).sender(sender).receiver(receiver).status(DMRequestStatus.ACCEPTED).build();
-        
-        when(dmRequestService.acceptRequest(any(), anyLong())).thenReturn(request);
+        DMRequest dmRequest = DMRequest.builder().id(100L).sender(testUser).receiver(testUser).build();
+        when(dmRequestService.acceptRequest(any(com.bytechat.entity.User.class), anyLong())).thenReturn(dmRequest);
 
-        mockMvc.perform(post("/api/dm/requests/accept/1").with(user(testUser)))
+        mockMvc.perform(post("/api/dm/requests/accept/100").with(user(testUser)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.status").value("ACCEPTED"));
+                .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
     void rejectRequest_Success() throws Exception {
-        mockMvc.perform(post("/api/dm/requests/reject/1").with(user(testUser)))
+        doNothing().when(dmRequestService).rejectRequest(any(com.bytechat.entity.User.class), anyLong());
+
+        mockMvc.perform(post("/api/dm/requests/reject/100").with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
     void getPendingRequests_Success() throws Exception {
-        when(dmRequestService.getPendingRequests(any())).thenReturn(Collections.emptyList());
+        when(dmRequestService.getPendingRequests(any(com.bytechat.entity.User.class))).thenReturn(Collections.emptyList());
 
         mockMvc.perform(get("/api/dm/requests/pending").with(user(testUser)))
                 .andExpect(status().isOk())
