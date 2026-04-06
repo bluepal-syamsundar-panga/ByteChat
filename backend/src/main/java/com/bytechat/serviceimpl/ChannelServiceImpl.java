@@ -74,6 +74,9 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     public List<ChannelResponse> getWorkspaceChannels(Long workspaceId, User currentUser) {
+        if (currentUser == null) {
+            throw new com.bytechat.exception.UnauthorizedException("User not authenticated");
+        }
         log.info("Fetching visible channels for workspace {} for user {}", workspaceId, currentUser.getEmail());
         if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, currentUser.getId())) {
             throw new com.bytechat.exception.UnauthorizedException("User is not a member of this workspace");
@@ -85,6 +88,9 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     public List<ChannelResponse> getArchivedChannels(Long workspaceId, User currentUser) {
+        if (currentUser == null) {
+            throw new com.bytechat.exception.UnauthorizedException("User not authenticated");
+        }
         log.info("Fetching archived channels for workspace {} for user {}", workspaceId, currentUser.getEmail());
         return channelRepository.findArchivedChannels(workspaceId, currentUser.getId()).stream()
                 .map(channel -> mapToResponse(channel, currentUser))
@@ -93,6 +99,9 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     public List<ChannelResponse> getDeletedChannels(Long workspaceId, User currentUser) {
+        if (currentUser == null) {
+            throw new com.bytechat.exception.UnauthorizedException("User not authenticated");
+        }
         log.info("Fetching deleted channels for workspace {} for user {}", workspaceId, currentUser.getEmail());
         return channelRepository.findDeletedChannels(workspaceId, currentUser.getId()).stream()
                 .map(channel -> mapToResponse(channel, currentUser))
