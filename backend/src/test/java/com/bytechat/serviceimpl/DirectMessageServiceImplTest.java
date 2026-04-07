@@ -77,12 +77,49 @@ class DirectMessageServiceImplTest {
     }
 
     @Test
+    void sendDirectMessage_ReplyToDeleted_Success() {
+        messageRequest.setReplyToMessageId(2L);
+        DirectMessage replyTarget = DirectMessage.builder().id(2L).fromUser(recipient).toUser(sender).isDeleted(true).build();
+        
+        when(userRepository.findById(20L)).thenReturn(Optional.of(recipient)); // Using different ID for clarity
+        when(userRepository.findUsersSharingRoomWith(anyLong(), any())).thenReturn(Collections.singletonList(recipient));
+        when(directMessageRepository.findById(2L)).thenReturn(Optional.of(replyTarget));
+        when(directMessageRepository.save(any(DirectMessage.class))).thenReturn(dm);
+
+        MessageResponse response = directMessageService.sendDirectMessage(20L, messageRequest, sender);
+
+        assertNotNull(response);
+        assertEquals("This message was deleted.", response.getReplyToContent());
+    }
+
+    @Test
+    void sendDirectMessage_ToSelf_Success() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sender));
+        when(directMessageRepository.save(any(DirectMessage.class))).thenReturn(dm);
+
+        MessageResponse response = directMessageService.sendDirectMessage(1L, messageRequest, sender);
+
+        assertNotNull(response);
+    }
+
+    @Test
     void sendDirectMessage_Unauthorized_ThrowsException() {
         when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
         when(userRepository.findUsersSharingRoomWith(anyLong(), any())).thenReturn(Collections.emptyList());
         when(dmRequestRepository.existsBySenderAndReceiverAndStatus(any(), any(), any())).thenReturn(false);
 
         assertThrows(UnauthorizedException.class, () -> directMessageService.sendDirectMessage(2L, messageRequest, sender));
+    }
+
+    @Test
+    void sendDirectMessage_AcceptedRequest_Success() {
+        when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
+        when(userRepository.findUsersSharingRoomWith(anyLong(), any())).thenReturn(Collections.emptyList());
+        when(dmRequestRepository.existsBySenderAndReceiverAndStatus(any(), any(), any())).thenReturn(true);
+        when(directMessageRepository.save(any(DirectMessage.class))).thenReturn(dm);
+
+        MessageResponse response = directMessageService.sendDirectMessage(2L, messageRequest, sender);
+        assertNotNull(response);
     }
 
     @Test
@@ -95,6 +132,30 @@ class DirectMessageServiceImplTest {
         CursorPageResponse<MessageResponse> responses = directMessageService.getDirectMessages(2L, null, null, 10, sender);
 
         assertEquals(1, responses.getItems().size());
+    }
+
+    @Test
+    void getDirectMessages_WithCursor_Success() {
+        when(userRepository.findById(2L)).thenReturn(Optional.of(recipient));
+        when(userRepository.findUsersSharingRoomWith(anyLong(), any())).thenReturn(Collections.singletonList(recipient));
+        when(directMessageRepository.findConversationHistory(anyLong(), anyLong(), any(), anyLong(), any()))
+                .thenReturn(Collections.singletonList(dm));
+
+        CursorPageResponse<MessageResponse> responses = directMessageService.getDirectMessages(2L, LocalDateTime.now(), 1L, 10, sender);
+        assertNotNull(responses);
+    }
+
+    @Test
+    void getDirectMessages_HiddenFiltered_Success() {
+        dm.setHiddenForUserIds(List.of(sender.getId()));
+        Page<DirectMessage> dmPage = new PageImpl<>(Collections.singletonList(dm));
+        when(userRepository.findById(20L)).thenReturn(Optional.of(recipient));
+        when(userRepository.findUsersSharingRoomWith(anyLong(), any())).thenReturn(Collections.singletonList(recipient));
+        when(directMessageRepository.findConversation(anyLong(), anyLong(), any())).thenReturn(dmPage);
+
+        CursorPageResponse<MessageResponse> responses = directMessageService.getDirectMessages(20L, null, null, 10, sender);
+
+        assertEquals(0, responses.getItems().size());
     }
 
     @Test
@@ -149,6 +210,20 @@ class DirectMessageServiceImplTest {
     }
 
     @Test
+    void deleteMessage_SelfScope_Unauthorized_Throws() {
+        User outsider = User.builder().id(99L).build();
+        when(directMessageRepository.findById(1L)).thenReturn(Optional.of(dm));
+
+        assertThrows(UnauthorizedException.class, () -> directMessageService.deleteMessage(1L, "self", outsider));
+    }
+
+    @Test
+    void deleteMessage_Global_Unauthorized_Throws() {
+        when(directMessageRepository.findById(1L)).thenReturn(Optional.of(dm));
+        assertThrows(UnauthorizedException.class, () -> directMessageService.deleteMessage(1L, "all", recipient));
+    }
+
+    @Test
     void pinMessage_Success() {
         when(directMessageRepository.findById(1L)).thenReturn(Optional.of(dm));
         when(directMessageRepository.save(any(DirectMessage.class))).thenReturn(dm);
@@ -157,6 +232,25 @@ class DirectMessageServiceImplTest {
 
         assertTrue(dm.isPinned());
         assertEquals(sender.getId(), dm.getPinnedByUserId());
+    }
+
+    @Test
+    void unpinMessage_Success() {
+        dm.setPinned(true);
+        when(directMessageRepository.findById(1L)).thenReturn(Optional.of(dm));
+        when(directMessageRepository.save(any(DirectMessage.class))).thenReturn(dm);
+
+        directMessageService.pinMessage(1L, sender);
+
+        assertFalse(dm.isPinned());
+    }
+
+    @Test
+    void pinMessage_Unauthorized_Throws() {
+        User outsider = User.builder().id(99L).build();
+        when(directMessageRepository.findById(1L)).thenReturn(Optional.of(dm));
+
+        assertThrows(UnauthorizedException.class, () -> directMessageService.pinMessage(1L, outsider));
     }
 
     @Test
@@ -169,6 +263,18 @@ class DirectMessageServiceImplTest {
 
         verify(reactionRepository).save(any(Reaction.class));
         verify(notificationService).sendNotification(eq(recipient.getId()), eq("REACTION"), anyString(), eq(1L));
+    }
+
+    @Test
+    void reactToMessage_Remove_Success() {
+        Reaction r = new Reaction();
+        when(directMessageRepository.findById(1L)).thenReturn(Optional.of(dm));
+        when(reactionRepository.findByDirectMessageIdAndUserIdAndEmoji(anyLong(), anyLong(), anyString()))
+                .thenReturn(Optional.of(r));
+
+        directMessageService.reactToMessage(1L, "❤️", sender);
+
+        verify(reactionRepository).delete(r);
     }
 
     @Test

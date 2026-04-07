@@ -82,6 +82,13 @@ class NotificationServiceImplTest {
     }
 
     @Test
+    void sendNotification_RecipientNotFound_Throws() {
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, 
+            () -> notificationService.sendNotification(1L, "INFO", "Test", 1L));
+    }
+
+    @Test
     void getUserNotifications_ReturnsList() {
         when(notificationRepository.findByRecipientIdOrderByCreatedAtDesc(1L))
                 .thenReturn(List.of(notification));
@@ -109,6 +116,13 @@ class NotificationServiceImplTest {
 
         assertTrue(notification.isRead());
         verify(notificationRepository).save(notification);
+    }
+
+    @Test
+    void markAsRead_NotFound_Throws() {
+        when(notificationRepository.findById(1L)).thenReturn(Optional.empty());
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, 
+            () -> notificationService.markAsRead(1L));
     }
 
     @Test
@@ -164,5 +178,19 @@ class NotificationServiceImplTest {
 
         assertTrue(notification.isRead());
         verify(notificationRepository).saveAll(anyList());
+    }
+
+    @Test
+    void getNotification_Success() {
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
+        Notification result = notificationService.getNotification(1L);
+        assertNotNull(result);
+    }
+
+    @Test
+    void getNotification_NotFound_Throws() {
+        when(notificationRepository.findById(1L)).thenReturn(Optional.empty());
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, 
+            () -> notificationService.getNotification(1L));
     }
 }

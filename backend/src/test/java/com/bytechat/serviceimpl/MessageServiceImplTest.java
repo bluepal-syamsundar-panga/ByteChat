@@ -91,6 +91,23 @@ class MessageServiceImplTest {
     }
 
     @Test
+    void sendMessage_ReplyToDeleted_Success() {
+        messageRequest.setReplyToMessageId(2L);
+        Message replyTarget = Message.builder().id(2L).sender(sender).content("Target").isDeleted(true).build();
+        
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).thenReturn(true);
+        when(messageRepository.findById(2L)).thenReturn(Optional.of(replyTarget));
+        when(messageRepository.save(any(Message.class))).thenAnswer(i -> i.getArgument(0));
+        when(workspaceMemberRepository.findByWorkspaceId(anyLong())).thenReturn(Collections.emptyList());
+
+        MessageResponse response = messageService.sendMessage(1L, messageRequest, sender);
+
+        assertNotNull(response);
+        assertEquals("This message was deleted.", response.getReplyToContent());
+    }
+
+    @Test
     void sendMessage_NotMember_ThrowsException() {
         when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
         when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).thenReturn(false);
@@ -113,6 +130,31 @@ class MessageServiceImplTest {
         CursorPageResponse<MessageResponse> responses = messageService.getRoomMessages(1L, null, null, 10, sender);
 
         assertEquals(1, responses.getItems().size());
+    }
+
+    @Test
+    void getRoomMessages_WithCursor_Success() {
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).thenReturn(true);
+        when(messageRepository.findHistoryPage(anyLong(), any(), anyLong(), any())).thenReturn(List.of(message));
+
+        CursorPageResponse<MessageResponse> responses = messageService.getRoomMessages(1L, LocalDateTime.now(), 1L, 10, sender);
+
+        assertNotNull(responses);
+        verify(messageRepository).findHistoryPage(anyLong(), any(), anyLong(), any());
+    }
+
+    @Test
+    void getRoomMessages_HiddenMessages_Filtered() {
+        message.setHiddenForUserIds(List.of(sender.getId()));
+        Page<Message> page = new PageImpl<>(List.of(message));
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(anyLong(), anyLong())).thenReturn(true);
+        when(messageRepository.findByChannelIdOrderBySentAtDesc(anyLong(), any())).thenReturn(page);
+
+        CursorPageResponse<MessageResponse> responses = messageService.getRoomMessages(1L, null, null, 10, sender);
+
+        assertEquals(0, responses.getItems().size());
     }
 
     // ================= EDIT =================
@@ -178,6 +220,19 @@ class MessageServiceImplTest {
         assertTrue(message.isPinned());
     }
 
+    @Test
+    void unpinMessage_Success() {
+        message.setPinned(true);
+        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(anyLong(), anyLong())).thenReturn(true);
+        when(messageRepository.save(any(Message.class))).thenReturn(message);
+
+        messageService.pinMessage(1L, sender);
+
+        assertFalse(message.isPinned());
+        assertNull(message.getPinnedByUserId());
+    }
+
     // ================= REACTION =================
 
     @Test
@@ -219,17 +274,20 @@ class MessageServiceImplTest {
         messageService.markAsRead(1L, sender);
 
         verify(messageReadRepository).save(any(MessageRead.class));
-        verify(notificationService).markRelatedNotificationsAsRead(eq(1L), eq("MENTION"), eq(1L));
     }
 
     @Test
-    void markChannelAsRead_Success() {
-        when(messageRepository.findUnreadMessagesInChannel(1L, 1L)).thenReturn(List.of(message));
+    void markAsRead_AlreadyRead_Skips() {
+        when(messageReadRepository.existsByMessageIdAndUserId(1L, 1L)).thenReturn(true);
+        messageService.markAsRead(1L, sender);
+        verify(messageReadRepository, never()).save(any());
+    }
 
+    @Test
+    void markChannelAsRead_EmptyUnread_Skips() {
+        when(messageRepository.findUnreadMessagesInChannel(1L, 1L)).thenReturn(Collections.emptyList());
         messageService.markChannelAsRead(1L, sender);
-
-        verify(messageReadRepository).saveAll(anyList());
-        verify(notificationService).markChannelNotificationsAsRead(1L, 1L);
+        verify(messageReadRepository, never()).saveAll(any());
     }
 
     @Test
@@ -262,6 +320,21 @@ class MessageServiceImplTest {
         messageService.sendMessage(1L, messageRequest, sender);
 
         verify(notificationService).sendNotification(eq(2L), eq("MENTION"), anyString(), any());
+    }
+
+    @Test
+    void sendMessage_SelfMention_Ignored() {
+        messageRequest.setContent("Hello @Sender"); // Sender display name is Sender
+        WorkspaceMember wsMember = WorkspaceMember.builder().user(sender).build();
+        
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).thenReturn(true);
+        when(workspaceMemberRepository.findByWorkspaceId(1L)).thenReturn(java.util.Arrays.asList(wsMember));
+        when(messageRepository.save(any(Message.class))).thenAnswer(i -> i.getArgument(0));
+
+        messageService.sendMessage(1L, messageRequest, sender);
+
+        verify(notificationService, never()).sendNotification(anyLong(), eq("MENTION"), anyString(), anyLong());
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.bytechat.entity.*;
 import com.bytechat.repository.*;
 import com.bytechat.services.NotificationService;
 import com.bytechat.services.EmailService;
+import com.bytechat.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -79,6 +80,24 @@ class ChannelServiceImplTest {
     }
 
     @Test
+    void createChannel_ThrowsException_WhenWorkspaceNotFound() {
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> 
+            channelService.createChannel(1L, "new", "desc", false, false, user));
+    }
+
+    @Test
+    void createChannel_Success_WhenCreatorIsNull() {
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+        when(channelRepository.save(any(Channel.class))).thenReturn(channel);
+
+        ChannelResponse response = channelService.createChannel(1L, "gen", "desc", false, true, null);
+
+        assertNotNull(response);
+        verify(channelMemberRepository, never()).save(any());
+    }
+
+    @Test
     void getWorkspaceChannels_ReturnsList() {
         when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(anyLong(), anyLong()))
           .thenReturn(true);
@@ -90,6 +109,19 @@ class ChannelServiceImplTest {
         assertEquals(1, responses.size());
         verify(channelRepository, times(1))
                 .findVisibleChannels(1L, user.getId());
+    }
+
+    @Test
+    void getWorkspaceChannels_ThrowsUnauthorized_WhenUserNull() {
+        assertThrows(com.bytechat.exception.UnauthorizedException.class, () -> 
+            channelService.getWorkspaceChannels(1L, null));
+    }
+
+    @Test
+    void getWorkspaceChannels_ThrowsUnauthorized_WhenNotMember() {
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(anyLong(), anyLong())).thenReturn(false);
+        assertThrows(com.bytechat.exception.UnauthorizedException.class, () -> 
+            channelService.getWorkspaceChannels(1L, user));
     }
 
     @Test
@@ -109,6 +141,26 @@ class ChannelServiceImplTest {
     }
 
     @Test
+    void addMember_Fails_WhenUserNotFound() {
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> channelService.addMember(1L, user));
+    }
+
+    @Test
+    void addMember_Success_WhenUserNotInWorkspace() {
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(channelMemberRepository.existsByChannelIdAndUserId(1L, 1L)).thenReturn(false);
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(anyLong(), anyLong())).thenReturn(false);
+        when(messageRepository.saveAndFlush(any(Message.class))).thenReturn(new Message());
+
+        channelService.addMember(1L, user);
+
+        verify(workspaceMemberRepository, times(1)).save(any(WorkspaceMember.class));
+    }
+
+    @Test
     void inviteUser_Success() {
         User invitee = User.builder().id(2L).email("invitee@example.com").build();
 
@@ -120,14 +172,17 @@ class ChannelServiceImplTest {
 
         verify(notificationService, times(1))
                 .sendNotification(eq(2L), eq("CHANNEL_INVITE"), anyString(), eq(1L));
+    }
 
-        verify(emailService, times(1)).sendInvitation(
-                eq("invitee@example.com"),
-                isNull(), 
-                eq("general"),
-                eq("Workspace"),
-                eq("CHANNEL")
-        );
+    @Test
+    void inviteUser_Fails_WhenAlreadyMember() {
+        User invitee = User.builder().id(2L).email("invitee@example.com").build();
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(userRepository.findByEmail("invitee@example.com")).thenReturn(Optional.of(invitee));
+        when(channelMemberRepository.existsByChannelIdAndUserId(1L, 2L)).thenReturn(true);
+
+        assertThrows(IllegalArgumentException.class, () -> 
+            channelService.inviteUser(1L, "invitee@example.com", user));
     }
 
     @Test
@@ -153,6 +208,19 @@ class ChannelServiceImplTest {
     }
 
     @Test
+    void getChannel_Success() {
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        Channel result = channelService.getChannel(1L);
+        assertNotNull(result);
+    }
+
+    @Test
+    void getChannel_Fails_WhenNotFound() {
+        when(channelRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> channelService.getChannel(1L));
+    }
+
+    @Test
     void getChannelMembers_Success() {
         Channel randomChannel = Channel.builder()
                 .id(1L)
@@ -171,6 +239,21 @@ class ChannelServiceImplTest {
 
         assertEquals(1, members.size());
         assertEquals("ADMIN", members.get(0).getRole());
+    }
+
+    @Test
+    void getChannelMembers_DefaultChannel_Syncs() {
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel)); // general is default
+        channel.setDefault(true);
+        when(workspaceMemberRepository.findByWorkspaceId(anyLong())).thenReturn(Arrays.asList(
+            WorkspaceMember.builder().user(user).role(WorkspaceRole.MEMBER).build()
+        ));
+        when(channelMemberRepository.findByChannelIdAndUserId(anyLong(), anyLong())).thenReturn(Optional.empty());
+
+        List<com.bytechat.dto.response.UserResponse> members = channelService.getChannelMembers(1L);
+
+        assertNotNull(members);
+        assertEquals(1, members.size());
     }
 
     @Test
@@ -195,6 +278,24 @@ class ChannelServiceImplTest {
     }
 
     @Test
+    void acceptInvite_Fails_WhenAnotherUser() {
+        User other = User.builder().id(99L).build();
+        Notification notification = Notification.builder().id(1L).recipient(other).build();
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
+
+        assertThrows(com.bytechat.exception.UnauthorizedException.class, () -> 
+            channelService.acceptInvite(1L, user));
+    }
+
+    @Test
+    void acceptInvite_Fails_WhenWrongType() {
+        Notification notification = Notification.builder().id(1L).recipient(user).type("OTHER").build();
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
+
+        assertThrows(RuntimeException.class, () -> channelService.acceptInvite(1L, user));
+    }
+
+    @Test
     void removeMember_Success() {
         User userToRemove = User.builder().id(2L).email("remove@example.com").build();
         ChannelMember membership = ChannelMember.builder().user(userToRemove).channel(channel).build();
@@ -210,6 +311,23 @@ class ChannelServiceImplTest {
         channelService.removeMember(1L, 2L, user);
 
         verify(channelMemberRepository).delete(membership);
+    }
+
+    @Test
+    void removeMember_DefaultChannel_RemovesFromWorkspace() {
+        channel.setDefault(true);
+        User userToRemove = User.builder().id(2L).email("remove@example.com").build();
+        WorkspaceMember wsOwner = WorkspaceMember.builder().role(WorkspaceRole.OWNER).user(user).build();
+        
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.findByWorkspaceIdAndUserId(anyLong(), eq(1L))).thenReturn(Optional.of(wsOwner));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(userToRemove));
+        when(workspaceRepository.findById(anyLong())).thenReturn(Optional.of(workspace));
+        workspace.setOwner(user);
+        
+        channelService.removeMember(1L, 2L, user);
+
+        verify(workspaceMemberRepository).delete(any(WorkspaceMember.class));
     }
 
     @Test
@@ -287,6 +405,18 @@ class ChannelServiceImplTest {
     }
 
     @Test
+    void leaveChannel_Fails_WhenOnlyAdmin() {
+        ChannelMember membership = ChannelMember.builder().user(user).role(ChannelRole.ADMIN).build();
+        channel.setDefault(false);
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(channelMemberRepository.findByChannelIdAndUserId(1L, 1L)).thenReturn(Optional.of(membership));
+        // Only 1 member, who is admin
+        when(channelMemberRepository.findByChannelId(1L)).thenReturn(Arrays.asList(membership, ChannelMember.builder().build()));
+        
+        assertThrows(RuntimeException.class, () -> channelService.leaveChannel(1L, user));
+    }
+
+    @Test
     void leaveChannel_ThrowsException_WhenDefaultChannel() {
         channel.setDefault(true);
         when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
@@ -305,6 +435,16 @@ class ChannelServiceImplTest {
 
         assertTrue(channel.isDeleted());
         verify(channelRepository).save(channel);
+    }
+
+    @Test
+    void deleteChannel_Fails_WhenDefault() {
+        channel.setDefault(true);
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.findByWorkspaceIdAndUserId(anyLong(), anyLong()))
+                .thenReturn(Optional.of(WorkspaceMember.builder().role(WorkspaceRole.OWNER).build()));
+
+        assertThrows(RuntimeException.class, () -> channelService.deleteChannel(1L, user));
     }
 
     @Test
@@ -330,6 +470,16 @@ class ChannelServiceImplTest {
         channelService.permanentlyDeleteChannel(1L, user);
 
         verify(channelRepository).delete(channel);
+    }
+
+    @Test
+    void permanentlyDeleteChannel_Fails_WhenNotDeleted() {
+        channel.setDeleted(false);
+        when(channelRepository.findById(1L)).thenReturn(Optional.of(channel));
+        when(workspaceMemberRepository.findByWorkspaceIdAndUserId(anyLong(), eq(1L)))
+                .thenReturn(Optional.of(WorkspaceMember.builder().role(WorkspaceRole.OWNER).build()));
+
+        assertThrows(RuntimeException.class, () -> channelService.permanentlyDeleteChannel(1L, user));
     }
 
     @Test

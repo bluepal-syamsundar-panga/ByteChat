@@ -76,6 +76,19 @@ class DMRequestServiceImplTest {
     }
 
     @Test
+    void sendRequest_WorkspaceNotFound_Throws() {
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> dmRequestService.sendRequest(1L, sender, 2L));
+    }
+
+    @Test
+    void sendRequest_ReceiverNotFound_Throws() {
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+        when(userRepository.findById(2L)).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> dmRequestService.sendRequest(1L, sender, 2L));
+    }
+
+    @Test
     void sendRequest_ToSelf_ThrowsException() {
         // ✅ MUST mock because service calls DB before validation
         when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
@@ -116,6 +129,12 @@ class DMRequestServiceImplTest {
 
         assertThrows(RuntimeException.class,
                 () -> dmRequestService.acceptRequest(wrongUser, 1L));
+    }
+
+    @Test
+    void acceptRequest_NotFound_Throws() {
+        when(dmRequestRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> dmRequestService.acceptRequest(receiver, 1L));
     }
 
     @Test

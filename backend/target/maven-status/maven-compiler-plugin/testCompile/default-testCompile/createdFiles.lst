@@ -16,9 +16,7 @@ com\bytechat\serviceimpl\MessageServiceImplTest.class
 com\bytechat\serviceimpl\UserServiceImplTest.class
 com\bytechat\controllers\UserControllerIntegrationTest.class
 com\bytechat\config\TestWebSocketConfig$1.class
-com\bytechat\serviceimpl\ChannelServiceImplTest.class
 com\bytechat\controllers\AuthControllerIntegrationTest.class
-com\bytechat\serviceimpl\WorkspaceServiceImplTest.class
 com\bytechat\serviceimpl\EmailServiceImplTest.class
 com\bytechat\serviceimpl\FileStorageServiceImplTest.class
 com\bytechat\controllers\ChatWebSocketControllerIntegrationTest.class

@@ -1,4 +1,20 @@
 -------------------------------------------------------------------------------
 Test set: com.bytechat.serviceimpl.WorkspaceServiceImplTest
 -------------------------------------------------------------------------------
-Tests run: 22, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.224 s -- in com.bytechat.serviceimpl.WorkspaceServiceImplTest
+Tests run: 26, Failures: 0, Errors: 2, Skipped: 0, Time elapsed: 8.929 s <<< FAILURE! -- in com.bytechat.serviceimpl.WorkspaceServiceImplTest
+com.bytechat.serviceimpl.WorkspaceServiceImplTest.createWorkspaceWithDetails_Success_NewUser -- Time elapsed: 0.060 s <<< ERROR!
+java.lang.NullPointerException: Cannot invoke "com.bytechat.services.OtpService.clearOtp(String)" because "this.otpService" is null
+	at com.bytechat.serviceimpl.WorkspaceServiceImpl.createWorkspaceWithDetails(WorkspaceServiceImpl.java:111)
+	at com.bytechat.serviceimpl.WorkspaceServiceImplTest.createWorkspaceWithDetails_Success_NewUser(WorkspaceServiceImplTest.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+
+com.bytechat.serviceimpl.WorkspaceServiceImplTest.createWorkspaceWithDetails_Success_ExistingUser -- Time elapsed: 0.020 s <<< ERROR!
+java.lang.NullPointerException: Cannot invoke "com.bytechat.services.OtpService.clearOtp(String)" because "this.otpService" is null
+	at com.bytechat.serviceimpl.WorkspaceServiceImpl.createWorkspaceWithDetails(WorkspaceServiceImpl.java:111)
+	at com.bytechat.serviceimpl.WorkspaceServiceImplTest.createWorkspaceWithDetails_Success_ExistingUser(WorkspaceServiceImplTest.java:89)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+

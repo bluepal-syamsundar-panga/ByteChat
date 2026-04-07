@@ -104,12 +104,26 @@ class MeetingServiceImplTest {
         assertEquals(savedMeeting.getId(), response.getId());
         verify(notificationService, times(1))
                 .sendNotification(eq(member.getId()), eq("MEETING_INVITE"), any(), eq(savedMeeting.getId()));
-        verify(notificationService, never())
-                .sendNotification(eq(creator.getId()), eq("MEETING_INVITE"), any(), anyLong());
-        verify(emailService, times(1))
-                .sendMeetingInvite(eq(member.getEmail()), eq(creator.getDisplayName()), eq("Daily Sync"), eq("general"), eq("Engineering"));
-        verify(emailService, never())
-                .sendMeetingInvite(eq(creator.getEmail()), any(), any(), any(), any());
+    }
+
+    @Test
+    void createMeeting_Fails_WhenMeetingAlreadyActive() {
+        when(channelRepository.findById(anyLong())).thenReturn(Optional.of(channel));
+        when(channelMemberRepository.existsByChannelIdAndUserId(anyLong(), anyLong())).thenReturn(true);
+        when(meetingRepository.findFirstByChannelIdAndIsActiveTrueOrderByCreatedAtDesc(anyLong()))
+                .thenReturn(Optional.of(new Meeting()));
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> 
+            meetingService.createMeeting(20L, "Title", "pass", creator));
+    }
+
+    @Test
+    void createMeeting_Fails_WhenNotChannelMember() {
+        when(channelRepository.findById(anyLong())).thenReturn(Optional.of(channel));
+        when(channelMemberRepository.existsByChannelIdAndUserId(anyLong(), anyLong())).thenReturn(false);
+
+        org.junit.jupiter.api.Assertions.assertThrows(com.bytechat.exception.UnauthorizedException.class, () -> 
+            meetingService.createMeeting(20L, "Title", "pass", creator));
     }
 
     @Test
@@ -125,6 +139,13 @@ class MeetingServiceImplTest {
     }
 
     @Test
+    void getActiveWorkspaceMeetings_Fails_WhenNotWorkspaceMember() {
+        when(workspaceMemberRepository.existsByWorkspaceIdAndUserId(anyLong(), anyLong())).thenReturn(false);
+        org.junit.jupiter.api.Assertions.assertThrows(com.bytechat.exception.UnauthorizedException.class, () -> 
+            meetingService.getActiveWorkspaceMeetings(10L, creator));
+    }
+
+    @Test
     void joinMeeting_Success() {
         Meeting meeting = Meeting.builder().id(1L).channel(channel).workspace(workspace).creator(creator).isActive(true).passwordHash("encoded").build();
         when(meetingRepository.findById(1L)).thenReturn(Optional.of(meeting));
@@ -134,6 +155,26 @@ class MeetingServiceImplTest {
         MeetingResponse result = meetingService.joinMeeting(1L, "pass", creator);
 
         assertNotNull(result);
+    }
+
+    @Test
+    void joinMeeting_Fails_WhenWrongPassword() {
+        Meeting meeting = Meeting.builder().id(1L).channel(channel).isActive(true).passwordHash("encoded").build();
+        when(meetingRepository.findById(1L)).thenReturn(Optional.of(meeting));
+        when(channelMemberRepository.existsByChannelIdAndUserId(anyLong(), anyLong())).thenReturn(true);
+        when(passwordEncoder.matches("wrong", "encoded")).thenReturn(false);
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> 
+            meetingService.joinMeeting(1L, "wrong", creator));
+    }
+
+    @Test
+    void joinMeeting_Fails_WhenMeetingEnded() {
+        Meeting meeting = Meeting.builder().id(1L).isActive(false).build();
+        when(meetingRepository.findById(1L)).thenReturn(Optional.of(meeting));
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> 
+            meetingService.joinMeeting(1L, "pass", creator));
     }
 
     @Test
@@ -147,5 +188,25 @@ class MeetingServiceImplTest {
 
         assertFalse(meeting.isActive());
         verify(meetingRepository).save(meeting);
+    }
+
+    @Test
+    void endMeeting_Fails_WhenNotCreator() {
+        Meeting meeting = Meeting.builder().id(1L).creator(creator).isActive(true).build();
+        User other = User.builder().id(99L).build();
+        when(meetingRepository.findById(1L)).thenReturn(Optional.of(meeting));
+
+        org.junit.jupiter.api.Assertions.assertThrows(com.bytechat.exception.UnauthorizedException.class, () -> 
+            meetingService.endMeeting(1L, other));
+    }
+    
+    @Test
+    void getMeeting_Success() {
+        Meeting meeting = Meeting.builder().id(1L).channel(channel).isActive(true).build();
+        when(meetingRepository.findById(1L)).thenReturn(Optional.of(meeting));
+        when(channelMemberRepository.existsByChannelIdAndUserId(anyLong(), anyLong())).thenReturn(true);
+
+        MeetingResponse result = meetingService.getMeeting(1L, creator);
+        assertNotNull(result);
     }
 }

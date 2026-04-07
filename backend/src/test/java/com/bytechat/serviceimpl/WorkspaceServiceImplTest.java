@@ -8,6 +8,7 @@ import com.bytechat.services.ChannelService;
 import com.bytechat.services.NotificationService;
 import com.bytechat.exception.ConflictException;
 import com.bytechat.exception.UnauthorizedException;
+import com.bytechat.config.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +48,8 @@ class WorkspaceServiceImplTest {
     private NotificationRepository notificationRepository;
     @Mock
     private com.bytechat.services.EmailService emailService;
+    @Mock
+    private JwtService jwtService;
 
     @InjectMocks
     private WorkspaceServiceImpl workspaceService;
@@ -77,6 +80,33 @@ class WorkspaceServiceImplTest {
     }
 
     @Test
+    void createWorkspaceWithDetails_Success_ExistingUser() {
+        when(userRepository.findById(anyLong())).thenReturn(Optional.of(owner));
+        when(workspaceRepository.save(any(Workspace.class))).thenReturn(workspace);
+        when(jwtService.generateToken(any())).thenReturn("token");
+
+        com.bytechat.dto.response.WorkspaceCreationResponse response = 
+            workspaceService.createWorkspaceWithDetails(createRequest, "owner@example.com", owner);
+
+        assertNotNull(response);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void createWorkspaceWithDetails_Success_NewUser() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenReturn(owner);
+        when(workspaceRepository.save(any(Workspace.class))).thenReturn(workspace);
+        when(jwtService.generateToken(any())).thenReturn("token");
+
+        com.bytechat.dto.response.WorkspaceCreationResponse response = 
+            workspaceService.createWorkspaceWithDetails(createRequest, "new@example.com", null);
+
+        assertNotNull(response);
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
     void getUserWorkspaces_ReturnsPage() {
         Page<Workspace> workspacePage = new PageImpl<>(Collections.singletonList(workspace));
         when(workspaceRepository.findJoinedWorkspaces(anyLong(), any(PageRequest.class))).thenReturn(workspacePage);
@@ -95,6 +125,15 @@ class WorkspaceServiceImplTest {
         workspaceService.joinWorkspace(1L, owner);
 
         verify(workspaceMemberRepository, times(1)).save(any(WorkspaceMember.class));
+    }
+
+    @Test
+    void joinWorkspace_Fails_WhenPrivateNotOwner() {
+        workspace.setPrivate(true);
+        User outsider = User.builder().id(99L).build();
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+
+        assertThrows(RuntimeException.class, () -> workspaceService.joinWorkspace(1L, outsider));
     }
 
     @Test
@@ -227,6 +266,24 @@ class WorkspaceServiceImplTest {
         workspaceService.leaveWorkspace(1L, memberUser);
 
         verify(workspaceMemberRepository).delete(member);
+    }
+
+    @Test
+    void leaveWorkspace_AdminTransfer_Success() {
+        User adminUser = User.builder().id(2L).email("admin@example.com").build();
+        WorkspaceMember wsMember = WorkspaceMember.builder().user(adminUser).role(WorkspaceRole.MEMBER).build();
+        Channel channel1 = Channel.builder().id(1L).name("C1").build();
+        ChannelMember adminCm = ChannelMember.builder().channel(channel1).user(adminUser).role(ChannelRole.ADMIN).build();
+        
+        when(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L)).thenReturn(Optional.of(wsMember));
+        when(workspaceRepository.findById(1L)).thenReturn(Optional.of(workspace));
+        when(channelMemberRepository.findByWorkspaceIdAndUserId(1L, 2L)).thenReturn(Collections.singletonList(adminCm));
+        when(channelMemberRepository.findByChannelId(1L)).thenReturn(Collections.singletonList(adminCm));
+        when(channelMemberRepository.existsByChannelIdAndUserId(1L, 1L)).thenReturn(false); // owner 1L not in channel
+        
+        workspaceService.leaveWorkspace(1L, adminUser);
+
+        verify(channelMemberRepository).save(any(ChannelMember.class)); // Transferred to owner
     }
 
     @Test
